@@ -71,3 +71,7 @@ backend/StudyRoom.API/obj/
 ### Environment files
 .env
 *.local.*
+
+### Nested repo
+/Studyroom/
+/Studyroom
