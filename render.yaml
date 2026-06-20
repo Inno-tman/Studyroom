@@ -22,6 +22,10 @@ services:
         value: "1440"
       - key: Cors__Origins__0
         value: https://studyroom-m9nx.onrender.com
+      - key: AiSettings__Endpoint
+        value: https://api.groq.com/openai/v1/chat/completions
+      - key: AiSettings__Model
+        value: llama3-70b-8192
       - key: AiSettings__ApiKey
         sync: false
 
