@@ -21,7 +21,7 @@ services:
       - key: JwtSettings__ExpiryMinutes
         value: "1440"
       - key: Cors__Origins__0
-        value: https://studyroom.onrender.com
+        value: https://studyroom-m9nx.onrender.com
       - key: AiSettings__ApiKey
         sync: false
 

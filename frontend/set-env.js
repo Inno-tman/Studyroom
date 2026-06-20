@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const apiUrl = process.env.API_URL || 'https://studyroom-api.onrender.com/api';
-const signalrUrl = process.env.SIGNALR_URL || 'https://studyroom-api.onrender.com/hubs/studyroom';
+const apiUrl = process.env.API_URL || 'https://studyroom-api-qzvh.onrender.com/api';
+const signalrUrl = process.env.SIGNALR_URL || 'https://studyroom-api-qzvh.onrender.com/hubs/studyroom';
 
 const content = `export const environment = {
   production: true,
