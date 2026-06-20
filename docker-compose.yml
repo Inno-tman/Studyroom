@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: studyroom
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=studyroom;Username=postgres;Password=postgres"
+      JwtSettings__Secret: "YourSuperSecretKeyHereChangeInProduction!@#$%^&*()"
+      JwtSettings__Issuer: "StudyRoomAPI"
+      JwtSettings__Audience: "StudyRoomApp"
+      JwtSettings__ExpiryMinutes: "1440"
+      Cors__Origins__0: "http://localhost:4200"
+      Cors__Origins__1: "http://localhost"
+    ports:
+      - "5000:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

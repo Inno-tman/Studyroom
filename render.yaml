@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: studyroom-api
+    env: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: studyroom-db
+          property: connectionString
+      - key: JwtSettings__Secret
+        generateValue: true
+      - key: JwtSettings__Issuer
+        value: StudyRoomAPI
+      - key: JwtSettings__Audience
+        value: StudyRoomApp
+      - key: JwtSettings__ExpiryMinutes
+        value: "1440"
+      - key: Cors__Origins__0
+        value: https://studyroom.onrender.com
+      - key: AiSettings__ApiKey
+        sync: false
+
+  - type: web
+    name: studyroom
+    env: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist/studyroom
+    envVars:
+      - key: API_URL
+        value: https://studyroom-api.onrender.com/api
+      - key: SIGNALR_URL
+        value: https://studyroom-api.onrender.com/hubs/studyroom
+
+databases:
+  - name: studyroom-db
+    plan: free
+    databaseName: studyroom
+    user: studyroom_user
