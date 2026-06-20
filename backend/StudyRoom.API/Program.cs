@@ -81,6 +81,7 @@ builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddHttpClient<IAIAcademicService, AIAcademicService>();
+builder.Services.AddHttpClient<IResearchService, ResearchService>();
 
 var app = builder.Build();
 

@@ -10,9 +10,9 @@ public class AiSettings
 {
     public string Provider { get; set; } = "openai";
     public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "gpt-4o-mini";
-    public string Endpoint { get; set; } = "https://api.openai.com/v1/chat/completions";
-    public int MaxTokens { get; set; } = 1024;
+    public string Model { get; set; } = "llama-3.3-70b-versatile";
+    public string Endpoint { get; set; } = "https://api.groq.com/openai/v1/chat/completions";
+    public int MaxTokens { get; set; } = 2048;
 }
 
 public class AIAcademicService : IAIAcademicService
@@ -20,15 +20,35 @@ public class AIAcademicService : IAIAcademicService
     private readonly HttpClient _http;
     private readonly AiSettings _settings;
     private readonly ILogger<AIAcademicService> _logger;
+    private readonly IResearchService _research;
 
-    public AIAcademicService(HttpClient http, IOptions<AiSettings> settings, ILogger<AIAcademicService> logger)
+    private static readonly string[] ResearchPhases =
+    {
+        "Phase 1: Research Introduction — Provide background context, significance, and scope of the research area",
+        "Phase 2: Problem Statement — Define the specific research problem, identify gaps in existing literature, and state research questions or hypotheses",
+        "Phase 3: Literature Review — Summarize and synthesize relevant existing work, identify theoretical frameworks, and establish the foundation for your research",
+        "Phase 4: Research Methodology — Describe research design, data collection methods, analysis techniques, and any ethical considerations",
+        "Phase 5: Expected Outcomes — Discuss anticipated results, contributions to the field, and potential implications",
+        "Phase 6: Timeline & Milestones — Provide a project schedule with key deliverables and evaluation criteria"
+    };
+
+    public AIAcademicService(HttpClient http, IOptions<AiSettings> settings, ILogger<AIAcademicService> logger, IResearchService research)
     {
         _http = http;
         _settings = settings.Value;
         _logger = logger;
+        _research = research;
     }
 
     public async Task<AcademicResponseDto> AskAsync(AcademicQueryDto query)
+    {
+        if (query.ResearchMode)
+            return await HandleResearchQuery(query);
+
+        return await HandleGeneralQuery(query);
+    }
+
+    private async Task<AcademicResponseDto> HandleGeneralQuery(AcademicQueryDto query)
     {
         var subjectContext = !string.IsNullOrWhiteSpace(query.Subject)
             ? $"The user is studying: {query.Subject}.\n"
@@ -53,13 +73,83 @@ Guidelines:
 - If you don't know something, be honest about it
 """;
 
+        return await CallAiProvider(systemPrompt, query.Question, query.Subject);
+    }
+
+    private async Task<AcademicResponseDto> HandleResearchQuery(AcademicQueryDto query)
+    {
+        var userMessage = query.Question;
+        var currentPhase = query.ResearchPhase ?? "Phase 1: Research Introduction";
+
+        var phaseIndex = Array.FindIndex(ResearchPhases, p => p.StartsWith(currentPhase));
+        if (phaseIndex < 0) phaseIndex = 0;
+
+        var nextPhase = phaseIndex < ResearchPhases.Length - 1
+            ? ResearchPhases[phaseIndex + 1].Split(" — ")[0]
+            : null;
+
+        var allPhases = ResearchPhases.Select((p, i) => new ResearchPhase
+        {
+            Phase = p.Split(" — ")[0],
+            Description = p.Split(" — ")[1],
+            Completed = i < phaseIndex
+        }).ToList();
+
+        var papers = await _research.SearchPapersAsync(userMessage, 5);
+
+        var papersContext = papers.Papers.Count > 0
+            ? "\nRelevant academic papers found:\n" + string.Join("\n", papers.Papers.Select((p, i) =>
+                $"{i + 1}. \"{p.Title}\" by {p.Authors} ({p.Year})" +
+                (p.Venue != null ? $" — {p.Venue}" : "") +
+                (p.CitationCount != null ? $" — Cited: {p.CitationCount}" : "") +
+                (p.Url != null ? $"\n   URL: {p.Url}" : "")))
+            : "\n(No specific papers found for this query. The AI will provide general academic guidance.)";
+
+        var systemPrompt = $"""
+You are an academic research assistant AI in StudyRoom. Your role is to help users conduct academic research using proper research methodology.
+
+Current Research Phase: {currentPhase}
+{allPhases.FirstOrDefault(p => p.Phase == currentPhase)?.Description ?? ""}
+
+{papersContext}
+
+Research Methodology Guidelines:
+1. Follow the standard academic research process step by step
+2. Cite specific academic papers when making claims (use the references provided above)
+3. Format citations as [Author, Year] at minimum
+4. Maintain academic tone and rigor
+5. If the user asks to move to the next phase, provide a smooth transition
+6. Always provide complete, well-structured responses appropriate for the current phase
+7. Include a references section at the end citing all papers mentioned
+
+The full research process:
+{string.Join("\n", ResearchPhases.Select(p => "- " + p))}
+""";
+
+        var result = await CallAiProvider(systemPrompt, userMessage, query.Subject);
+
+        return new AcademicResponseDto
+        {
+            Answer = result.Answer,
+            Subject = query.Subject,
+            CreatedAt = DateTime.UtcNow,
+            IsResearchMode = true,
+            CurrentPhase = currentPhase.Split(" — ")[0],
+            NextPhase = nextPhase,
+            References = papers.Papers,
+            ResearchOutline = allPhases
+        };
+    }
+
+    private async Task<AcademicResponseDto> CallAiProvider(string systemPrompt, string userMessage, string? subject)
+    {
         var payload = new
         {
             model = _settings.Model,
             messages = new[]
             {
                 new { role = "system", content = systemPrompt },
-                new { role = "user", content = query.Question }
+                new { role = "user", content = userMessage }
             },
             max_tokens = _settings.MaxTokens,
             temperature = 0.7
@@ -88,18 +178,17 @@ Guidelines:
             return new AcademicResponseDto
             {
                 Answer = answer,
-                Subject = query.Subject,
+                Subject = subject,
                 CreatedAt = DateTime.UtcNow
             };
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "AI provider request failed");
-
+            _logger.LogError(ex, "AI provider request failed. Endpoint: {Endpoint}, Model: {Model}", _settings.Endpoint, _settings.Model);
             return new AcademicResponseDto
             {
-                Answer = GenerateFallbackResponse(query.Question, query.Subject),
-                Subject = query.Subject
+                Answer = GenerateFallbackResponse(userMessage, subject),
+                Subject = subject
             };
         }
     }
@@ -120,7 +209,7 @@ Guidelines:
         if (q.Contains("binary") || q.Contains("tree") || q.Contains("algorithm"))
             return "A binary tree is a hierarchical data structure where each node has at most two children. Common operations include insertion, deletion, and traversal (in-order, pre-order, post-order).";
 
-        if (q.Contains("hello") || q.Contains("hi "))
+        if (q.Contains("hello") || q.Contains("hi ") || q == "hi")
             return "Hello! I'm your StudyRoom academic assistant. What subject are you studying today? I can help with math, science, programming, and more.";
 
         return "Great question! To provide the most helpful response, could you narrow down the specific topic or concept you're studying? I can assist with mathematics, physics, chemistry, biology, computer science, literature, and more.";
