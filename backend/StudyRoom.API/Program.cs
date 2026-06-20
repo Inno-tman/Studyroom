@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -14,8 +15,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+connectionString = ConvertToNpgsqlConnectionString(connectionString);
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 var jwtSection = builder.Configuration.GetSection("JwtSettings");
 builder.Services.Configure<JwtSettings>(jwtSection);
@@ -100,3 +103,19 @@ using (var scope = app.Services.CreateScope())
 await SeedData.InitializeAsync(app.Services);
 
 app.Run();
+
+static string ConvertToNpgsqlConnectionString(string cs)
+{
+    if (string.IsNullOrEmpty(cs) || !cs.StartsWith("postgres://") && !cs.StartsWith("postgresql://"))
+        return cs;
+
+    var uri = new Uri(cs);
+    var userInfo = uri.UserInfo?.Split(':') ?? Array.Empty<string>();
+    var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+    var host = uri.Host;
+    var port = uri.Port > 0 ? uri.Port : 5432;
+    var database = uri.AbsolutePath.TrimStart('/');
+
+    return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Timeout=30";
+}
