@@ -25,7 +25,7 @@ services:
       - key: AiSettings__Endpoint
         value: https://api.groq.com/openai/v1/chat/completions
       - key: AiSettings__Model
-        value: llama3-70b-8192
+        value: llama-3.3-70b-versatile
       - key: AiSettings__ApiKey
         sync: false
 
