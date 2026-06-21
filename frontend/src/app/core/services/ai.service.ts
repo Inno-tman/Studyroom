@@ -15,6 +15,7 @@ export interface AcademicQuery {
   researchMode?: boolean;
   researchPhase?: string;
   previousMessages?: PreviousMessage[];
+  conversationId?: string;
 }
 
 export interface PaperReference {
@@ -42,31 +43,26 @@ export interface AcademicResponse {
   nextPhase?: string;
   references?: PaperReference[];
   researchOutline?: ResearchPhase[];
+  conversationId?: string;
 }
 
-export interface PaperSearchDto {
-  query: string;
-  limit?: number;
-}
-
-export interface PaperSearchResult {
-  papers: PaperReference[];
-  totalResults: number;
-}
-
-export interface ResearchProposalRequest {
-  topic: string;
-  subject?: string;
-}
-
-export interface ResearchProposal {
-  topic: string;
+export interface ConversationSummary {
+  id: string;
   subject: string;
-  phases: ResearchPhase[];
+  isResearchMode: boolean;
   currentPhase: string;
-  currentPhaseContent: string;
-  references?: PaperReference[];
-  fullProposal?: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+}
+
+export interface ConversationDetail {
+  id: string;
+  subject: string;
+  isResearchMode: boolean;
+  currentPhase: string;
+  createdAt: string;
+  messages: { id: string; role: string; content: string; createdAt: string }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -77,11 +73,19 @@ export class AIService {
     return this.http.post<AcademicResponse>(`${environment.apiUrl}/ai/ask`, query);
   }
 
-  searchPapers(query: string, limit = 10): Observable<PaperSearchResult> {
-    return this.http.post<PaperSearchResult>(`${environment.apiUrl}/research/search`, { query, limit });
+  createConversation(subject?: string, researchMode = false, phase?: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${environment.apiUrl}/ai/conversations`, { subject, researchMode, phase });
   }
 
-  generateProposal(topic: string, subject?: string): Observable<ResearchProposal> {
-    return this.http.post<ResearchProposal>(`${environment.apiUrl}/research/proposal`, { topic, subject });
+  getConversations(limit = 20): Observable<ConversationSummary[]> {
+    return this.http.get<ConversationSummary[]>(`${environment.apiUrl}/ai/conversations?limit=${limit}`);
+  }
+
+  getConversation(id: string): Observable<ConversationDetail> {
+    return this.http.get<ConversationDetail>(`${environment.apiUrl}/ai/conversations/${id}`);
+  }
+
+  deleteConversation(id: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/ai/conversations/${id}`);
   }
 }

@@ -16,6 +16,8 @@ public class AcademicQueryDto
     public string? ResearchPhase { get; set; }
 
     public List<PreviousMessageDto>? PreviousMessages { get; set; }
+
+    public Guid? ConversationId { get; set; }
 }
 
 public class PreviousMessageDto
@@ -34,6 +36,8 @@ public class AcademicResponseDto
     public string? NextPhase { get; set; }
     public List<PaperReference>? References { get; set; }
     public List<ResearchPhase>? ResearchOutline { get; set; }
+
+    public Guid? ConversationId { get; set; }
 }
 
 public class PaperReference
