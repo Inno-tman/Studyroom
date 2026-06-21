@@ -2,6 +2,7 @@ import { Component, Input, inject, OnInit } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AIService, AcademicResponse, PaperReference, ResearchPhase, ConversationSummary } from '../../core/services/ai.service';
+import { DocumentService } from '../../core/services/document.service';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -91,6 +92,10 @@ interface ChatMessage {
                   <span class="bubble-time">{{ msg.createdAt | date:'shortTime' }}</span>
                 </div>
                 <div class="bubble-text">{{ msg.content }}</div>
+                <div class="download-bar" *ngIf="msg.role === 'assistant' && msg.content.length > 50">
+                  <button class="dl-btn" (click)="downloadDocx(msg)" title="Download as Word">📄 DOCX</button>
+                  <button class="dl-btn" (click)="downloadPdf(msg)" title="Download as PDF">📕 PDF</button>
+                </div>
                 <div class="refs" *ngIf="msg.references && msg.references.length > 0">
                   <div class="refs-title">References</div>
                   <div class="ref" *ngFor="let ref of msg.references; let i = index">
@@ -218,6 +223,10 @@ interface ChatMessage {
     .send-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); border: none; color: white; cursor: pointer; transition: background 0.15s; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
     .send-btn:hover:not(:disabled) { background: var(--primary-hover); }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .download-bar { display: flex; gap: 6px; margin-top: 8px; }
+    .dl-btn { padding: 4px 10px; font-size: 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+    .dl-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.05); }
   `]
 })
 export class AiChatPanelComponent implements OnInit {
@@ -225,6 +234,7 @@ export class AiChatPanelComponent implements OnInit {
   @Input() notesContext = '';
 
   private aiService = inject(AIService);
+  private docService = inject(DocumentService);
 
   messages: ChatMessage[] = [];
   question = '';
@@ -335,6 +345,18 @@ export class AiChatPanelComponent implements OnInit {
     } finally {
       this.loading = false;
     }
+  }
+
+  downloadDocx(msg: ChatMessage) {
+    const phase = msg.currentPhase ? `${msg.currentPhase} - ` : '';
+    const title = `${phase}Research Document`;
+    this.docService.downloadDocx(title, msg.content, `${title.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
+  }
+
+  downloadPdf(msg: ChatMessage) {
+    const phase = msg.currentPhase ? `${msg.currentPhase} - ` : '';
+    const title = `${phase}Research Document`;
+    this.docService.downloadPdf(title, msg.content, `${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   }
 
   async askQuick(question: string) {
