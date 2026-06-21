@@ -169,42 +169,62 @@ The full research process:
             temperature = 0.7
         };
 
-        try
+        if (!string.IsNullOrEmpty(_settings.ApiKey))
+            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+
+        for (var attempt = 0; attempt <= 2; attempt++)
         {
-            var json = JsonSerializer.Serialize(payload);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            if (!string.IsNullOrEmpty(_settings.ApiKey))
-                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-
-            var response = await _http.PostAsync(_settings.Endpoint, content);
-            response.EnsureSuccessStatusCode();
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(responseJson);
-
-            var answer = doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString() ?? "I'm sorry, I couldn't generate a response.";
-
-            return new AcademicResponseDto
+            try
             {
-                Answer = answer,
-                Subject = subject,
-                CreatedAt = DateTime.UtcNow
-            };
+                if (attempt > 0)
+                    await Task.Delay(1000 * attempt);
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _http.PostAsync(_settings.Endpoint, content);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(responseJson);
+
+                var answer = doc.RootElement
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString() ?? "I'm sorry, I couldn't generate a response.";
+
+                return new AcademicResponseDto
+                {
+                    Answer = answer,
+                    Subject = subject,
+                    CreatedAt = DateTime.UtcNow
+                };
+            }
+            catch (HttpRequestException ex) when (attempt < 2)
+            {
+                _logger.LogWarning(ex, "AI provider attempt {Attempt}/3 failed. Retrying...", attempt + 1);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "AI provider request failed after 3 attempts. Endpoint: {Endpoint}, Model: {Model}", _settings.Endpoint, _settings.Model);
+                return new AcademicResponseDto
+                {
+                    Answer = GenerateFallbackResponse(userMessage, subject),
+                    Subject = subject,
+                    IsError = true,
+                    ErrorMessage = $"AI service unavailable after 3 attempts. Please try again in a moment. ({ex.Message})"
+                };
+            }
         }
-        catch (HttpRequestException ex)
+
+        return new AcademicResponseDto
         {
-            _logger.LogError(ex, "AI provider request failed. Endpoint: {Endpoint}, Model: {Model}", _settings.Endpoint, _settings.Model);
-            return new AcademicResponseDto
-            {
-                Answer = GenerateFallbackResponse(userMessage, subject),
-                Subject = subject
-            };
-        }
+            Answer = GenerateFallbackResponse(userMessage, subject),
+            Subject = subject,
+            IsError = true,
+            ErrorMessage = "AI service unavailable. Please try again later."
+        };
     }
 
     private static string GenerateFallbackResponse(string question, string? subject)

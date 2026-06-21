@@ -44,6 +44,8 @@ export interface AcademicResponse {
   references?: PaperReference[];
   researchOutline?: ResearchPhase[];
   conversationId?: string;
+  isError?: boolean;
+  errorMessage?: string;
 }
 
 export interface ConversationSummary {

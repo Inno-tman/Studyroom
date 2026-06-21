@@ -38,6 +38,8 @@ public class AcademicResponseDto
     public List<ResearchPhase>? ResearchOutline { get; set; }
 
     public Guid? ConversationId { get; set; }
+    public bool IsError { get; set; }
+    public string? ErrorMessage { get; set; }
 }
 
 public class PaperReference

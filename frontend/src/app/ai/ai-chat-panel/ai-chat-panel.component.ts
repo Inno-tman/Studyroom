@@ -12,6 +12,8 @@ interface ChatMessage {
   currentPhase?: string;
   nextPhase?: string;
   researchOutline?: ResearchPhase[];
+  isError?: boolean;
+  errorMessage?: string;
 }
 
 @Component({
@@ -95,9 +97,13 @@ interface ChatMessage {
                   <span class="bubble-time">{{ msg.createdAt | date:'shortTime' }}</span>
                 </div>
                 <div class="bubble-text">{{ msg.content }}</div>
-                <div class="download-bar" *ngIf="msg.role === 'assistant' && msg.content.length > 50">
+                <div class="msg-error" *ngIf="msg.isError">{{ msg.errorMessage }}</div>
+                <div class="download-bar" *ngIf="msg.role === 'assistant' && msg.content.length > 50 && !msg.isError">
                   <button class="dl-btn" (click)="downloadDocx(msg)" title="Download as Word">📄 DOCX</button>
                   <button class="dl-btn" (click)="downloadPdf(msg)" title="Download as PDF">📕 PDF</button>
+                </div>
+                <div class="retry-bar" *ngIf="msg.isError">
+                  <button class="retry-btn" (click)="retry()">↻ Retry</button>
                 </div>
                 <div class="refs" *ngIf="msg.references && msg.references.length > 0">
                   <div class="refs-title">References</div>
@@ -234,6 +240,11 @@ interface ChatMessage {
     .download-bar { display: flex; gap: 6px; margin-top: 8px; }
     .dl-btn { padding: 4px 10px; font-size: 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
     .dl-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.05); }
+
+    .msg-error { margin-top: 6px; padding: 6px 8px; background: rgba(255, 80, 80, 0.08); border: 1px solid rgba(255, 80, 80, 0.2); border-radius: 6px; font-size: 10px; color: #ff5050; }
+    .retry-bar { margin-top: 8px; }
+    .retry-btn { padding: 6px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+    .retry-btn:hover { background: var(--accent); color: white; }
   `]
 })
 export class AiChatPanelComponent implements OnInit {
@@ -252,6 +263,8 @@ export class AiChatPanelComponent implements OnInit {
   currentConvId = '';
   showSidebar = false;
   conversations: ConversationSummary[] = [];
+  lastQuestion = '';
+  lastPhaseName = '';
 
   async ngOnInit() {
     await this.loadConversations();
@@ -312,6 +325,9 @@ export class AiChatPanelComponent implements OnInit {
 
     if (!this.currentConvId) await this.newConversation();
 
+    this.lastQuestion = q;
+    this.lastPhaseName = this.currentPhaseName;
+
     const userMsg: ChatMessage = { role: 'user', content: q, createdAt: new Date() };
     this.messages.push(userMsg);
 
@@ -340,18 +356,35 @@ export class AiChatPanelComponent implements OnInit {
           references: response.references,
           currentPhase: response.currentPhase,
           nextPhase: response.nextPhase,
-          researchOutline: response.researchOutline
+          researchOutline: response.researchOutline,
+          isError: response.isError,
+          errorMessage: response.errorMessage
         });
       }
-    } catch {
+    } catch (e: any) {
       this.messages.push({
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please check your API key configuration and try again.',
-        createdAt: new Date()
+        content: 'Sorry, I encountered an error. Please try again.',
+        createdAt: new Date(),
+        isError: true,
+        errorMessage: e?.message || 'Network error'
       });
     } finally {
       this.loading = false;
     }
+  }
+
+  async retry() {
+    if (!this.lastQuestion || this.loading) return;
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+      if (this.messages[i].role === 'user') {
+        this.messages.splice(i);
+        break;
+      }
+    }
+    this.currentPhaseName = this.lastPhaseName;
+    this.question = this.lastQuestion;
+    await this.sendMessage();
   }
 
   downloadDocx(msg: ChatMessage) {
