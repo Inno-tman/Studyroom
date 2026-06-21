@@ -285,14 +285,15 @@ export class AiChatPanelComponent implements OnInit {
 
   async sendMessage() {
     if (!this.question.trim() || this.loading) return;
-    if (!this.currentConvId) await this.newConversation();
-
-    const userMsg: ChatMessage = { role: 'user', content: this.question, createdAt: new Date() };
-    this.messages.push(userMsg);
 
     const q = this.question;
     this.question = '';
     this.loading = true;
+
+    if (!this.currentConvId) await this.newConversation();
+
+    const userMsg: ChatMessage = { role: 'user', content: q, createdAt: new Date() };
+    this.messages.push(userMsg);
 
     try {
       const history = this.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
@@ -333,14 +334,14 @@ export class AiChatPanelComponent implements OnInit {
     }
   }
 
-  askQuick(question: string) {
+  async askQuick(question: string) {
     this.question = question;
-    this.sendMessage();
+    await this.sendMessage();
   }
 
-  continueResearch(phase: string) {
+  async continueResearch(phase: string) {
     this.question = `Continue with ${phase}. Please provide detailed content for this phase based on the previous discussion.`;
     this.currentPhaseName = phase;
-    this.sendMessage();
+    await this.sendMessage();
   }
 }
