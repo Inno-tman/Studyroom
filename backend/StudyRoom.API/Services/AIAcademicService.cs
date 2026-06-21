@@ -12,7 +12,7 @@ public class AiSettings
     public string ApiKey { get; set; } = string.Empty;
     public string Model { get; set; } = "llama-3.3-70b-versatile";
     public string Endpoint { get; set; } = "https://api.groq.com/openai/v1/chat/completions";
-    public int MaxTokens { get; set; } = 2048;
+    public int MaxTokens { get; set; } = 4096;
 }
 
 public class AIAcademicService : IAIAcademicService
@@ -150,7 +150,10 @@ The full research process:
 
         if (history != null)
         {
-            foreach (var msg in history)
+            var recent = history.Count > 10
+                ? history.Skip(history.Count - 10).ToList()
+                : history;
+            foreach (var msg in recent)
             {
                 messages.Add(new { role = msg.Role, content = msg.Content });
             }
