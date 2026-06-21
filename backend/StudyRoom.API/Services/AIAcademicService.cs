@@ -12,7 +12,7 @@ public class AiSettings
     public string ApiKey { get; set; } = string.Empty;
     public string Model { get; set; } = "llama-3.3-70b-versatile";
     public string Endpoint { get; set; } = "https://api.groq.com/openai/v1/chat/completions";
-    public int MaxTokens { get; set; } = 4096;
+    public int MaxTokens { get; set; } = 800;
 }
 
 public class AIAcademicService : IAIAcademicService
@@ -170,7 +170,7 @@ The full research process:
             model = _settings.Model,
             messages = messages.ToArray(),
             max_tokens = _settings.MaxTokens,
-            temperature = 0.7
+            temperature = 0.3
         };
 
         if (!string.IsNullOrEmpty(_settings.ApiKey))
