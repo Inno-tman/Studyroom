@@ -40,8 +40,11 @@ interface ChatMessage {
           <div class="sidebar-title">Conversations</div>
           <div class="conv-list">
             <div class="conv-item" *ngFor="let c of conversations" (click)="loadConversation(c.id)" [class.active]="c.id === currentConvId">
-              <div class="conv-subject">{{ c.subject || 'Untitled' }}</div>
-              <div class="conv-meta">{{ c.messageCount }} msgs · {{ c.createdAt | date:'short' }}</div>
+              <div class="conv-item-body">
+                <div class="conv-subject">{{ c.subject || 'Untitled' }}</div>
+                <div class="conv-meta">{{ c.messageCount }} msgs · {{ c.createdAt | date:'short' }}</div>
+              </div>
+              <button class="conv-del" (click)="deleteConversation(c.id, $event)" title="Delete conversation">✕</button>
             </div>
             <div class="conv-empty" *ngIf="conversations.length === 0">No conversations yet</div>
           </div>
@@ -152,11 +155,15 @@ interface ChatMessage {
     .sidebar { width: 220px; border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; flex-shrink: 0; }
     .sidebar-title { padding: 10px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .conv-list { display: flex; flex-direction: column; }
-    .conv-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    .conv-item { display: flex; align-items: center; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s; }
     .conv-item:hover { background: var(--surface-hover); }
     .conv-item.active { background: rgba(56, 189, 248, 0.08); border-left: 2px solid var(--accent); }
+    .conv-item-body { flex: 1; min-width: 0; }
     .conv-subject { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .conv-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    .conv-del { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 10px; width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+    .conv-item:hover .conv-del { opacity: 1; }
+    .conv-del:hover { background: rgba(255, 80, 80, 0.1); color: #ff5050; }
     .conv-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
 
     .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -357,6 +364,20 @@ export class AiChatPanelComponent implements OnInit {
     const phase = msg.currentPhase ? `${msg.currentPhase} - ` : '';
     const title = `${phase}Research Document`;
     this.docService.downloadPdf(title, msg.content, `${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+  }
+
+  async deleteConversation(id: string, event: MouseEvent) {
+    event.stopPropagation();
+    try {
+      await this.aiService.deleteConversation(id).toPromise();
+      this.conversations = this.conversations.filter(c => c.id !== id);
+      if (this.currentConvId === id) {
+        this.messages = [];
+        this.currentConvId = '';
+        this.currentPhaseName = '';
+        this.currentOutline = [];
+      }
+    } catch {}
   }
 
   async askQuick(question: string) {
