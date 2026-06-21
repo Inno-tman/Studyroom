@@ -339,6 +339,19 @@ export class AiChatPanelComponent implements OnInit {
     const userMsg: ChatMessage = { role: 'user', content: q, createdAt: new Date() };
     this.messages.push(userMsg);
 
+    const timeout = setTimeout(() => {
+      this.loading = false;
+      const last = this.messages[this.messages.length - 1];
+      if (last && last.role === 'assistant') return;
+      this.messages.push({
+        role: 'assistant',
+        content: 'Request timed out. Please try again.',
+        createdAt: new Date(),
+        isError: true,
+        errorMessage: 'The server took too long to respond. Groq may be experiencing high load.'
+      });
+    }, 120000);
+
     try {
       const history = this.messages.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
 
@@ -351,6 +364,8 @@ export class AiChatPanelComponent implements OnInit {
         previousMessages: history.length > 0 ? history : undefined,
         conversationId: this.currentConvId || undefined
       }).toPromise();
+
+      clearTimeout(timeout);
 
       if (response) {
         this.currentPhaseName = response.currentPhase || '';
@@ -370,6 +385,7 @@ export class AiChatPanelComponent implements OnInit {
         });
       }
     } catch (e: any) {
+      clearTimeout(timeout);
       this.messages.push({
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
@@ -378,6 +394,7 @@ export class AiChatPanelComponent implements OnInit {
         errorMessage: e?.message || 'Network error'
       });
     } finally {
+      clearTimeout(timeout);
       this.loading = false;
     }
   }

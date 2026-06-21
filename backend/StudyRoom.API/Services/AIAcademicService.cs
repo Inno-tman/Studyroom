@@ -178,12 +178,14 @@ The full research process:
         if (!string.IsNullOrEmpty(_settings.ApiKey))
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
 
-        await _rateGate.WaitAsync();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+
+        await _rateGate.WaitAsync(cts.Token);
         try
         {
             var sinceLast = DateTime.UtcNow - _lastRequestTime;
             if (sinceLast.TotalSeconds < 2.5)
-                await Task.Delay(TimeSpan.FromSeconds(2.5) - sinceLast);
+                await Task.Delay(TimeSpan.FromSeconds(2.5) - sinceLast, cts.Token);
             _lastRequestTime = DateTime.UtcNow;
         }
         finally { _rateGate.Release(); }
@@ -193,18 +195,22 @@ The full research process:
             try
             {
                 if (attempt > 0)
-                    await Task.Delay(2000 * attempt);
+                    await Task.Delay(2000 * attempt, cts.Token);
+
+                cts.Token.ThrowIfCancellationRequested();
 
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _http.PostAsync(_settings.Endpoint, content);
+                using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                reqCts.CancelAfter(TimeSpan.FromSeconds(30));
+                var response = await _http.PostAsync(_settings.Endpoint, content, reqCts.Token);
 
                 if ((int)response.StatusCode == 429)
                 {
                     var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 10;
                     _logger.LogWarning("Groq rate limited (429). Waiting {Seconds}s before retry.", retryAfter);
-                    await Task.Delay(TimeSpan.FromSeconds(retryAfter));
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Min(retryAfter, 15)), cts.Token);
                     continue;
                 }
 
@@ -226,13 +232,25 @@ The full research process:
                     CreatedAt = DateTime.UtcNow
                 };
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("AI provider request timed out (attempt {Attempt}/3)", attempt + 1);
+                if (attempt < 2) continue;
+                return new AcademicResponseDto
+                {
+                    Answer = GenerateFallbackResponse(userMessage, subject),
+                    Subject = subject,
+                    IsError = true,
+                    ErrorMessage = "AI service timed out. Groq may be overloaded — please wait a moment and try again."
+                };
+            }
             catch (HttpRequestException ex) when (attempt < 2)
             {
                 _logger.LogWarning(ex, "AI provider attempt {Attempt}/3 failed. Retrying...", attempt + 1);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "AI provider request failed after 3 attempts. Endpoint: {Endpoint}, Model: {Model}", _settings.Endpoint, _settings.Model);
+                _logger.LogError(ex, "AI provider request failed after 3 attempts.");
                 return new AcademicResponseDto
                 {
                     Answer = GenerateFallbackResponse(userMessage, subject),
