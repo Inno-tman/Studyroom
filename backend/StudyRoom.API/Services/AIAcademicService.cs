@@ -190,15 +190,16 @@ The full research process:
         }
         finally { _rateGate.Release(); }
 
+        string? lastError = null;
         for (var attempt = 0; attempt <= 2; attempt++)
         {
+            if (attempt > 0)
+                await Task.Delay(2000 * attempt, cts.Token);
+
+            cts.Token.ThrowIfCancellationRequested();
+
             try
             {
-                if (attempt > 0)
-                    await Task.Delay(2000 * attempt, cts.Token);
-
-                cts.Token.ThrowIfCancellationRequested();
-
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -208,6 +209,7 @@ The full research process:
 
                 if ((int)response.StatusCode == 429)
                 {
+                    lastError = "rate limited";
                     var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 10;
                     _logger.LogWarning("Groq rate limited (429). Waiting {Seconds}s before retry.", retryAfter);
                     await Task.Delay(TimeSpan.FromSeconds(Math.Min(retryAfter, 15)), cts.Token);
@@ -234,39 +236,28 @@ The full research process:
             }
             catch (OperationCanceledException)
             {
+                lastError = "timed out";
                 _logger.LogWarning("AI provider request timed out (attempt {Attempt}/3)", attempt + 1);
-                if (attempt < 2) continue;
-                return new AcademicResponseDto
-                {
-                    Answer = GenerateFallbackResponse(userMessage, subject),
-                    Subject = subject,
-                    IsError = true,
-                    ErrorMessage = "AI service timed out. Groq may be overloaded — please wait a moment and try again."
-                };
-            }
-            catch (HttpRequestException ex) when (attempt < 2)
-            {
-                _logger.LogWarning(ex, "AI provider attempt {Attempt}/3 failed. Retrying...", attempt + 1);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "AI provider request failed after 3 attempts.");
-                return new AcademicResponseDto
-                {
-                    Answer = GenerateFallbackResponse(userMessage, subject),
-                    Subject = subject,
-                    IsError = true,
-                    ErrorMessage = $"AI service unavailable. Please wait a moment and try again. ({ex.Message})"
-                };
+                lastError = ex.Message;
+                _logger.LogWarning(ex, "AI provider attempt {Attempt}/3 failed.", attempt + 1);
             }
         }
 
+        var errMsg = lastError switch
+        {
+            "rate limited" => "AI service is rate limited. Please wait a minute and try again.",
+            "timed out" => "AI service timed out. Groq may be overloaded — please wait a moment and try again.",
+            _ => $"AI service unavailable. Please wait a moment and try again. ({lastError})"
+        };
         return new AcademicResponseDto
         {
             Answer = GenerateFallbackResponse(userMessage, subject),
             Subject = subject,
             IsError = true,
-            ErrorMessage = "AI service unavailable. Please try again later."
+            ErrorMessage = errMsg
         };
     }
 
