@@ -21,6 +21,8 @@ public class AIAcademicService : IAIAcademicService
     private readonly AiSettings _settings;
     private readonly ILogger<AIAcademicService> _logger;
     private readonly IResearchService _research;
+    private static readonly SemaphoreSlim _rateGate = new(1, 1);
+    private static DateTime _lastRequestTime = DateTime.MinValue;
 
     private static readonly string[] ResearchPhases =
     {
@@ -176,17 +178,36 @@ The full research process:
         if (!string.IsNullOrEmpty(_settings.ApiKey))
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
 
+        await _rateGate.WaitAsync();
+        try
+        {
+            var sinceLast = DateTime.UtcNow - _lastRequestTime;
+            if (sinceLast.TotalSeconds < 2.5)
+                await Task.Delay(TimeSpan.FromSeconds(2.5) - sinceLast);
+            _lastRequestTime = DateTime.UtcNow;
+        }
+        finally { _rateGate.Release(); }
+
         for (var attempt = 0; attempt <= 2; attempt++)
         {
             try
             {
                 if (attempt > 0)
-                    await Task.Delay(1000 * attempt);
+                    await Task.Delay(2000 * attempt);
 
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await _http.PostAsync(_settings.Endpoint, content);
+
+                if ((int)response.StatusCode == 429)
+                {
+                    var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 10;
+                    _logger.LogWarning("Groq rate limited (429). Waiting {Seconds}s before retry.", retryAfter);
+                    await Task.Delay(TimeSpan.FromSeconds(retryAfter));
+                    continue;
+                }
+
                 response.EnsureSuccessStatusCode();
 
                 var responseJson = await response.Content.ReadAsStringAsync();
@@ -217,7 +238,7 @@ The full research process:
                     Answer = GenerateFallbackResponse(userMessage, subject),
                     Subject = subject,
                     IsError = true,
-                    ErrorMessage = $"AI service unavailable after 3 attempts. Please try again in a moment. ({ex.Message})"
+                    ErrorMessage = $"AI service unavailable. Please wait a moment and try again. ({ex.Message})"
                 };
             }
         }
