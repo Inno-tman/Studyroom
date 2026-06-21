@@ -90,4 +90,8 @@ export class AIService {
   deleteConversation(id: string): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/ai/conversations/${id}`);
   }
+
+  clearMessages(conversationId: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/ai/conversations/${conversationId}/messages`);
+  }
 }

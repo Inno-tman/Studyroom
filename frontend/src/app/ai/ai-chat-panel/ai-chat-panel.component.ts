@@ -85,7 +85,7 @@ interface ChatMessage {
               </ng-template>
             </div>
 
-            <div class="msg" *ngFor="let msg of messages" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
+            <div class="msg" *ngFor="let msg of messages; let i = index" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
               <div class="bubble">
                 <div class="bubble-header" *ngIf="msg.role === 'assistant'">
                   <span class="bubble-avatar">{{ researchMode ? 'R' : 'A' }}</span>
@@ -94,9 +94,19 @@ interface ChatMessage {
                   <span class="bubble-time">{{ msg.createdAt | date:'shortTime' }}</span>
                 </div>
                 <div class="bubble-header user-header" *ngIf="msg.role === 'user'">
+                  <button class="edit-btn" *ngIf="editingIndex !== i" (click)="startEdit(i, $event)" title="Edit message">✎</button>
                   <span class="bubble-time">{{ msg.createdAt | date:'shortTime' }}</span>
                 </div>
-                <div class="bubble-text">{{ msg.content }}</div>
+                <ng-container *ngIf="editingIndex !== i; else editTemplate">
+                  <div class="bubble-text">{{ msg.content }}</div>
+                </ng-container>
+                <ng-template #editTemplate>
+                  <textarea class="edit-textarea" [(ngModel)]="editText" (keydown.enter)="$event.preventDefault(); saveEdit()"></textarea>
+                  <div class="edit-actions">
+                    <button class="edit-save" (click)="saveEdit()">Save</button>
+                    <button class="edit-cancel" (click)="cancelEdit()">Cancel</button>
+                  </div>
+                </ng-template>
                 <div class="msg-error" *ngIf="msg.isError">{{ msg.errorMessage }}</div>
                 <div class="download-bar" *ngIf="msg.role === 'assistant' && msg.content.length > 50 && !msg.isError">
                   <button class="dl-btn" (click)="downloadDocx(msg)" title="Download as Word">📄 DOCX</button>
@@ -107,8 +117,8 @@ interface ChatMessage {
                 </div>
                 <div class="refs" *ngIf="msg.references && msg.references.length > 0">
                   <div class="refs-title">References</div>
-                  <div class="ref" *ngFor="let ref of msg.references; let i = index">
-                    <span class="ref-num">{{ i + 1 }}</span>
+                  <div class="ref" *ngFor="let ref of msg.references; let j = index">
+                    <span class="ref-num">{{ j + 1 }}</span>
                     <div class="ref-body">
                       <span class="ref-authors">{{ ref.authors }} ({{ ref.year }})</span>
                       <span class="ref-title">{{ ref.title }}</span>
@@ -245,6 +255,15 @@ interface ChatMessage {
     .retry-bar { margin-top: 8px; }
     .retry-btn { padding: 6px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; transition: all 0.15s; }
     .retry-btn:hover { background: var(--accent); color: white; }
+
+    .edit-btn { opacity: 0; background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 11px; padding: 2px 4px; border-radius: 3px; transition: all 0.15s; }
+    .user-header:hover .edit-btn { opacity: 1; }
+    .edit-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+    .edit-textarea { width: 100%; min-height: 60px; padding: 6px 8px; background: var(--background); border: 1px solid var(--accent); border-radius: 6px; color: var(--text-primary); font-size: 12px; font-family: inherit; resize: vertical; outline: none; }
+    .edit-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .edit-save { padding: 4px 12px; background: var(--accent); border: none; border-radius: 4px; color: white; font-size: 11px; cursor: pointer; }
+    .edit-cancel { padding: 4px 12px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-secondary); font-size: 11px; cursor: pointer; }
+    .edit-cancel:hover { border-color: var(--text-muted); }
   `]
 })
 export class AiChatPanelComponent implements OnInit {
@@ -265,6 +284,8 @@ export class AiChatPanelComponent implements OnInit {
   conversations: ConversationSummary[] = [];
   lastQuestion = '';
   lastPhaseName = '';
+  editingIndex = -1;
+  editText = '';
   private _lastSendTime = 0;
 
   async ngOnInit() {
@@ -422,6 +443,40 @@ export class AiChatPanelComponent implements OnInit {
     const phase = msg.currentPhase ? `${msg.currentPhase} - ` : '';
     const title = `${phase}Research Document`;
     this.docService.downloadPdf(title, msg.content, `${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+  }
+
+  startEdit(index: number, event: MouseEvent) {
+    event.stopPropagation();
+    this.editingIndex = index;
+    this.editText = this.messages[index].content;
+  }
+
+  cancelEdit() {
+    this.editingIndex = -1;
+    this.editText = '';
+  }
+
+  async saveEdit() {
+    if (!this.editText.trim() || this.editingIndex < 0) return;
+    const idx = this.editingIndex;
+    this.cancelEdit();
+
+    this.messages[idx].content = this.editText;
+    this.messages.splice(idx + 1);
+
+    this.lastQuestion = this.editText;
+    this.lastPhaseName = this.currentPhaseName;
+
+    try {
+      if (this.currentConvId) {
+        await this.aiService.clearMessages(this.currentConvId).toPromise();
+      }
+    } catch {}
+
+    this.currentPhaseName = '';
+    this.currentOutline = [];
+    this.question = this.editText;
+    await this.sendMessage();
   }
 
   async deleteConversation(id: string, event: MouseEvent) {

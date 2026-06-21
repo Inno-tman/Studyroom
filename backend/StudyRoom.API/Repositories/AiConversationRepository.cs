@@ -79,4 +79,17 @@ public class AiConversationRepository : IAiConversationRepository
             await _db.SaveChangesAsync();
         }
     }
+
+    public async Task ClearConversationMessagesAsync(Guid conversationId)
+    {
+        var msgs = await _db.AiMessages.Where(m => m.ConversationId == conversationId).ToListAsync();
+        _db.AiMessages.RemoveRange(msgs);
+        var conv = await _db.AiConversations.FindAsync(conversationId);
+        if (conv != null)
+        {
+            conv.CurrentPhase = null;
+            conv.UpdatedAt = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync();
+    }
 }

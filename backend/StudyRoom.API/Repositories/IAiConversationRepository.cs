@@ -10,4 +10,5 @@ public interface IAiConversationRepository
     Task<AiConversation?> GetConversationWithMessagesAsync(Guid conversationId);
     Task DeleteConversationAsync(Guid conversationId);
     Task UpdatePhaseAsync(Guid conversationId, string phase);
+    Task ClearConversationMessagesAsync(Guid conversationId);
 }

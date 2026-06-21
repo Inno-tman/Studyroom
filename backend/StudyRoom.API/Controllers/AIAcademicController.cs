@@ -91,6 +91,15 @@ public class AIAcademicController : ControllerBase
         await _convRepo.DeleteConversationAsync(id);
         return NoContent();
     }
+
+    [HttpDelete("conversations/{id}/messages")]
+    public async Task<IActionResult> ClearMessages(Guid id)
+    {
+        var conv = await _convRepo.GetConversationWithMessagesAsync(id);
+        if (conv == null || conv.UserId != UserId) return NotFound();
+        await _convRepo.ClearConversationMessagesAsync(id);
+        return NoContent();
+    }
 }
 
 public class CreateConversationDto
