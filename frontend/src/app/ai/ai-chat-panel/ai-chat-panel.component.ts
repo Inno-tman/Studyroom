@@ -238,6 +238,9 @@ export class AiChatPanelComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadConversations();
+    if (this.conversations.length > 0) {
+      await this.loadConversation(this.conversations[0].id);
+    }
   }
 
   toggleMode() {
