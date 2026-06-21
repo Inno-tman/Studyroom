@@ -100,6 +100,35 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await context.Database.EnsureCreatedAsync();
+    await context.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "AiConversations" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "RoomId" text NULL,
+            "Subject" text NULL,
+            "IsResearchMode" boolean NOT NULL DEFAULT false,
+            "CurrentPhase" text NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "UpdatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_AiConversations" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_AiConversations_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_AiConversations_UserId" ON "AiConversations" ("UserId");
+        CREATE INDEX IF NOT EXISTS "IX_AiConversations_CreatedAt" ON "AiConversations" ("CreatedAt");
+
+        CREATE TABLE IF NOT EXISTS "AiMessages" (
+            "Id" uuid NOT NULL,
+            "ConversationId" uuid NOT NULL,
+            "Role" text NOT NULL,
+            "Content" text NOT NULL,
+            "ReferencesJson" text NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_AiMessages" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_AiMessages_AiConversations_ConversationId" FOREIGN KEY ("ConversationId") REFERENCES "AiConversations" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_AiMessages_ConversationId" ON "AiMessages" ("ConversationId");
+        CREATE INDEX IF NOT EXISTS "IX_AiMessages_CreatedAt" ON "AiMessages" ("CreatedAt");
+    """);
 }
 
 await SeedData.InitializeAsync(app.Services);

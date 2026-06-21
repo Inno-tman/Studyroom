@@ -31,11 +31,19 @@ public class AIAcademicController : ControllerBase
 
         if (query.ConversationId.HasValue)
         {
-            await _convRepo.AddMessageAsync(query.ConversationId.Value, "user", query.Question, null);
-            await _convRepo.AddMessageAsync(query.ConversationId.Value, "assistant", result.Answer, null);
-            if (result.CurrentPhase != null)
-                await _convRepo.UpdatePhaseAsync(query.ConversationId.Value, result.CurrentPhase);
-            result.ConversationId = query.ConversationId.Value;
+            try
+            {
+                await _convRepo.AddMessageAsync(query.ConversationId.Value, "user", query.Question, null);
+                await _convRepo.AddMessageAsync(query.ConversationId.Value, "assistant", result.Answer, null);
+                if (result.CurrentPhase != null)
+                    await _convRepo.UpdatePhaseAsync(query.ConversationId.Value, result.CurrentPhase);
+                result.ConversationId = query.ConversationId.Value;
+            }
+            catch (Exception ex)
+            {
+                var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AIAcademicController>>();
+                logger.LogWarning(ex, "Failed to persist AI conversation messages");
+            }
         }
 
         return Ok(result);
