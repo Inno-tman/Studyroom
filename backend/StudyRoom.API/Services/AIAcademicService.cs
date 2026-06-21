@@ -173,16 +173,17 @@ The full research process:
             temperature = 0.3
         };
 
-        if (!string.IsNullOrEmpty(_settings.ApiKey))
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(35));
             var json = JsonSerializer.Serialize(payload);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+            if (!string.IsNullOrEmpty(_settings.ApiKey))
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
 
-            var response = await _http.PostAsync(_settings.Endpoint, content, cts.Token);
+            var response = await _http.SendAsync(request);
 
             if ((int)response.StatusCode == 429)
             {
