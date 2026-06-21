@@ -2,6 +2,7 @@ import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { RoomService } from '../../core/services/room.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { ChatService } from '../../core/services/chat.service';
@@ -199,6 +200,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   joining = false;
   loading = true;
   notesContext = '';
+  private notesSub?: Subscription;
 
   async ngOnInit() {
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
@@ -233,6 +235,9 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       const notes = await this.notesService.getNotes(this.roomId).toPromise();
       if (notes) this.notesContext = notes.content;
     } catch { }
+    this.notesSub = this.signalR.notesUpdated$.subscribe(data => {
+      if (data.roomId === this.roomId) this.notesContext = data.content;
+    });
   }
 
   async setupSignalR() {
@@ -295,6 +300,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.notesSub?.unsubscribe();
     if (this.isMember) {
       this.signalR.leaveRoom(this.roomId);
     }
