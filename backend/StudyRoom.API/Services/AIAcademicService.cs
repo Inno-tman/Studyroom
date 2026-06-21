@@ -73,7 +73,9 @@ Guidelines:
 - If you don't know something, be honest about it
 """;
 
-        return await CallAiProvider(systemPrompt, query.Question, query.Subject, query.PreviousMessages);
+        var result = await CallAiProvider(systemPrompt, query.Question, query.Subject, query.PreviousMessages);
+        result.CreatedAt = DateTime.UtcNow;
+        return result;
     }
 
     private async Task<AcademicResponseDto> HandleResearchQuery(AcademicQueryDto query)
@@ -137,7 +139,9 @@ The full research process:
             CurrentPhase = currentPhase.Split(" — ")[0],
             NextPhase = nextPhase,
             References = papers.Papers,
-            ResearchOutline = allPhases
+            ResearchOutline = allPhases,
+            IsError = result.IsError,
+            ErrorMessage = result.ErrorMessage
         };
     }
 
