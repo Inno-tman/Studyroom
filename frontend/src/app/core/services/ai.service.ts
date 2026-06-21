@@ -3,12 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+export interface PreviousMessage {
+  role: string;
+  content: string;
+}
+
 export interface AcademicQuery {
   question: string;
   subject?: string;
   context?: string;
   researchMode?: boolean;
   researchPhase?: string;
+  previousMessages?: PreviousMessage[];
 }
 
 export interface PaperReference {

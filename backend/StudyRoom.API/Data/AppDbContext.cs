@@ -13,6 +13,8 @@ public class AppDbContext : DbContext
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Note> Notes => Set<Note>();
     public DbSet<StudySession> StudySessions => Set<StudySession>();
+    public DbSet<AiConversation> AiConversations => Set<AiConversation>();
+    public DbSet<AiMessage> AiMessages => Set<AiMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +59,20 @@ public class AppDbContext : DbContext
             entity.HasIndex(s => s.CreatedAt);
             entity.HasOne(s => s.User).WithMany(u => u.StudySessions).HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(s => s.Room).WithMany().HasForeignKey(s => s.RoomId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiConversation>(entity =>
+        {
+            entity.HasIndex(c => c.UserId);
+            entity.HasIndex(c => c.CreatedAt);
+            entity.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiMessage>(entity =>
+        {
+            entity.HasIndex(m => m.ConversationId);
+            entity.HasIndex(m => m.CreatedAt);
+            entity.HasOne(m => m.Conversation).WithMany(c => c.Messages).HasForeignKey(m => m.ConversationId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

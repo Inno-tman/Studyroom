@@ -73,7 +73,7 @@ Guidelines:
 - If you don't know something, be honest about it
 """;
 
-        return await CallAiProvider(systemPrompt, query.Question, query.Subject);
+        return await CallAiProvider(systemPrompt, query.Question, query.Subject, query.PreviousMessages);
     }
 
     private async Task<AcademicResponseDto> HandleResearchQuery(AcademicQueryDto query)
@@ -126,7 +126,7 @@ The full research process:
 {string.Join("\n", ResearchPhases.Select(p => "- " + p))}
 """;
 
-        var result = await CallAiProvider(systemPrompt, userMessage, query.Subject);
+        var result = await CallAiProvider(systemPrompt, userMessage, query.Subject, query.PreviousMessages);
 
         return new AcademicResponseDto
         {
@@ -141,16 +141,27 @@ The full research process:
         };
     }
 
-    private async Task<AcademicResponseDto> CallAiProvider(string systemPrompt, string userMessage, string? subject)
+    private async Task<AcademicResponseDto> CallAiProvider(string systemPrompt, string userMessage, string? subject, List<DTOs.AI.PreviousMessageDto>? history = null)
     {
+        var messages = new List<object>
+        {
+            new { role = "system", content = systemPrompt }
+        };
+
+        if (history != null)
+        {
+            foreach (var msg in history)
+            {
+                messages.Add(new { role = msg.Role, content = msg.Content });
+            }
+        }
+
+        messages.Add(new { role = "user", content = userMessage });
+
         var payload = new
         {
             model = _settings.Model,
-            messages = new[]
-            {
-                new { role = "system", content = systemPrompt },
-                new { role = "user", content = userMessage }
-            },
+            messages = messages.ToArray(),
             max_tokens = _settings.MaxTokens,
             temperature = 0.7
         };

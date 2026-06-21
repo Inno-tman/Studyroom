@@ -198,12 +198,18 @@ export class AiChatPanelComponent {
     this.loading = true;
 
     try {
+      const history = this.messages.slice(0, -1).map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
       const response = await this.aiService.ask({
         question: q,
         subject: this.subject || undefined,
         context: this.notesContext || undefined,
         researchMode: this.researchMode || undefined,
-        researchPhase: this.currentPhaseName || undefined
+        researchPhase: this.currentPhaseName || undefined,
+        previousMessages: history.length > 0 ? history : undefined
       }).toPromise();
 
       if (response) {

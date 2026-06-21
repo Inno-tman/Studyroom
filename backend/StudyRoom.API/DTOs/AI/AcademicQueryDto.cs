@@ -14,6 +14,14 @@ public class AcademicQueryDto
     public bool ResearchMode { get; set; }
 
     public string? ResearchPhase { get; set; }
+
+    public List<PreviousMessageDto>? PreviousMessages { get; set; }
+}
+
+public class PreviousMessageDto
+{
+    public string Role { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
 }
 
 public class AcademicResponseDto
