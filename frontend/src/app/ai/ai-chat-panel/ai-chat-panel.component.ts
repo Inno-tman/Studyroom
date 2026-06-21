@@ -286,7 +286,6 @@ export class AiChatPanelComponent implements OnInit {
   lastPhaseName = '';
   editingIndex = -1;
   editText = '';
-  private _lastSendTime = 0;
 
   async ngOnInit() {
     await this.loadConversations();
@@ -340,13 +339,6 @@ export class AiChatPanelComponent implements OnInit {
 
   async sendMessage() {
     if (!this.question.trim() || this.loading) return;
-
-    const now = Date.now();
-    if (now - this._lastSendTime < 3000) {
-      this.question = '';
-      return;
-    }
-    this._lastSendTime = now;
 
     const q = this.question;
     this.question = '';

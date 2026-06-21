@@ -21,8 +21,6 @@ public class AIAcademicService : IAIAcademicService
     private readonly AiSettings _settings;
     private readonly ILogger<AIAcademicService> _logger;
     private readonly IResearchService _research;
-    private static readonly SemaphoreSlim _rateGate = new(1, 1);
-    private static DateTime _lastRequestTime = DateTime.MinValue;
 
     private static readonly string[] ResearchPhases =
     {
@@ -178,87 +176,66 @@ The full research process:
         if (!string.IsNullOrEmpty(_settings.ApiKey))
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-
-        await _rateGate.WaitAsync(cts.Token);
         try
         {
-            var sinceLast = DateTime.UtcNow - _lastRequestTime;
-            if (sinceLast.TotalSeconds < 2.5)
-                await Task.Delay(TimeSpan.FromSeconds(2.5) - sinceLast, cts.Token);
-            _lastRequestTime = DateTime.UtcNow;
-        }
-        finally { _rateGate.Release(); }
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(35));
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        string? lastError = null;
-        for (var attempt = 0; attempt <= 2; attempt++)
-        {
-            if (attempt > 0)
-                await Task.Delay(2000 * attempt, cts.Token);
+            var response = await _http.PostAsync(_settings.Endpoint, content, cts.Token);
 
-            cts.Token.ThrowIfCancellationRequested();
-
-            try
+            if ((int)response.StatusCode == 429)
             {
-                var json = JsonSerializer.Serialize(payload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
-                reqCts.CancelAfter(TimeSpan.FromSeconds(30));
-                var response = await _http.PostAsync(_settings.Endpoint, content, reqCts.Token);
-
-                if ((int)response.StatusCode == 429)
-                {
-                    lastError = "rate limited";
-                    var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 10;
-                    _logger.LogWarning("Groq rate limited (429). Waiting {Seconds}s before retry.", retryAfter);
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Min(retryAfter, 15)), cts.Token);
-                    continue;
-                }
-
-                response.EnsureSuccessStatusCode();
-
-                var responseJson = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(responseJson);
-
-                var answer = doc.RootElement
-                    .GetProperty("choices")[0]
-                    .GetProperty("message")
-                    .GetProperty("content")
-                    .GetString() ?? "I'm sorry, I couldn't generate a response.";
-
+                _logger.LogWarning("Groq rate limited (429).");
                 return new AcademicResponseDto
                 {
-                    Answer = answer,
+                    Answer = GenerateFallbackResponse(userMessage, subject),
                     Subject = subject,
-                    CreatedAt = DateTime.UtcNow
+                    IsError = true,
+                    ErrorMessage = "AI service is rate limited. Please wait 30 seconds and try again."
                 };
             }
-            catch (OperationCanceledException)
-            {
-                lastError = "timed out";
-                _logger.LogWarning("AI provider request timed out (attempt {Attempt}/3)", attempt + 1);
-            }
-            catch (HttpRequestException ex)
-            {
-                lastError = ex.Message;
-                _logger.LogWarning(ex, "AI provider attempt {Attempt}/3 failed.", attempt + 1);
-            }
-        }
 
-        var errMsg = lastError switch
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseJson);
+
+            var answer = doc.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString() ?? "I'm sorry, I couldn't generate a response.";
+
+            return new AcademicResponseDto
+            {
+                Answer = answer,
+                Subject = subject,
+                CreatedAt = DateTime.UtcNow
+            };
+        }
+        catch (OperationCanceledException)
         {
-            "rate limited" => "AI service is rate limited. Please wait a minute and try again.",
-            "timed out" => "AI service timed out. Groq may be overloaded — please wait a moment and try again.",
-            _ => $"AI service unavailable. Please wait a moment and try again. ({lastError})"
-        };
-        return new AcademicResponseDto
+            _logger.LogWarning("AI provider request timed out (35s).");
+            return new AcademicResponseDto
+            {
+                Answer = GenerateFallbackResponse(userMessage, subject),
+                Subject = subject,
+                IsError = true,
+                ErrorMessage = "AI service timed out. Please try again."
+            };
+        }
+        catch (HttpRequestException ex)
         {
-            Answer = GenerateFallbackResponse(userMessage, subject),
-            Subject = subject,
-            IsError = true,
-            ErrorMessage = errMsg
-        };
+            _logger.LogWarning(ex, "AI provider request failed.");
+            return new AcademicResponseDto
+            {
+                Answer = GenerateFallbackResponse(userMessage, subject),
+                Subject = subject,
+                IsError = true,
+                ErrorMessage = $"AI service error: {ex.Message}"
+            };
+        }
     }
 
     private static string GenerateFallbackResponse(string question, string? subject)
