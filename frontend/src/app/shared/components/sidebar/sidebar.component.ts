@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -7,10 +7,13 @@ import { AuthService } from '../../../core/services/auth.service';
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <aside class="sidebar">
+    <aside class="sidebar" [class.hidden]="hidden">
       <div class="sidebar-header">
         <span class="logo-icon">📚</span>
         <span class="logo-text">StudyRoom</span>
+        <button class="collapse-btn" (click)="toggle.emit()" title="Hide sidebar" aria-label="Hide sidebar">
+          <span class="material-icons">chevron_left</span>
+        </button>
       </div>
 
       <nav class="sidebar-nav">
@@ -54,6 +57,11 @@ import { AuthService } from '../../../core/services/auth.service';
       display: flex;
       flex-direction: column;
       z-index: 100;
+      transition: transform 0.25s ease;
+    }
+
+    .sidebar.hidden {
+      transform: translateX(-100%);
     }
 
     .sidebar-header {
@@ -66,6 +74,21 @@ import { AuthService } from '../../../core/services/auth.service';
 
     .logo-icon { font-size: 24px; }
     .logo-text { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+
+    .collapse-btn {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s;
+    }
+
+    .collapse-btn:hover { color: var(--text-primary); }
 
     .sidebar-nav {
       flex: 1;
@@ -148,11 +171,14 @@ import { AuthService } from '../../../core/services/auth.service';
 
     @media (max-width: 768px) {
       .sidebar {
-        display: none;
+        width: 240px;
+        box-shadow: 0 0 24px rgba(0, 0, 0, 0.3);
       }
     }
   `]
 })
 export class SidebarComponent {
   auth = inject(AuthService);
+  @Input() hidden = false;
+  @Output() toggle = new EventEmitter<void>();
 }
