@@ -10,7 +10,7 @@ public class AiSettings
 {
     public string Provider { get; set; } = "openai";
     public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "llama-3.3-70b-versatile";
+    public string Model { get; set; } = "openai/gpt-oss-120b";
     public string Endpoint { get; set; } = "https://api.groq.com/openai/v1/chat/completions";
     public int MaxTokens { get; set; } = 800;
 }

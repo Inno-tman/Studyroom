@@ -22,6 +22,9 @@ public class User
     [MaxLength(500)]
     public string? AvatarUrl { get; set; }
 
+    [MaxLength(100)]
+    public string? GoogleId { get; set; }
+
     public string Role { get; set; } = "User";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

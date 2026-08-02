@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using StudyRoom.API.Authentication;
@@ -14,11 +15,13 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepo;
     private readonly JwtSettings _jwt;
+    private readonly GoogleSettings _google;
 
-    public AuthService(IUserRepository userRepo, IOptions<JwtSettings> jwt)
+    public AuthService(IUserRepository userRepo, IOptions<JwtSettings> jwt, IOptions<GoogleSettings> google)
     {
         _userRepo = userRepo;
         _jwt = jwt.Value;
+        _google = google.Value;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -49,6 +52,78 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid credentials.");
 
         return GenerateAuthResponse(user);
+    }
+
+    public async Task<AuthResponseDto> GoogleLoginAsync(string idToken)
+    {
+        if (string.IsNullOrWhiteSpace(idToken))
+            throw new UnauthorizedAccessException("ID token is required.");
+
+        var payload = await ValidateGoogleTokenAsync(idToken);
+        if (payload == null)
+            throw new UnauthorizedAccessException("Invalid Google token.");
+
+        var user = await _userRepo.GetByEmailAsync(payload.Email);
+
+        if (user == null)
+        {
+            user = new User
+            {
+                Username = await GenerateUniqueUsernameAsync(payload.Email),
+                Email = payload.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                AvatarUrl = payload.Picture,
+                GoogleId = payload.Subject
+            };
+            await _userRepo.AddAsync(user);
+        }
+        else if (string.IsNullOrEmpty(user.GoogleId))
+        {
+            user.GoogleId = payload.Subject;
+            if (string.IsNullOrEmpty(user.AvatarUrl))
+                user.AvatarUrl = payload.Picture;
+            await _userRepo.UpdateAsync(user);
+        }
+
+        return GenerateAuthResponse(user);
+    }
+
+    private async Task<GoogleJsonWebSignature.Payload?> ValidateGoogleTokenAsync(string idToken)
+    {
+        if (string.IsNullOrEmpty(_google.ClientId))
+            throw new InvalidOperationException("Google Sign-In is not configured. Set Google:ClientId in appsettings.");
+
+        try
+        {
+            return await GoogleJsonWebSignature.ValidateAsync(idToken,
+                new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { _google.ClientId }
+                });
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<string> GenerateUniqueUsernameAsync(string email)
+    {
+        var baseName = email.Split('@')[0].ToLowerInvariant()
+            .Replace(".", "").Replace("_", "").Replace("-", "");
+
+        if (baseName.Length < 3) baseName = "user";
+        baseName = baseName[..Math.Min(baseName.Length, 20)];
+
+        var username = baseName;
+        var counter = 1;
+        while (await _userRepo.UsernameExistsAsync(username))
+        {
+            username = $"{baseName}{counter}";
+            counter++;
+        }
+
+        return username;
     }
 
     private AuthResponseDto GenerateAuthResponse(User user)

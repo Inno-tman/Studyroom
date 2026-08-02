@@ -1,8 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
+
+declare global {
+  interface Window { google: any; }
+}
 
 @Component({
   selector: 'app-register',
@@ -14,6 +19,12 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="auth-header">
           <h1>Create account</h1>
           <p>Join the StudyRoom community</p>
+        </div>
+
+        <div class="social-login">
+          <div id="google-signin-button"></div>
+          <p class="error" *ngIf="error">{{ error }}</p>
+          <div class="divider"><span>or</span></div>
         </div>
 
         <form (ngSubmit)="onSubmit()" class="auth-form">
@@ -37,8 +48,6 @@ import { AuthService } from '../../core/services/auth.service';
             <input id="confirmPassword" type="password" [(ngModel)]="confirmPassword" name="confirmPassword" required placeholder="Confirm your password" autocomplete="new-password" />
           </div>
 
-          <p class="error" *ngIf="error">{{ error }}</p>
-
           <button type="submit" class="btn-primary" [disabled]="loading">
             {{ loading ? 'Creating account...' : 'Create Account' }}
           </button>
@@ -56,6 +65,26 @@ import { AuthService } from '../../core/services/auth.service';
     .auth-header { text-align: center; margin-bottom: 32px; }
     .auth-header h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
     .auth-header p { color: var(--text-secondary); }
+
+    .social-login { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 24px; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
     .auth-form { display: flex; flex-direction: column; gap: 20px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-group label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -71,9 +100,10 @@ import { AuthService } from '../../core/services/auth.service';
     .auth-footer a:hover { text-decoration: underline; }
   `]
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private router = inject(Router);
+  private ngZone = inject(NgZone);
 
   username = '';
   email = '';
@@ -81,6 +111,71 @@ export class RegisterComponent {
   confirmPassword = '';
   error = '';
   loading = false;
+  private googleInitTimer?: ReturnType<typeof setInterval>;
+
+  ngOnInit(): void {
+    this.initializeGoogleSignIn();
+  }
+
+  ngOnDestroy(): void {
+    if (this.googleInitTimer) clearInterval(this.googleInitTimer);
+  }
+
+  private initializeGoogleSignIn(): void {
+    const initialize = () => {
+      try {
+        if (!window.google?.accounts?.id) return;
+
+        const buttonElement = document.getElementById('google-signin-button');
+        if (!buttonElement) return;
+
+        window.google.accounts.id.initialize({
+          client_id: environment.googleClientId,
+          callback: (response: any) =>
+            this.ngZone.run(() => this.handleGoogleCredential(response))
+        });
+
+        window.google.accounts.id.renderButton(buttonElement, {
+          theme: 'outline',
+          size: 'large',
+          shape: 'rectangular',
+          width: 320,
+          text: 'signin_with'
+        });
+      } catch (e) {
+        console.warn('Google Sign-In init failed, will retry:', e);
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      initialize();
+    } else {
+      this.googleInitTimer = setInterval(() => {
+        if (window.google?.accounts?.id && this.googleInitTimer) {
+          clearInterval(this.googleInitTimer);
+          this.googleInitTimer = undefined;
+          initialize();
+        }
+      }, 100);
+    }
+  }
+
+  private handleGoogleCredential(response: any): void {
+    if (!response?.credential) {
+      this.error = 'Google authentication failed. Please try again.';
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+    this.auth.googleLogin(response.credential).subscribe({
+      next: () => this.router.navigate(['/dashboard']),
+      error: (err: any) => {
+        this.error = err.error?.error || 'Google login failed. Please try again.';
+        this.loading = false;
+      }
+    });
+  }
 
   async onSubmit() {
     if (!this.username || !this.email || !this.password) return;
