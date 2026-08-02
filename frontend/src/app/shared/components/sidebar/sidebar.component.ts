@@ -29,6 +29,10 @@ import { AuthService } from '../../../core/services/auth.service';
           <span class="material-icons">person</span>
           <span>Profile</span>
         </a>
+        <a routerLink="/settings" routerLinkActive="active" class="nav-item">
+          <span class="material-icons">settings</span>
+          <span>Settings</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">

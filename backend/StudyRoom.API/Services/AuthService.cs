@@ -109,6 +109,18 @@ public class AuthService : IAuthService
         return GenerateAuthResponse(user);
     }
 
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordDto dto)
+    {
+        var user = await _userRepo.GetByIdAsync(userId)
+            ?? throw new UnauthorizedAccessException("User not found.");
+
+        if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            throw new UnauthorizedAccessException("Current password is incorrect.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        await _userRepo.UpdateAsync(user);
+    }
+
     private async Task<GoogleJsonWebSignature.Payload?> ValidateGoogleTokenAsync(string idToken)
     {
         if (string.IsNullOrEmpty(_google.ClientId))

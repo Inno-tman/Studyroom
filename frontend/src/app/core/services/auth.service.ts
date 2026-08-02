@@ -51,6 +51,10 @@ export class AuthService {
     this.success.set('');
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http.put<void>(`${environment.apiUrl}/auth/password`, { currentPassword, newPassword });
+  }
+
   async saveProfile(dto: UpdateProfileDto): Promise<void> {
     this.error.set('');
     this.success.set('');

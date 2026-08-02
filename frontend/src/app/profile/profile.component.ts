@@ -1,18 +1,22 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { NgIf } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { StatisticsService } from '../core/services/statistics.service';
 import { UserStats } from '../shared/models/stats.model';
-import { EditProfileComponent } from './edit-profile/edit-profile.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [NgIf, EditProfileComponent],
+  imports: [NgIf, RouterLink],
   template: `
     <div class="profile">
       <div class="page-header">
         <h1>Profile</h1>
+        <a routerLink="/settings/profile" class="edit-btn">
+          <span class="material-icons">settings</span>
+          Edit Profile
+        </a>
       </div>
 
       <div class="profile-card">
@@ -28,8 +32,6 @@ import { EditProfileComponent } from './edit-profile/edit-profile.component';
           <span class="role-badge">{{ auth.currentUser()?.role }}</span>
         </div>
       </div>
-
-      <app-edit-profile />
 
       <div class="stats-section">
         <h2>Study Statistics</h2>
@@ -68,6 +70,23 @@ import { EditProfileComponent } from './edit-profile/edit-profile.component';
     .profile-info .bio { font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
 
     .role-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+
+    .edit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+
+    .edit-btn:hover { opacity: 0.85; }
+    .edit-btn .material-icons { font-size: 18px; }
 
     .stats-section { margin-top: 32px; }
     .stats-section h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }

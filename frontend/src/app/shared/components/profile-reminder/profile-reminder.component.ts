@@ -53,6 +53,6 @@ export class ProfileReminderComponent {
   showReminder = computed(() => !!this.auth.currentUser() && !this.auth.isProfileComplete());
 
   goToProfile(): void {
-    this.router.navigate(['/profile']);
+    this.router.navigate(['/settings/profile']);
   }
 }

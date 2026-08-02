@@ -5,12 +5,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { User } from '../../shared/models/user.model';
 
 @Component({
-  selector: 'app-edit-profile',
+  selector: 'app-profile-settings',
   standalone: true,
   imports: [NgIf, FormsModule],
   template: `
-    <div class="edit-section">
-      <h2>Edit Profile</h2>
+    <div class="card">
+      <h2>Profile</h2>
+      <p class="card-subtitle">Update your personal information.</p>
+
       <form (ngSubmit)="save()" #profileForm="ngForm">
         <div class="form-grid">
           <label>
@@ -84,15 +86,16 @@ import { User } from '../../shared/models/user.model';
     </div>
   `,
   styles: [`
-    .edit-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
-    .edit-section h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
+    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
     label { display: block; margin-bottom: 16px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
     input, textarea {
       display: block; width: 100%; margin-top: 6px; padding: 10px 12px;
-      background: var(--surface-alt, var(--background)); border: 1px solid var(--border);
+      background: var(--background); border: 1px solid var(--border);
       border-radius: 8px; color: var(--text-primary); font-size: 14px; font-family: inherit;
       box-sizing: border-box;
     }
@@ -112,14 +115,14 @@ import { User } from '../../shared/models/user.model';
     .btn-secondary:hover { opacity: 0.85; }
 
     .form-error { color: var(--error); font-size: 13px; margin-top: 8px; }
-    .form-success { color: #10b981; font-size: 13px; margin-top: 8px; }
+    .form-success { color: var(--success); font-size: 13px; margin-top: 8px; }
 
     @media (max-width: 768px) {
       .form-grid { grid-template-columns: 1fr; }
     }
   `]
 })
-export class EditProfileComponent implements OnInit {
+export class ProfileSettingsComponent implements OnInit {
   private auth = inject(AuthService);
 
   username = '';

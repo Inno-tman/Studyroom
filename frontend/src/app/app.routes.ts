@@ -36,5 +36,29 @@ export const routes: Routes = [
     loadComponent: () => import('./profile/profile.component').then(m => m.ProfileComponent),
     canActivate: [authGuard]
   },
+  {
+    path: 'settings',
+    loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent),
+    canActivate: [authGuard],
+    children: [
+      { path: '', redirectTo: 'profile', pathMatch: 'full' },
+      {
+        path: 'profile',
+        loadComponent: () => import('./settings/profile-settings/profile-settings.component').then(m => m.ProfileSettingsComponent)
+      },
+      {
+        path: 'account',
+        loadComponent: () => import('./settings/account-settings/account-settings.component').then(m => m.AccountSettingsComponent)
+      },
+      {
+        path: 'appearance',
+        loadComponent: () => import('./settings/appearance-settings/appearance-settings.component').then(m => m.AppearanceSettingsComponent)
+      },
+      {
+        path: 'notifications',
+        loadComponent: () => import('./settings/notifications-settings/notifications-settings.component').then(m => m.NotificationsSettingsComponent)
+      }
+    ]
+  },
   { path: '**', redirectTo: '/dashboard' }
 ];
