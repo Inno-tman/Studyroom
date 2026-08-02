@@ -28,6 +28,8 @@ services:
         value: llama-3.3-70b-versatile
       - key: AiSettings__ApiKey
         sync: false
+      - key: Google__ClientId
+        value: 328699849312-4hcd0ksoqaacutvotm9ejpigbu329ki6.apps.googleusercontent.com
 
   - type: web
     name: studyroom
@@ -39,6 +41,8 @@ services:
         value: https://studyroom-api-qzvh.onrender.com/api
       - key: SIGNALR_URL
         value: https://studyroom-api-qzvh.onrender.com/hubs/studyroom
+      - key: GOOGLE_CLIENT_ID
+        value: 328699849312-4hcd0ksoqaacutvotm9ejpigbu329ki6.apps.googleusercontent.com
 
 databases:
   - name: studyroom-db
