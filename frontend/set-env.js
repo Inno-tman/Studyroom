@@ -3,11 +3,13 @@ const path = require('path');
 
 const apiUrl = process.env.API_URL || 'https://studyroom-api-qzvh.onrender.com/api';
 const signalrUrl = process.env.SIGNALR_URL || 'https://studyroom-api-qzvh.onrender.com/hubs/studyroom';
+const googleClientId = process.env.GOOGLE_CLIENT_ID || '328699849312-4hcd0ksoqaacutvotm9ejpigbu329ki6.apps.googleusercontent.com';
 
 const content = `export const environment = {
   production: true,
   apiUrl: '${apiUrl}',
-  signalrUrl: '${signalrUrl}'
+  signalrUrl: '${signalrUrl}',
+  googleClientId: '${googleClientId}'
 };
 `;
 
