@@ -32,7 +32,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
             </div>
             <div class="convo-info">
               <span class="convo-name">{{ convo.displayName || convo.username }}</span>
-              <span class="convo-last">{{ convo.lastMessage }}</span>
+              <span class="convo-last">{{ convo.lastMessage ? convo.lastMessage : 'No messages yet' }}</span>
             </div>
           </button>
         </div>

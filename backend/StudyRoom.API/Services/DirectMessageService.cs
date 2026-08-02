@@ -68,12 +68,17 @@ public class DirectMessageService : IDirectMessageService
             .ToList();
 
         var result = new List<ConversationDto>();
+        var seen = new HashSet<Guid>();
+
         foreach (var group in grouped)
         {
             var otherUserId = group.Key;
-            var other = otherUserId == userId ? null : await _userRepo.GetByIdAsync(otherUserId);
+            if (otherUserId == userId) continue;
+
+            var other = await _userRepo.GetByIdAsync(otherUserId);
             if (other == null) continue;
 
+            seen.Add(otherUserId);
             var last = group.First();
             result.Add(new ConversationDto
             {
@@ -86,7 +91,28 @@ public class DirectMessageService : IDirectMessageService
             });
         }
 
-        return result;
+        var friendships = await _friendRepo.GetFriendIdsAsync(userId);
+        foreach (var rel in friendships)
+        {
+            var friendId = rel.RequesterId == userId ? rel.AddresseeId : rel.RequesterId;
+            if (seen.Contains(friendId)) continue;
+
+            var friend = await _userRepo.GetByIdAsync(friendId);
+            if (friend == null) continue;
+
+            seen.Add(friendId);
+            result.Add(new ConversationDto
+            {
+                UserId = friend.Id,
+                DisplayName = BuildDisplayName(friend),
+                Username = friend.Username,
+                AvatarUrl = friend.AvatarUrl,
+                LastMessage = string.Empty,
+                LastMessageAt = DateTime.MinValue
+            });
+        }
+
+        return result.OrderByDescending(c => c.LastMessageAt).ToList();
     }
 
     private static DirectMessageDto Map(DirectMessage m) => new()

@@ -22,6 +22,9 @@ public class FriendshipRepository : IFriendshipRepository
     {
         var accepted = await _context.Friendships
             .Where(f => f.Status == "Accepted" && (f.RequesterId == userId || f.AddresseeId == userId))
+            .Include(f => f.Requester)
+            .Include(f => f.Addressee)
+            .OrderByDescending(f => f.CreatedAt)
             .ToListAsync();
         return accepted;
     }
