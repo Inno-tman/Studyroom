@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { User, RegisterDto, LoginDto } from '../../shared/models/user.model';
+import { User, RegisterDto, LoginDto, UpdateProfileDto } from '../../shared/models/user.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -35,6 +35,16 @@ export class AuthService {
     return this.http.post<User>(`${environment.apiUrl}/auth/google`, { idToken }).pipe(
       tap(user => this.setSession(user))
     );
+  }
+
+  updateProfile(dto: UpdateProfileDto): Observable<User> {
+    return this.http.put<User>(`${environment.apiUrl}/auth/profile`, dto).pipe(
+      tap(user => this.setSession(user))
+    );
+  }
+
+  isProfileComplete(): boolean {
+    return this.currentUser()?.profileComplete ?? false;
   }
 
   logout(): void {

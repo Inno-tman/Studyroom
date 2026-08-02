@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudyRoom.API.DTOs.Auth;
 using StudyRoom.API.Services;
@@ -11,6 +13,8 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
 
     public AuthController(IAuthService authService) => _authService = authService;
+
+    private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
@@ -51,6 +55,21 @@ public class AuthController : ControllerBase
         catch (UnauthorizedAccessException ex)
         {
             return Unauthorized(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [Authorize]
+    [HttpPut("profile")]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+    {
+        try
+        {
+            var response = await _authService.UpdateProfileAsync(UserId, dto);
+            return Ok(response);
         }
         catch (InvalidOperationException ex)
         {

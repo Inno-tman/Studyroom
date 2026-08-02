@@ -4,6 +4,7 @@ export interface User {
   email: string;
   avatarUrl?: string;
   role: string;
+  profileComplete?: boolean;
   token: string;
   expiresAt: string;
 }
@@ -17,4 +18,9 @@ export interface RegisterDto {
 export interface LoginDto {
   username: string;
   password: string;
+}
+
+export interface UpdateProfileDto {
+  username: string;
+  avatarUrl?: string;
 }

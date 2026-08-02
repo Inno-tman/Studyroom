@@ -88,6 +88,23 @@ public class AuthService : IAuthService
         return GenerateAuthResponse(user);
     }
 
+    public async Task<AuthResponseDto> UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
+    {
+        var user = await _userRepo.GetByIdAsync(userId)
+            ?? throw new UnauthorizedAccessException("User not found.");
+
+        if (!string.Equals(user.Username, dto.Username, StringComparison.OrdinalIgnoreCase)
+            && await _userRepo.UsernameExistsAsync(dto.Username))
+            throw new InvalidOperationException("Username already exists.");
+
+        user.Username = dto.Username.Trim();
+        user.AvatarUrl = string.IsNullOrWhiteSpace(dto.AvatarUrl) ? null : dto.AvatarUrl.Trim();
+
+        await _userRepo.UpdateAsync(user);
+
+        return GenerateAuthResponse(user);
+    }
+
     private async Task<GoogleJsonWebSignature.Payload?> ValidateGoogleTokenAsync(string idToken)
     {
         if (string.IsNullOrEmpty(_google.ClientId))
@@ -138,6 +155,7 @@ public class AuthService : IAuthService
             Email = user.Email,
             AvatarUrl = user.AvatarUrl,
             Role = user.Role,
+            ProfileComplete = !string.IsNullOrWhiteSpace(user.AvatarUrl),
             Token = token,
             ExpiresAt = expiresAt
         };
