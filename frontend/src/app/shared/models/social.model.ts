@@ -25,6 +25,8 @@ export interface Comment {
   authorName: string;
   authorAvatar?: string;
   createdAt: string;
+  parentCommentId?: string;
+  replies: Comment[];
 }
 
 export interface Post {

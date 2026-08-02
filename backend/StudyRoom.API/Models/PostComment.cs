@@ -13,6 +13,8 @@ public class PostComment
 
     public Guid UserId { get; set; }
 
+    public Guid? ParentCommentId { get; set; }
+
     [Required, MaxLength(1000)]
     public string Content { get; set; } = string.Empty;
 
@@ -23,4 +25,9 @@ public class PostComment
 
     [ForeignKey(nameof(UserId))]
     public User? Author { get; set; }
+
+    [ForeignKey(nameof(ParentCommentId))]
+    public PostComment? ParentComment { get; set; }
+
+    public List<PostComment> Replies { get; set; } = new();
 }

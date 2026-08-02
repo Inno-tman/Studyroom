@@ -103,9 +103,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PostComment>(entity =>
         {
             entity.HasIndex(c => c.PostId);
+            entity.HasIndex(c => c.ParentCommentId);
             entity.HasIndex(c => c.CreatedAt);
             entity.HasOne(c => c.Post).WithMany(p => p.Comments).HasForeignKey(c => c.PostId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(c => c.Author).WithMany(u => u.Comments).HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(c => c.ParentComment).WithMany(c => c.Replies).HasForeignKey(c => c.ParentCommentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PostReaction>(entity =>

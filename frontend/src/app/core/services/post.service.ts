@@ -32,7 +32,7 @@ export class PostService {
     return this.http.post<Post>(`${environment.apiUrl}/posts/${id}/like`, {});
   }
 
-  addComment(id: string, content: string): Observable<Comment> {
-    return this.http.post<Comment>(`${environment.apiUrl}/posts/${id}/comments`, { content });
+  addComment(id: string, content: string, parentCommentId?: string): Observable<Comment> {
+    return this.http.post<Comment>(`${environment.apiUrl}/posts/${id}/comments`, { content, parentCommentId });
   }
 }

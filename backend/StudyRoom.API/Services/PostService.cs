@@ -95,10 +95,21 @@ public class PostService : IPostService
         return MapToDto((await _postRepo.GetByIdAsync(postId))!, userId);
     }
 
-    public async Task<CommentDto> AddCommentAsync(Guid postId, string content, Guid userId)
+    public async Task<CommentDto> AddCommentAsync(Guid postId, CreateCommentDto dto, Guid userId)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        if (string.IsNullOrWhiteSpace(dto.Content))
             throw new InvalidOperationException("Comment content is required.");
+
+        Guid? parentId = null;
+        if (dto.ParentCommentId.HasValue)
+        {
+            parentId = dto.ParentCommentId.Value;
+            var parent = await _postRepo.GetCommentByIdAsync(parentId.Value);
+            if (parent == null)
+                throw new KeyNotFoundException("Comment not found.");
+            if (parent.PostId != postId)
+                throw new InvalidOperationException("Cannot reply to a comment on a different post.");
+        }
 
         var post = await _postRepo.GetByIdAsync(postId)
             ?? throw new KeyNotFoundException("Post not found.");
@@ -107,7 +118,8 @@ public class PostService : IPostService
         {
             PostId = postId,
             UserId = userId,
-            Content = content.Trim()
+            Content = dto.Content.Trim(),
+            ParentCommentId = parentId
         });
 
         var author = await _userRepo.GetByIdAsync(userId);
@@ -118,7 +130,8 @@ public class PostService : IPostService
             AuthorId = userId,
             AuthorName = BuildDisplayName(author),
             AuthorAvatar = author?.AvatarUrl,
-            CreatedAt = comment.CreatedAt
+            CreatedAt = comment.CreatedAt,
+            ParentCommentId = parentId
         };
     }
 
@@ -135,18 +148,33 @@ public class PostService : IPostService
         LikedByMe = p.Reactions?.Any(r => r.UserId == viewerId) ?? false,
         IsMine = p.UserId == viewerId,
         SharedFrom = p.SharedPost != null ? MapToDto(p.SharedPost, viewerId) : null,
-        Comments = p.Comments?
-            .OrderBy(c => c.CreatedAt)
-            .Select(c => new CommentDto
-            {
-                Id = c.Id,
-                Content = c.Content,
-                AuthorId = c.UserId,
-                AuthorName = BuildDisplayName(c.Author),
-                AuthorAvatar = c.Author?.AvatarUrl,
-                CreatedAt = c.CreatedAt
-            }).ToList() ?? new List<CommentDto>()
+        Comments = MapComments((p.Comments ?? new List<PostComment>()).ToList())
     };
+
+    private static List<CommentDto> MapComments(List<PostComment> comments)
+    {
+        var byParent = comments
+            .GroupBy(c => c.ParentCommentId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.CreatedAt).ToList());
+
+        var roots = byParent.TryGetValue(null, out var rootList) ? rootList : new List<PostComment>();
+
+        CommentDto Map(PostComment c) => new()
+        {
+            Id = c.Id,
+            Content = c.Content,
+            AuthorId = c.UserId,
+            AuthorName = BuildDisplayName(c.Author),
+            AuthorAvatar = c.Author?.AvatarUrl,
+            CreatedAt = c.CreatedAt,
+            ParentCommentId = c.ParentCommentId,
+            Replies = byParent.TryGetValue(c.Id, out var replies)
+                ? replies.Select(Map).ToList()
+                : new List<CommentDto>()
+        };
+
+        return roots.Select(Map).ToList();
+    }
 
     private static string BuildDisplayName(User? u)
     {

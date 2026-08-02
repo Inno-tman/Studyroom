@@ -15,6 +15,7 @@ public class PostRepository : IPostRepository
             .Include(p => p.Author)
             .Include(p => p.SharedPost)!.ThenInclude(sp => sp!.Author)
             .Include(p => p.Comments).ThenInclude(c => c.Author)
+            .Include(p => p.Comments).ThenInclude(c => c.Replies).ThenInclude(r => r.Author)
             .Include(p => p.Reactions);
 
     public async Task<Post?> GetByIdAsync(Guid id) =>
@@ -50,6 +51,9 @@ public class PostRepository : IPostRepository
         await _context.SaveChangesAsync();
         return post;
     }
+
+    public async Task<PostComment?> GetCommentByIdAsync(Guid id) =>
+        await _context.PostComments.FirstOrDefaultAsync(c => c.Id == id);
 
     public async Task<PostComment> AddCommentAsync(PostComment comment)
     {

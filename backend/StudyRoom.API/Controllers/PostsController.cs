@@ -100,7 +100,7 @@ public class PostsController : ControllerBase
     {
         try
         {
-            var comment = await _postService.AddCommentAsync(id, dto.Content, UserId);
+            var comment = await _postService.AddCommentAsync(id, dto, UserId);
             return Ok(comment);
         }
         catch (KeyNotFoundException ex)

@@ -46,6 +46,8 @@ public class CommentDto
     public string? AuthorAvatar { get; set; }
     public Guid AuthorId { get; set; }
     public DateTime CreatedAt { get; set; }
+    public Guid? ParentCommentId { get; set; }
+    public List<CommentDto> Replies { get; set; } = new();
 }
 
 public class CreatePostDto
@@ -58,4 +60,5 @@ public class CreatePostDto
 public class CreateCommentDto
 {
     public string Content { get; set; } = string.Empty;
+    public Guid? ParentCommentId { get; set; }
 }

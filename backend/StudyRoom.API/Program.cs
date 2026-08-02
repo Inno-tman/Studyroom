@@ -189,6 +189,9 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS "IX_PostComments_PostId" ON "PostComments" ("PostId");
         CREATE INDEX IF NOT EXISTS "IX_PostComments_CreatedAt" ON "PostComments" ("CreatedAt");
 
+        ALTER TABLE "PostComments" ADD COLUMN IF NOT EXISTS "ParentCommentId" uuid NULL;
+        CREATE INDEX IF NOT EXISTS "IX_PostComments_ParentCommentId" ON "PostComments" ("ParentCommentId");
+
         CREATE TABLE IF NOT EXISTS "PostReactions" (
             "Id" uuid NOT NULL,
             "PostId" uuid NOT NULL,

@@ -10,6 +10,7 @@ public interface IPostRepository
     Task<List<Post>> GetUserPostsAsync(Guid userId);
     Task<Post> AddAsync(Post post);
     Task<PostComment> AddCommentAsync(PostComment comment);
+    Task<PostComment?> GetCommentByIdAsync(Guid id);
     Task<PostReaction> AddReactionAsync(PostReaction reaction);
     Task<PostReaction?> GetReactionAsync(Guid postId, Guid userId);
     Task DeleteReactionAsync(PostReaction reaction);

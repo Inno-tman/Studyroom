@@ -100,9 +100,42 @@ import { Post } from '../shared/models/social.model';
                 <img *ngIf="comment.authorAvatar; else commentInitial" [src]="comment.authorAvatar" alt="" />
                 <ng-template #commentInitial>{{ comment.authorName?.charAt(0)?.toUpperCase() }}</ng-template>
               </div>
-              <div class="comment-bubble">
-                <span class="comment-author">{{ comment.authorName }}</span>
-                <span class="comment-text">{{ comment.content }}</span>
+              <div class="comment-body">
+                <div class="comment-bubble">
+                  <span class="comment-author">{{ comment.authorName }}</span>
+                  <span class="comment-text">{{ comment.content }}</span>
+                </div>
+                <div class="comment-actions">
+                  <button class="reply-btn" (click)="toggleReplyInput(post, comment)">Reply</button>
+                </div>
+
+                <div *ngIf="comment.replies.length > 0" class="replies">
+                  <div *ngFor="let reply of comment.replies" class="comment reply">
+                    <div class="comment-avatar" [class.has-image]="reply.authorAvatar">
+                      <img *ngIf="reply.authorAvatar; else replyInitial" [src]="reply.authorAvatar" alt="" />
+                      <ng-template #replyInitial>{{ reply.authorName?.charAt(0)?.toUpperCase() }}</ng-template>
+                    </div>
+                    <div class="comment-body">
+                      <div class="comment-bubble">
+                        <span class="comment-author">{{ reply.authorName }}</span>
+                        <span class="comment-text">{{ reply.content }}</span>
+                      </div>
+                      <div class="comment-actions">
+                        <button class="reply-btn" (click)="toggleReplyInput(post, reply)">Reply</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div *ngIf="post.replyToCommentId === comment.id" class="comment-input reply-input">
+                  <input
+                    type="text"
+                    [(ngModel)]="post.newComment"
+                    placeholder="Write a reply…"
+                    (keyup.enter)="reply(post)"
+                  />
+                  <button class="btn-primary small" (click)="reply(post)" [disabled]="!post.newComment?.trim()">Post</button>
+                </div>
               </div>
             </div>
             <div *ngIf="post.comments.length === 0" class="no-comments">No comments yet.</div>
@@ -209,11 +242,25 @@ import { Post } from '../shared/models/social.model';
       font-weight: 700; color: white; font-size: 12px; overflow: hidden; flex-shrink: 0;
     }
 
+    .comment-body { flex: 1; min-width: 0; }
+
     .comment-bubble {
       background: var(--background); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column;
     }
     .comment-author { font-size: 13px; font-weight: 600; color: var(--text-primary); }
     .comment-text { font-size: 14px; color: var(--text-secondary); }
+
+    .comment-actions { margin-top: 4px; }
+    .reply-btn {
+      background: none; border: none; color: var(--text-muted); font-size: 12px;
+      font-weight: 600; cursor: pointer; padding: 2px 4px;
+    }
+    .reply-btn:hover { color: var(--primary); }
+
+    .replies { margin-top: 8px; padding-left: 16px; border-left: 2px solid var(--border); }
+    .comment.reply { margin-bottom: 8px; }
+
+    .comment-input.reply-input { margin-top: 6px; }
 
     .no-comments { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
 
@@ -229,7 +276,7 @@ export class TimelineComponent implements OnInit {
   auth = inject(AuthService);
   private postService = inject(PostService);
 
-  posts: (Post & { showComments?: boolean; newComment?: string })[] = [];
+  posts: (Post & { showComments?: boolean; newComment?: string; replyToCommentId?: string })[] = [];
   newPostContent = '';
   loading = true;
 
@@ -274,6 +321,21 @@ export class TimelineComponent implements OnInit {
     if (!content) return;
     await this.postService.addComment(post.id, content).toPromise();
     post.newComment = '';
+    post.replyToCommentId = undefined;
+    await this.load();
+  }
+
+  toggleReplyInput(post: any, comment: any): void {
+    post.replyToCommentId = post.replyToCommentId === comment.id ? undefined : comment.id;
+    post.newComment = '';
+  }
+
+  async reply(post: any): Promise<void> {
+    const content = post.newComment?.trim();
+    if (!content || !post.replyToCommentId) return;
+    await this.postService.addComment(post.id, content, post.replyToCommentId).toPromise();
+    post.newComment = '';
+    post.replyToCommentId = undefined;
     await this.load();
   }
 

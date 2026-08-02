@@ -10,5 +10,5 @@ public interface IPostService
     Task<PostDto> CreatePostAsync(CreatePostDto dto, Guid userId);
     Task DeletePostAsync(Guid postId, Guid userId);
     Task<PostDto> ToggleLikeAsync(Guid postId, Guid userId);
-    Task<CommentDto> AddCommentAsync(Guid postId, string content, Guid userId);
+    Task<CommentDto> AddCommentAsync(Guid postId, CreateCommentDto dto, Guid userId);
 }
