@@ -109,7 +109,7 @@ import { Post } from '../shared/models/social.model';
                   <button class="reply-btn" (click)="toggleReplyInput(post, comment)">Reply</button>
                 </div>
 
-                <div *ngIf="comment.replies.length > 0" class="replies">
+                <div *ngIf="comment.replies?.length" class="replies">
                   <div *ngFor="let reply of comment.replies" class="comment reply">
                     <div class="comment-avatar" [class.has-image]="reply.authorAvatar">
                       <img *ngIf="reply.authorAvatar; else replyInitial" [src]="reply.authorAvatar" alt="" />
