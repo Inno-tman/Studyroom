@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -96,19 +96,26 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
               <span class="online-count">{{ onlineUsers.length }} online</span>
             </div>
             <div class="messages" #messageContainer>
-              <div class="message" *ngFor="let msg of messages">
-                <div class="message-avatar" [class.has-image]="msg.avatarUrl">
-                  <img *ngIf="msg.avatarUrl; else messageInitial" [src]="msg.avatarUrl" alt="" />
-                  <ng-template #messageInitial>{{ msg.username.charAt(0).toUpperCase() }}</ng-template>
+              <ng-container *ngFor="let msg of messages; let i = index">
+                <div class="day-divider" *ngIf="showDayDivider(i)">
+                  <span>{{ messages[i].createdAt | date:'mediumDate' }}</span>
                 </div>
-                <div class="message-body">
-                  <div class="message-header">
-                    <span class="message-user">{{ msg.username }}</span>
-                    <span class="message-time">{{ msg.createdAt | date:'shortTime' }}</span>
+                <div class="message" [class.own]="msg.userId === currentUserId" [class.avatar-gap]="msg.userId === currentUserId || isFirstOfGroup(i)">
+                  <div class="message-avatar" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)" [class.has-image]="msg.avatarUrl">
+                    <img *ngIf="msg.avatarUrl; else messageInitial" [src]="msg.avatarUrl" alt="" />
+                    <ng-template #messageInitial>{{ msg.username.charAt(0).toUpperCase() }}</ng-template>
                   </div>
-                  <p class="message-content">{{ msg.content }}</p>
+                  <div class="message-body">
+                    <div class="message-header" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)">
+                      <span class="message-user">{{ msg.username }}</span>
+                    </div>
+                    <div class="bubble">
+                      <span class="bubble-content">{{ msg.content }}</span>
+                      <span class="message-time">{{ msg.createdAt | date:'shortTime' }}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </ng-container>
             </div>
             <div class="chat-input">
               <input
@@ -245,19 +252,32 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
 
     .chat-panel { height: 500px; }
 
-    .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
 
-    .message { display: flex; gap: 10px; padding: 8px; border-radius: 8px; transition: background 0.15s; }
-    .message:hover { background: rgba(255,255,255,0.02); }
+    .day-divider { display: flex; align-items: center; justify-content: center; padding: 12px 0 8px; }
+    .day-divider span { font-size: 11px; color: var(--text-muted); background: var(--background); border: 1px solid var(--border); padding: 3px 10px; border-radius: 12px; }
 
-    .message-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; flex-shrink: 0; overflow: hidden; }
+    .message { display: flex; gap: 10px; padding: 2px 0; }
+
+    .message.own { justify-content: flex-end; }
+    .message.own .message-body { align-items: flex-end; }
+
+    .message-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; flex-shrink: 0; overflow: hidden; align-self: flex-end; margin-bottom: 2px; }
     .message-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
-    .message-body { flex: 1; min-width: 0; }
-    .message-header { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
-    .message-user { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-    .message-time { font-size: 11px; color: var(--text-muted); }
-    .message-content { font-size: 13px; color: var(--text-secondary); word-break: break-word; }
+    .message-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .message-header { margin-bottom: 2px; padding-left: 2px; }
+    .message-user { font-size: 12px; font-weight: 600; color: var(--accent); }
+
+    .bubble { max-width: 70%; padding: 8px 12px; border-radius: 14px; background: var(--background); border: 1px solid var(--border); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; word-break: break-word; }
+    .message.own .bubble { background: var(--primary); border-color: var(--primary); border-bottom-right-radius: 4px; }
+    .message:not(.own):not(.avatar-gap) .bubble { border-bottom-left-radius: 4px; }
+
+    .bubble-content { font-size: 13px; color: var(--text-primary); line-height: 1.45; white-space: pre-wrap; }
+    .message.own .bubble-content { color: white; }
+
+    .message-time { font-size: 10px; color: var(--text-muted); align-self: flex-end; }
+    .message.own .message-time { color: rgba(255,255,255,0.7); }
 
     .chat-input { display: flex; align-items: center; padding: 12px; border-top: 1px solid var(--border); gap: 8px; }
     .chat-input input { flex: 1; padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; outline: none; }
@@ -301,6 +321,8 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private invitationService = inject(InvitationService);
   private friendService = inject(FriendService);
 
+  @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
+
   roomId = '';
   room?: Room;
   messages: Message[] = [];
@@ -315,6 +337,28 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   friends: Friend[] = [];
   invitingId = '';
   private notesSub?: Subscription;
+
+  get currentUserId(): string | undefined {
+    return this.auth.currentUser()?.id;
+  }
+
+  isFirstOfGroup(index: number): boolean {
+    if (index === 0) return true;
+    const prev = this.messages[index - 1];
+    const cur = this.messages[index];
+    if (!prev || prev.userId !== cur.userId) return true;
+    const prevTime = new Date(prev.createdAt).getTime();
+    const curTime = new Date(cur.createdAt).getTime();
+    return curTime - prevTime > 5 * 60 * 1000;
+  }
+
+  showDayDivider(index: number): boolean {
+    if (index === 0) return true;
+    const prev = this.messages[index - 1];
+    const cur = this.messages[index];
+    if (!prev) return true;
+    return new Date(prev.createdAt).toDateString() !== new Date(cur.createdAt).toDateString();
+  }
 
   async ngOnInit() {
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
@@ -342,7 +386,17 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   async loadChat() {
     try {
       this.messages = await this.chatService.getMessages(this.roomId).toPromise() || [];
+      this.scrollToBottom();
     } catch { }
+  }
+
+  private scrollToBottom() {
+    setTimeout(() => {
+      try {
+        const el = this.messageContainer?.nativeElement;
+        if (el) el.scrollTop = el.scrollHeight;
+      } catch { }
+    }, 0);
   }
 
   async loadNotes() {
@@ -363,6 +417,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.signalR.message$.subscribe(msg => {
         if (msg.roomId === this.roomId) {
           this.messages = [...this.messages, msg];
+          this.scrollToBottom();
         }
       });
 
