@@ -44,4 +44,7 @@ public class User
     public ICollection<RoomMember> RoomMemberships { get; set; } = new List<RoomMember>();
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<StudySession> StudySessions { get; set; } = new List<StudySession>();
+    public ICollection<Post> Posts { get; set; } = new List<Post>();
+    public ICollection<PostComment> Comments { get; set; } = new List<PostComment>();
+    public ICollection<PostReaction> Reactions { get; set; } = new List<PostReaction>();
 }

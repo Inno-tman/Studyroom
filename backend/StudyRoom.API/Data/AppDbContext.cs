@@ -15,6 +15,10 @@ public class AppDbContext : DbContext
     public DbSet<StudySession> StudySessions => Set<StudySession>();
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiMessage> AiMessages => Set<AiMessage>();
+    public DbSet<Friendship> Friendships => Set<Friendship>();
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<PostComment> PostComments => Set<PostComment>();
+    public DbSet<PostReaction> PostReactions => Set<PostReaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +78,39 @@ public class AppDbContext : DbContext
             entity.HasIndex(m => m.ConversationId);
             entity.HasIndex(m => m.CreatedAt);
             entity.HasOne(m => m.Conversation).WithMany(c => c.Messages).HasForeignKey(m => m.ConversationId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Friendship>(entity =>
+        {
+            entity.HasIndex(f => new { f.RequesterId, f.AddresseeId }).IsUnique();
+            entity.HasIndex(f => f.Status);
+            entity.HasOne(f => f.Requester).WithMany().HasForeignKey(f => f.RequesterId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(f => f.Addressee).WithMany().HasForeignKey(f => f.AddresseeId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Post>(entity =>
+        {
+            entity.HasIndex(p => p.UserId);
+            entity.HasIndex(p => p.RoomId);
+            entity.HasIndex(p => p.CreatedAt);
+            entity.HasOne(p => p.Author).WithMany(u => u.Posts).HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(p => p.SharedPost).WithMany().HasForeignKey(p => p.SharedPostId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(p => p.Room).WithMany().HasForeignKey(p => p.RoomId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PostComment>(entity =>
+        {
+            entity.HasIndex(c => c.PostId);
+            entity.HasIndex(c => c.CreatedAt);
+            entity.HasOne(c => c.Post).WithMany(p => p.Comments).HasForeignKey(c => c.PostId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(c => c.Author).WithMany(u => u.Comments).HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PostReaction>(entity =>
+        {
+            entity.HasIndex(r => new { r.PostId, r.UserId }).IsUnique();
+            entity.HasOne(r => r.Post).WithMany(p => p.Reactions).HasForeignKey(r => r.PostId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(r => r.User).WithMany(u => u.Reactions).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

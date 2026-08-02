@@ -77,9 +77,13 @@ builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<INotesRepository, NotesRepository>();
 builder.Services.AddScoped<IStudySessionRepository, StudySessionRepository>();
+builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
+builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
@@ -138,6 +142,60 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE INDEX IF NOT EXISTS "IX_AiMessages_ConversationId" ON "AiMessages" ("ConversationId");
         CREATE INDEX IF NOT EXISTS "IX_AiMessages_CreatedAt" ON "AiMessages" ("CreatedAt");
+
+        CREATE TABLE IF NOT EXISTS "Friendships" (
+            "Id" uuid NOT NULL,
+            "RequesterId" uuid NOT NULL,
+            "AddresseeId" uuid NOT NULL,
+            "Status" text NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_Friendships" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_Friendships_Users_AddresseeId" FOREIGN KEY ("AddresseeId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_Friendships_Users_RequesterId" FOREIGN KEY ("RequesterId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_Friendships_RequesterId_AddresseeId" ON "Friendships" ("RequesterId", "AddresseeId");
+        CREATE INDEX IF NOT EXISTS "IX_Friendships_Status" ON "Friendships" ("Status");
+
+        CREATE TABLE IF NOT EXISTS "Posts" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Content" text NOT NULL,
+            "RoomId" uuid NULL,
+            "SharedPostId" uuid NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_Posts" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_Posts_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_Posts_Rooms_RoomId" FOREIGN KEY ("RoomId") REFERENCES "Rooms" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_Posts_Posts_SharedPostId" FOREIGN KEY ("SharedPostId") REFERENCES "Posts" ("Id") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS "IX_Posts_UserId" ON "Posts" ("UserId");
+        CREATE INDEX IF NOT EXISTS "IX_Posts_RoomId" ON "Posts" ("RoomId");
+        CREATE INDEX IF NOT EXISTS "IX_Posts_CreatedAt" ON "Posts" ("CreatedAt");
+
+        CREATE TABLE IF NOT EXISTS "PostComments" (
+            "Id" uuid NOT NULL,
+            "PostId" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Content" text NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_PostComments" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_PostComments_Posts_PostId" FOREIGN KEY ("PostId") REFERENCES "Posts" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_PostComments_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_PostComments_PostId" ON "PostComments" ("PostId");
+        CREATE INDEX IF NOT EXISTS "IX_PostComments_CreatedAt" ON "PostComments" ("CreatedAt");
+
+        CREATE TABLE IF NOT EXISTS "PostReactions" (
+            "Id" uuid NOT NULL,
+            "PostId" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Type" text NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_PostReactions" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_PostReactions_Posts_PostId" FOREIGN KEY ("PostId") REFERENCES "Posts" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_PostReactions_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_PostReactions_PostId_UserId" ON "PostReactions" ("PostId", "UserId");
     """);
 }
 

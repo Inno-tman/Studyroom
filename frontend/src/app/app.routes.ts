@@ -37,6 +37,16 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'timeline',
+    loadComponent: () => import('./timeline/timeline.component').then(m => m.TimelineComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'people',
+    loadComponent: () => import('./people/people.component').then(m => m.PeopleComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'settings',
     loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent),
     canActivate: [authGuard],

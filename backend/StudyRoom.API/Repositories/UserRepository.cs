@@ -36,4 +36,19 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> EmailExistsAsync(string email) =>
         await _context.Users.AnyAsync(u => u.Email == email);
+
+    public async Task<List<User>> SearchAsync(string query, Guid excludeId)
+    {
+        var q = query.Trim();
+        return await _context.Users
+            .Where(u => u.Id != excludeId)
+            .Where(u =>
+                u.Username.ToLower().Contains(q.ToLower())
+                || (u.FirstName != null && u.FirstName.ToLower().Contains(q.ToLower()))
+                || (u.LastName != null && u.LastName.ToLower().Contains(q.ToLower()))
+                || (u.SchoolName != null && u.SchoolName.ToLower().Contains(q.ToLower())))
+            .OrderBy(u => u.Username)
+            .Take(50)
+            .ToListAsync();
+    }
 }

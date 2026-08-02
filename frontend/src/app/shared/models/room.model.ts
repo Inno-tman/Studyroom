@@ -1,3 +1,9 @@
+export interface UserDto {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+}
+
 export interface Room {
   id: string;
   name: string;

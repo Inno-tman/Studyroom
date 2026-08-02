@@ -10,6 +10,7 @@ import { NotesService } from '../../core/services/notes.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Room } from '../../shared/models/room.model';
 import { Message } from '../../shared/models/message.model';
+import { UserDto } from '../../shared/models/room.model';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { NotesEditorComponent } from '../../notes/notes-editor/notes-editor.component';
 import { PomodoroTimerComponent } from '../../timer/pomodoro-timer/pomodoro-timer.component';
@@ -44,6 +45,19 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
       </div>
 
       <div class="room-content" *ngIf="isMember">
+        <div class="members-bar">
+          <span class="members-title">Members ({{ members.length }})</span>
+          <div class="members-avatars">
+            <div *ngFor="let member of members" class="member-chip" [title]="member.username">
+              <div class="member-avatar" [class.has-image]="member.avatarUrl">
+                <img *ngIf="member.avatarUrl; else memberInitial" [src]="member.avatarUrl" alt="" />
+                <ng-template #memberInitial>{{ member.username.charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span class="member-name">{{ member.username }}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="content-grid">
           <div class="panel chat-panel">
             <div class="panel-header">
@@ -127,6 +141,22 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
 
     .room-content { margin-top: 16px; }
 
+    .members-bar {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+
+    .members-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
+
+    .members-avatars { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .member-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 20px; background: var(--background); border: 1px solid var(--border); }
+
+    .member-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 11px; overflow: hidden; flex-shrink: 0; }
+    .member-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
+
+    .member-name { font-size: 12px; color: var(--text-primary); }
+
     .content-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 
     .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
@@ -194,6 +224,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   roomId = '';
   room?: Room;
   messages: Message[] = [];
+  members: UserDto[] = [];
   onlineUsers: string[] = [];
   newMessage = '';
   isMember = false;
@@ -212,6 +243,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
 
       const userId = this.auth.currentUser()?.id;
       const members = await this.roomService.getMembers(this.roomId).toPromise();
+      this.members = members || [];
       this.isMember = members?.some(m => m.id === userId) || false;
 
       if (this.isMember) {

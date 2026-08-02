@@ -25,6 +25,14 @@ import { AuthService } from '../../../core/services/auth.service';
           <span class="material-icons">meeting_room</span>
           <span>Rooms</span>
         </a>
+        <a routerLink="/timeline" routerLinkActive="active" class="nav-item">
+          <span class="material-icons">article</span>
+          <span>Timeline</span>
+        </a>
+        <a routerLink="/people" routerLinkActive="active" class="nav-item">
+          <span class="material-icons">people</span>
+          <span>People</span>
+        </a>
         <a routerLink="/profile" routerLinkActive="active" class="nav-item">
           <span class="material-icons">person</span>
           <span>Profile</span>
