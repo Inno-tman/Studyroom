@@ -11,8 +11,8 @@ import { ProfileReminderComponent } from './shared/components/profile-reminder/p
     <div class="app-container">
       <app-sidebar [hidden]="sidebarHidden()" (toggle)="toggleSidebar()" />
       <div class="main-wrapper" [class.sidebar-hidden]="sidebarHidden()">
-        <button class="menu-btn" (click)="toggleSidebar()" *ngIf="sidebarHidden()" aria-label="Show navigation">
-          <span class="material-icons">menu</span>
+        <button class="menu-btn" [class.nav-open]="!sidebarHidden()" (click)="toggleSidebar()" aria-label="Toggle navigation">
+          <span class="material-icons">{{ sidebarHidden() ? 'menu' : 'chevron_left' }}</span>
         </button>
         <app-profile-reminder />
         <main class="main-content">
@@ -38,6 +38,11 @@ import { ProfileReminderComponent } from './shared/components/profile-reminder/p
       justify-content: center;
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: left 0.25s ease;
+    }
+
+    .menu-btn.nav-open {
+      left: calc(var(--sidebar-width) + 12px);
     }
 
     .menu-btn:hover { background: var(--surface-hover); }
