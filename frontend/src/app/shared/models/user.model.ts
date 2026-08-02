@@ -3,6 +3,10 @@ export interface User {
   username: string;
   email: string;
   avatarUrl?: string;
+  firstName?: string;
+  lastName?: string;
+  schoolName?: string;
+  bio?: string;
   role: string;
   profileComplete?: boolean;
   token: string;
@@ -23,4 +27,8 @@ export interface LoginDto {
 export interface UpdateProfileDto {
   username: string;
   avatarUrl?: string;
+  firstName?: string;
+  lastName?: string;
+  schoolName?: string;
+  bio?: string;
 }

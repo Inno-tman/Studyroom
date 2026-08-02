@@ -104,6 +104,10 @@ using (var scope = app.Services.CreateScope())
     await context.Database.EnsureCreatedAsync();
     await context.Database.ExecuteSqlRawAsync("""
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "GoogleId" text NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "FirstName" text NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "LastName" text NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "SchoolName" text NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "Bio" text NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_GoogleId" ON "Users" ("GoogleId") WHERE "GoogleId" IS NOT NULL;
     """);
     await context.Database.ExecuteSqlRawAsync("""

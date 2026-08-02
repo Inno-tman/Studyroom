@@ -9,4 +9,16 @@ public class UpdateProfileDto
 
     [MaxLength(500)]
     public string? AvatarUrl { get; set; }
+
+    [MaxLength(100)]
+    public string? FirstName { get; set; }
+
+    [MaxLength(100)]
+    public string? LastName { get; set; }
+
+    [MaxLength(150)]
+    public string? SchoolName { get; set; }
+
+    [MaxLength(1000)]
+    public string? Bio { get; set; }
 }

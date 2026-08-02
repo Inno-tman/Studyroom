@@ -11,6 +11,9 @@ export class AuthService {
   private readonly USER_KEY = 'studyroom_user';
 
   currentUser = signal<User | null>(null);
+  saving = signal(false);
+  error = signal('');
+  success = signal('');
 
   constructor(
     private http: HttpClient,
@@ -41,6 +44,25 @@ export class AuthService {
     return this.http.put<User>(`${environment.apiUrl}/auth/profile`, dto).pipe(
       tap(user => this.setSession(user))
     );
+  }
+
+  clearMessages(): void {
+    this.error.set('');
+    this.success.set('');
+  }
+
+  async saveProfile(dto: UpdateProfileDto): Promise<void> {
+    this.error.set('');
+    this.success.set('');
+    this.saving.set(true);
+    try {
+      await this.updateProfile(dto).toPromise();
+      this.success.set('Profile updated successfully.');
+    } catch (err: any) {
+      this.error.set(err?.error?.error || 'Failed to update profile. Please try again.');
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   isProfileComplete(): boolean {
