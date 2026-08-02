@@ -33,6 +33,14 @@ import { AuthService } from '../../../core/services/auth.service';
           <span class="material-icons">people</span>
           <span>People</span>
         </a>
+        <a routerLink="/invitations" routerLinkActive="active" class="nav-item">
+          <span class="material-icons">mark_email_unread</span>
+          <span>Invitations</span>
+        </a>
+        <a routerLink="/messages" routerLinkActive="active" class="nav-item">
+          <span class="material-icons">chat</span>
+          <span>Messages</span>
+        </a>
         <a routerLink="/profile" routerLinkActive="active" class="nav-item">
           <span class="material-icons">person</span>
           <span>Profile</span>

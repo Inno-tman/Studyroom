@@ -8,9 +8,12 @@ import { SignalRService } from '../../core/services/signalr.service';
 import { ChatService } from '../../core/services/chat.service';
 import { NotesService } from '../../core/services/notes.service';
 import { AuthService } from '../../core/services/auth.service';
+import { InvitationService } from '../../core/services/invitation.service';
+import { FriendService } from '../../core/services/friend.service';
 import { Room } from '../../shared/models/room.model';
 import { Message } from '../../shared/models/message.model';
 import { UserDto } from '../../shared/models/room.model';
+import { Friend } from '../../shared/models/social.model';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { NotesEditorComponent } from '../../notes/notes-editor/notes-editor.component';
 import { PomodoroTimerComponent } from '../../timer/pomodoro-timer/pomodoro-timer.component';
@@ -54,6 +57,34 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
                 <ng-template #memberInitial>{{ member.username.charAt(0).toUpperCase() }}</ng-template>
               </div>
               <span class="member-name">{{ member.username }}</span>
+            </div>
+          </div>
+          <button class="invite-btn" (click)="openInviteDialog()">
+            <span class="material-icons">person_add</span>
+            <span>Invite</span>
+          </button>
+        </div>
+
+        <div class="invite-dialog-backdrop" *ngIf="showInviteDialog" (click)="showInviteDialog = false">
+          <div class="invite-dialog" (click)="$event.stopPropagation()">
+            <div class="invite-dialog-header">
+              <h3>Invite friends to {{ room?.name }}</h3>
+              <button class="dialog-close" (click)="showInviteDialog = false"><span class="material-icons">close</span></button>
+            </div>
+            <div class="invite-dialog-body">
+              <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite — everyone you know is already here!</p>
+              <div *ngFor="let friend of invitableFriends" class="invite-row">
+                <div class="member-avatar" [class.has-image]="friend.avatarUrl">
+                  <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
+                  <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
+                </div>
+                <span class="invite-name">{{ friend.displayName || friend.username }}</span>
+                <button
+                  class="btn-invite"
+                  (click)="inviteFriend(friend)"
+                  [disabled]="friend.userId === invitingId"
+                >{{ friend.userId === invitingId ? 'Inviting...' : 'Invite' }}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -157,6 +188,49 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
 
     .member-name { font-size: 12px; color: var(--text-primary); }
 
+    .invite-btn {
+      margin-left: auto; display: flex; align-items: center; gap: 4px;
+      padding: 6px 12px; background: transparent; border: 1px solid var(--primary);
+      border-radius: 8px; color: var(--primary); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .invite-btn:hover { background: rgba(56, 189, 248, 0.1); }
+    .invite-btn .material-icons { font-size: 16px; }
+
+    .invite-dialog-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+
+    .invite-dialog {
+      width: 420px; max-width: 90vw; max-height: 80vh; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    .invite-dialog-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; border-bottom: 1px solid var(--border);
+    }
+    .invite-dialog-header h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+
+    .dialog-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
+    .dialog-close:hover { color: var(--text-primary); }
+
+    .invite-dialog-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .invite-hint { font-size: 13px; color: var(--text-muted); }
+
+    .invite-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
+    .invite-row:hover { background: var(--background); }
+    .invite-name { flex: 1; font-size: 13px; font-weight: 500; color: var(--text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .btn-invite {
+      padding: 6px 12px; background: var(--primary); border: none; border-radius: 8px;
+      color: white; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;
+    }
+    .btn-invite:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-invite:disabled { opacity: 0.5; cursor: not-allowed; }
+
     .content-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 
     .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
@@ -220,6 +294,8 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private chatService = inject(ChatService);
   private notesService = inject(NotesService);
   private auth = inject(AuthService);
+  private invitationService = inject(InvitationService);
+  private friendService = inject(FriendService);
 
   roomId = '';
   room?: Room;
@@ -231,6 +307,9 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   joining = false;
   loading = true;
   notesContext = '';
+  showInviteDialog = false;
+  friends: Friend[] = [];
+  invitingId = '';
   private notesSub?: Subscription;
 
   async ngOnInit() {
@@ -329,6 +408,32 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.messages = [];
       this.router.navigate(['/rooms']);
     } catch { }
+  }
+
+  get invitableFriends(): Friend[] {
+    const memberIds = new Set(this.members.map(m => m.id));
+    return this.friends.filter(f => !memberIds.has(f.userId));
+  }
+
+  async openInviteDialog(): Promise<void> {
+    this.showInviteDialog = true;
+    if (this.friends.length === 0) {
+      try {
+        this.friends = (await this.friendService.getFriends().toPromise()) || [];
+      } catch { }
+    }
+  }
+
+  async inviteFriend(friend: Friend): Promise<void> {
+    this.invitingId = friend.userId;
+    try {
+      await this.invitationService.invite(this.roomId, friend.userId).toPromise();
+      this.friends = this.friends.filter(f => f.userId !== friend.userId);
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to invite friend.');
+    } finally {
+      this.invitingId = '';
+    }
   }
 
   ngOnDestroy() {

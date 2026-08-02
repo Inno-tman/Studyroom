@@ -19,6 +19,8 @@ public class AppDbContext : DbContext
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostComment> PostComments => Set<PostComment>();
     public DbSet<PostReaction> PostReactions => Set<PostReaction>();
+    public DbSet<RoomInvitation> RoomInvitations => Set<RoomInvitation>();
+    public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,6 +113,24 @@ public class AppDbContext : DbContext
             entity.HasIndex(r => new { r.PostId, r.UserId }).IsUnique();
             entity.HasOne(r => r.Post).WithMany(p => p.Reactions).HasForeignKey(r => r.PostId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(r => r.User).WithMany(u => u.Reactions).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RoomInvitation>(entity =>
+        {
+            entity.HasIndex(i => i.InviteeId);
+            entity.HasIndex(i => new { i.RoomId, i.InviteeId }).IsUnique();
+            entity.HasOne(i => i.Room).WithMany().HasForeignKey(i => i.RoomId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(i => i.Inviter).WithMany().HasForeignKey(i => i.InviterId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(i => i.Invitee).WithMany().HasForeignKey(i => i.InviteeId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DirectMessage>(entity =>
+        {
+            entity.HasIndex(d => d.SenderId);
+            entity.HasIndex(d => d.ReceiverId);
+            entity.HasIndex(d => d.CreatedAt);
+            entity.HasOne(d => d.Sender).WithMany().HasForeignKey(d => d.SenderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.Receiver).WithMany().HasForeignKey(d => d.ReceiverId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

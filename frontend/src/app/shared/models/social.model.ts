@@ -41,3 +41,32 @@ export interface Post {
   sharedFrom?: Post;
   comments: Comment[];
 }
+
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string;
+  receiverId: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface Conversation {
+  userId: string;
+  displayName: string;
+  username: string;
+  avatarUrl?: string;
+  lastMessage: string;
+  lastMessageAt: string;
+}
+
+export interface RoomInvitation {
+  id: string;
+  roomId: string;
+  roomName: string;
+  roomSubject?: string;
+  inviterName: string;
+  inviterId: string;
+  createdAt: string;
+}

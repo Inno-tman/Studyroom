@@ -13,16 +13,20 @@ public class StudyRoomHub : Hub
     private readonly IMessageRepository _messageRepo;
     private readonly IRoomRepository _roomRepo;
     private readonly IStudySessionRepository _sessionRepo;
+    private readonly IDirectMessageRepository _dmRepo;
     private static readonly Dictionary<string, string> _onlineUsers = new();
+    private static readonly Dictionary<string, string> _userGroups = new();
 
     public StudyRoomHub(
         IMessageRepository messageRepo,
         IRoomRepository roomRepo,
-        IStudySessionRepository sessionRepo)
+        IStudySessionRepository sessionRepo,
+        IDirectMessageRepository dmRepo)
     {
         _messageRepo = messageRepo;
         _roomRepo = roomRepo;
         _sessionRepo = sessionRepo;
+        _dmRepo = dmRepo;
     }
 
     private Guid UserId => Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -150,6 +154,40 @@ public class StudyRoomHub : Hub
         });
     }
 
+    public async Task SendDirectMessage(string receiverId, string content)
+    {
+        var receiver = Guid.Parse(receiverId);
+        var message = await _dmRepo.AddAsync(new Models.DirectMessage
+        {
+            SenderId = UserId,
+            ReceiverId = receiver,
+            Content = content
+        });
+
+        var dto = new
+        {
+            id = message.Id,
+            senderId = UserId.ToString(),
+            senderName = Username,
+            receiverId = receiverId,
+            content = message.Content,
+            createdAt = message.CreatedAt
+        };
+
+        await Clients.Group(GetUserGroup(receiverId)).SendAsync("ReceiveDirectMessage", dto);
+        await Clients.Group(GetUserGroup(UserId.ToString())).SendAsync("ReceiveDirectMessage", dto);
+    }
+
+    public override async Task OnConnectedAsync()
+    {
+        var group = GetUserGroup(UserId.ToString());
+        if (!_userGroups.ContainsKey(UserId.ToString()))
+            _userGroups[UserId.ToString()] = group;
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, group);
+        await base.OnConnectedAsync();
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (_onlineUsers.TryGetValue(Context.ConnectionId, out var roomId))
@@ -184,4 +222,6 @@ public class StudyRoomHub : Hub
     }
 
     private static string GetGroupName(string roomId) => $"room_{roomId}";
+
+    private static string GetUserGroup(string userId) => $"user_{userId}";
 }

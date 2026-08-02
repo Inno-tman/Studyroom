@@ -44,6 +44,7 @@ public class UserRepository : IUserRepository
             .Where(u => u.Id != excludeId)
             .Where(u =>
                 u.Username.ToLower().Contains(q.ToLower())
+                || u.Email.ToLower().Contains(q.ToLower())
                 || (u.FirstName != null && u.FirstName.ToLower().Contains(q.ToLower()))
                 || (u.LastName != null && u.LastName.ToLower().Contains(q.ToLower()))
                 || (u.SchoolName != null && u.SchoolName.ToLower().Contains(q.ToLower())))

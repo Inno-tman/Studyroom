@@ -79,11 +79,15 @@ builder.Services.AddScoped<INotesRepository, NotesRepository>();
 builder.Services.AddScoped<IStudySessionRepository, StudySessionRepository>();
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<IRoomInvitationRepository, RoomInvitationRepository>();
+builder.Services.AddScoped<IDirectMessageRepository, DirectMessageRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<IRoomInvitationService, RoomInvitationService>();
+builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
@@ -196,6 +200,35 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_PostReactions_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_PostReactions_PostId_UserId" ON "PostReactions" ("PostId", "UserId");
+
+        CREATE TABLE IF NOT EXISTS "RoomInvitations" (
+            "Id" uuid NOT NULL,
+            "RoomId" uuid NOT NULL,
+            "InviterId" uuid NOT NULL,
+            "InviteeId" uuid NOT NULL,
+            "Status" text NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_RoomInvitations" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_RoomInvitations_Rooms_RoomId" FOREIGN KEY ("RoomId") REFERENCES "Rooms" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_RoomInvitations_Users_InviteeId" FOREIGN KEY ("InviteeId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_RoomInvitations_Users_InviterId" FOREIGN KEY ("InviterId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_RoomInvitations_RoomId_InviteeId" ON "RoomInvitations" ("RoomId", "InviteeId");
+        CREATE INDEX IF NOT EXISTS "IX_RoomInvitations_InviteeId" ON "RoomInvitations" ("InviteeId");
+
+        CREATE TABLE IF NOT EXISTS "DirectMessages" (
+            "Id" uuid NOT NULL,
+            "SenderId" uuid NOT NULL,
+            "ReceiverId" uuid NOT NULL,
+            "Content" text NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_DirectMessages" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_DirectMessages_Users_ReceiverId" FOREIGN KEY ("ReceiverId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_DirectMessages_Users_SenderId" FOREIGN KEY ("SenderId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_DirectMessages_SenderId" ON "DirectMessages" ("SenderId");
+        CREATE INDEX IF NOT EXISTS "IX_DirectMessages_ReceiverId" ON "DirectMessages" ("ReceiverId");
+        CREATE INDEX IF NOT EXISTS "IX_DirectMessages_CreatedAt" ON "DirectMessages" ("CreatedAt");
     """);
 }
 

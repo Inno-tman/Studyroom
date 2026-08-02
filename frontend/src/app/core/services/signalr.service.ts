@@ -4,6 +4,7 @@ import { Subject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 import { Message } from '../../shared/models/message.model';
+import { DirectMessage } from '../../shared/models/social.model';
 
 @Injectable({ providedIn: 'root' })
 export class SignalRService {
@@ -17,6 +18,7 @@ export class SignalRService {
   private timerResetSubject = new Subject<any>();
   private timerCompletedSubject = new Subject<any>();
   private notesUpdatedSubject = new Subject<any>();
+  private directMessageSubject = new Subject<DirectMessage>();
 
   message$ = this.messageSubject.asObservable();
   userJoined$ = this.userJoinedSubject.asObservable();
@@ -27,6 +29,7 @@ export class SignalRService {
   timerReset$ = this.timerResetSubject.asObservable();
   timerCompleted$ = this.timerCompletedSubject.asObservable();
   notesUpdated$ = this.notesUpdatedSubject.asObservable();
+  directMessage$ = this.directMessageSubject.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -49,6 +52,7 @@ export class SignalRService {
     this.hubConnection.on('TimerReset', (data: any) => this.timerResetSubject.next(data));
     this.hubConnection.on('TimerCompleted', (data: any) => this.timerCompletedSubject.next(data));
     this.hubConnection.on('NotesUpdated', (data: any) => this.notesUpdatedSubject.next(data));
+    this.hubConnection.on('ReceiveDirectMessage', (msg: DirectMessage) => this.directMessageSubject.next(msg));
 
     await this.hubConnection.start();
   }
@@ -63,6 +67,10 @@ export class SignalRService {
 
   async sendMessage(roomId: string, content: string): Promise<void> {
     await this.hubConnection.invoke('SendMessage', roomId, content);
+  }
+
+  async sendDirectMessage(receiverId: string, content: string): Promise<void> {
+    await this.hubConnection.invoke('SendDirectMessage', receiverId, content);
   }
 
   async startTimer(roomId: string, durationMinutes: number): Promise<void> {
