@@ -153,11 +153,7 @@ public class PostService : IPostService
 
     private static List<CommentDto> MapComments(List<PostComment> comments)
     {
-        var byParent = comments
-            .GroupBy(c => c.ParentCommentId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.CreatedAt).ToList());
-
-        var roots = byParent.TryGetValue(null, out var rootList) ? rootList : new List<PostComment>();
+        var byParent = comments.ToLookup(c => c.ParentCommentId);
 
         CommentDto Map(PostComment c) => new()
         {
@@ -168,12 +164,10 @@ public class PostService : IPostService
             AuthorAvatar = c.Author?.AvatarUrl,
             CreatedAt = c.CreatedAt,
             ParentCommentId = c.ParentCommentId,
-            Replies = byParent.TryGetValue(c.Id, out var replies)
-                ? replies.Select(Map).ToList()
-                : new List<CommentDto>()
+            Replies = byParent[c.Id].OrderBy(r => r.CreatedAt).Select(Map).ToList()
         };
 
-        return roots.Select(Map).ToList();
+        return byParent[null].OrderBy(c => c.CreatedAt).Select(Map).ToList();
     }
 
     private static string BuildDisplayName(User? u)
