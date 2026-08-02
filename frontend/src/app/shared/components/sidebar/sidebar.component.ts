@@ -53,7 +53,10 @@ import { AuthService } from '../../../core/services/auth.service';
 
       <div class="sidebar-footer">
         <div class="user-info">
-          <div class="avatar">{{ auth.currentUser()?.username?.charAt(0)?.toUpperCase() }}</div>
+          <div class="avatar" [class.has-image]="auth.currentUser()?.avatarUrl">
+            <img *ngIf="auth.currentUser()?.avatarUrl; else sidebarInitial" [src]="auth.currentUser()?.avatarUrl" alt="" />
+            <ng-template #sidebarInitial>{{ auth.currentUser()?.username?.charAt(0)?.toUpperCase() }}</ng-template>
+          </div>
           <div class="user-details">
             <span class="username">{{ auth.currentUser()?.username }}</span>
             <span class="role">{{ auth.currentUser()?.role }}</span>
@@ -165,7 +168,11 @@ import { AuthService } from '../../../core/services/auth.service';
       font-weight: 600;
       font-size: 14px;
       color: white;
+      overflow: hidden;
+      flex-shrink: 0;
     }
+
+    .avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .user-details {
       display: flex;

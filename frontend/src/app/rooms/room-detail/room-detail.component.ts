@@ -97,7 +97,10 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
             </div>
             <div class="messages" #messageContainer>
               <div class="message" *ngFor="let msg of messages">
-                <div class="message-avatar">{{ msg.username.charAt(0).toUpperCase() }}</div>
+                <div class="message-avatar" [class.has-image]="msg.avatarUrl">
+                  <img *ngIf="msg.avatarUrl; else messageInitial" [src]="msg.avatarUrl" alt="" />
+                  <ng-template #messageInitial>{{ msg.username.charAt(0).toUpperCase() }}</ng-template>
+                </div>
                 <div class="message-body">
                   <div class="message-header">
                     <span class="message-user">{{ msg.username }}</span>
@@ -247,7 +250,8 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
     .message { display: flex; gap: 10px; padding: 8px; border-radius: 8px; transition: background 0.15s; }
     .message:hover { background: rgba(255,255,255,0.02); }
 
-    .message-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; flex-shrink: 0; }
+    .message-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; flex-shrink: 0; overflow: hidden; }
+    .message-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .message-body { flex: 1; min-width: 0; }
     .message-header { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }

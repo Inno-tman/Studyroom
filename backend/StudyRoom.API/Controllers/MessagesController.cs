@@ -25,6 +25,7 @@ public class MessagesController : ControllerBase
             RoomId = m.RoomId,
             UserId = m.UserId,
             Username = m.User?.Username ?? "Unknown",
+            AvatarUrl = m.User?.AvatarUrl,
             Content = m.Content,
             CreatedAt = m.CreatedAt
         }).ToList();

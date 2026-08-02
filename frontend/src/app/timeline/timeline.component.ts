@@ -17,7 +17,10 @@ import { Post } from '../shared/models/social.model';
 
       <div class="composer">
         <div class="composer-header">
-          <div class="composer-avatar">{{ auth.currentUser()?.username?.charAt(0)?.toUpperCase() }}</div>
+          <div class="composer-avatar" [class.has-image]="auth.currentUser()?.avatarUrl">
+            <img *ngIf="auth.currentUser()?.avatarUrl; else composerInitial" [src]="auth.currentUser()?.avatarUrl" alt="" />
+            <ng-template #composerInitial>{{ auth.currentUser()?.username?.charAt(0)?.toUpperCase() }}</ng-template>
+          </div>
           <textarea
             [(ngModel)]="newPostContent"
             rows="3"
@@ -170,8 +173,10 @@ import { Post } from '../shared/models/social.model';
     .composer-avatar {
       width: 44px; height: 44px; border-radius: 50%; background: var(--primary);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: white; flex-shrink: 0;
+      font-weight: 700; color: white; flex-shrink: 0; overflow: hidden;
     }
+
+    .composer-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     textarea {
       flex: 1; width: 100%; background: var(--background); border: 1px solid var(--border);

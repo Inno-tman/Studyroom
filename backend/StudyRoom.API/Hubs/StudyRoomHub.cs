@@ -14,6 +14,7 @@ public class StudyRoomHub : Hub
     private readonly IRoomRepository _roomRepo;
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IDirectMessageRepository _dmRepo;
+    private readonly IUserRepository _userRepo;
     private static readonly Dictionary<string, string> _onlineUsers = new();
     private static readonly Dictionary<string, string> _userGroups = new();
 
@@ -21,12 +22,14 @@ public class StudyRoomHub : Hub
         IMessageRepository messageRepo,
         IRoomRepository roomRepo,
         IStudySessionRepository sessionRepo,
-        IDirectMessageRepository dmRepo)
+        IDirectMessageRepository dmRepo,
+        IUserRepository userRepo)
     {
         _messageRepo = messageRepo;
         _roomRepo = roomRepo;
         _sessionRepo = sessionRepo;
         _dmRepo = dmRepo;
+        _userRepo = userRepo;
     }
 
     private Guid UserId => Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -75,12 +78,15 @@ public class StudyRoomHub : Hub
 
         await _messageRepo.AddAsync(message);
 
+        var user = await _userRepo.GetByIdAsync(UserId);
+
         var dto = new MessageDto
         {
             Id = message.Id,
             RoomId = message.RoomId,
             UserId = message.UserId,
             Username = Username,
+            AvatarUrl = user?.AvatarUrl,
             Content = message.Content,
             CreatedAt = message.CreatedAt
         };
