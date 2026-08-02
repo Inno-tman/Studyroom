@@ -173,7 +173,9 @@ export class MessagesComponent implements OnInit, OnDestroy {
     await this.signalR.startConnection();
     this.dmSub = this.signalR.directMessage$.subscribe(msg => {
       if (msg.senderId === this.activeUserId || msg.receiverId === this.activeUserId) {
-        this.messages = [...this.messages, msg];
+        if (!this.messages.some(m => m.id && m.id === msg.id)) {
+          this.messages = [...this.messages, msg];
+        }
       }
       this.loadConversations();
     });
@@ -196,14 +198,6 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.sending = true;
     try {
       await this.signalR.sendDirectMessage(this.activeUserId, content);
-      this.messages = [...this.messages, {
-        id: '',
-        senderId: this.myId,
-        senderName: this.auth.currentUser()?.username || '',
-        receiverId: this.activeUserId,
-        content,
-        createdAt: new Date().toISOString()
-      }];
       this.newMessage = '';
       await this.loadConversations();
     } catch {
