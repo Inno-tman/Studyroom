@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, interval, Subscription } from 'rxjs';
+import { SettingsService } from './settings.service';
 
 export interface TimerState {
   isRunning: boolean;
@@ -23,6 +24,12 @@ export class TimerService {
     sessionCompleted: false
   });
 
+  constructor(private settings: SettingsService) {
+    const study = this.settings.study();
+    const state = this.timerState.value;
+    this.timerState.next({ ...state, focusDuration: study.focusDuration, breakDuration: study.breakDuration });
+  }
+
   state$ = this.timerState.asObservable();
   private subscription?: Subscription;
 
@@ -37,6 +44,12 @@ export class TimerService {
       this.timerState.next({ ...state, isRunning: true, isPaused: false, remainingSeconds: duration * 60, sessionCompleted: false });
     }
 
+    this.startCountdown();
+  }
+
+  startBreak(): void {
+    const state = this.timerState.value;
+    this.timerState.next({ ...state, isBreak: true, isRunning: true, isPaused: false, remainingSeconds: state.breakDuration * 60, sessionCompleted: false });
     this.startCountdown();
   }
 
@@ -77,9 +90,14 @@ export class TimerService {
         this.subscription?.unsubscribe();
         if (!state.isBreak) {
           this.timerState.next({ ...state, remainingSeconds: 0, isBreak: true, sessionCompleted: true });
-          this.start();
+          if (this.settings.study().autoStartNextSession) {
+            this.start();
+          }
         } else {
           this.timerState.next({ ...state, remainingSeconds: 0, isBreak: false, isRunning: false, sessionCompleted: true });
+          if (this.settings.study().autoStartNextSession) {
+            this.start();
+          }
         }
       } else {
         this.timerState.next({ ...state, remainingSeconds: state.remainingSeconds - 1 });

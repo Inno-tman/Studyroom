@@ -29,6 +29,10 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
             <span class="material-icons">notifications</span>
             <span>Notifications</span>
           </a>
+          <a routerLink="study" routerLinkActive="active" class="settings-item">
+            <span class="material-icons">school</span>
+            <span>Study</span>
+          </a>
         </nav>
 
         <div class="settings-content">

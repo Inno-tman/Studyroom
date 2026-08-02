@@ -2,6 +2,8 @@ import { Component, Input, OnInit, OnDestroy, inject } from '@angular/core';
 import { NgIf, NgClass } from '@angular/common';
 import { TimerService, TimerState } from '../../core/services/timer.service';
 import { SignalRService } from '../../core/services/signalr.service';
+import { SettingsService } from '../../core/services/settings.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -74,6 +76,8 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   @Input() roomId = '';
   private timerService = inject(TimerService);
   private signalR = inject(SignalRService);
+  private settings = inject(SettingsService);
+  private notificationService = inject(NotificationService);
 
   state: TimerState = {
     isRunning: false, isPaused: false, isBreak: false,
@@ -83,11 +87,21 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
 
   private subscriptions: Subscription[] = [];
   private isSynced = false;
+  private wasCompleted = false;
 
   async ngOnInit() {
+    const study = this.settings.study();
+    this.timerService.setFocusDuration(study.focusDuration);
+    this.timerService.setBreakDuration(study.breakDuration);
+
     this.subscriptions.push(
       this.timerService.state$.subscribe(s => {
+        const justCompleted = s.sessionCompleted && !this.wasCompleted;
         this.state = s;
+        this.wasCompleted = s.sessionCompleted;
+        if (justCompleted && this.settings.prefs().pomodoroComplete) {
+          this.notificationService.playSound();
+        }
       })
     );
 
@@ -143,7 +157,8 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   switchMode(mode: 'focus' | 'break') {
     if (this.state.isRunning) return;
     if (mode === 'break') {
-      this.timerService.setFocusDuration(this.state.focusDuration);
+      this.isSynced = true;
+      this.timerService.startBreak();
     }
     if (this.state.isBreak && mode === 'focus') {
       this.timerService.reset();

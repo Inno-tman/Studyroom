@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { ProfileReminderComponent } from './shared/components/profile-reminder/profile-reminder.component';
+import { NotificationService } from './core/services/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -49,6 +50,7 @@ import { ProfileReminderComponent } from './shared/components/profile-reminder/p
   `]
 })
 export class AppComponent {
+  private notificationService = inject(NotificationService);
   sidebarHidden = signal(this.isMobile());
 
   private isMobile(): boolean {
