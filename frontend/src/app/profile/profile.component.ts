@@ -27,7 +27,7 @@ import { UserStats } from '../shared/models/stats.model';
         <div class="profile-info">
           <h2>{{ displayName() }}</h2>
           <p>{{ auth.currentUser()?.email }}</p>
-          <p *ngIf="auth.currentUser()?.schoolName">🎓 {{ auth.currentUser()?.schoolName }}</p>
+          <p *ngIf="auth.currentUser()?.schoolName" class="school"><span class="material-icons school-icon">school</span> {{ auth.currentUser()?.schoolName }}</p>
           <p *ngIf="auth.currentUser()?.bio" class="bio">{{ auth.currentUser()?.bio }}</p>
           <span class="role-badge">{{ auth.currentUser()?.role }}</span>
         </div>
@@ -66,6 +66,9 @@ import { UserStats } from '../shared/models/stats.model';
 
     .profile-info h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
     .profile-info p { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+
+    .school { display: flex; align-items: center; gap: 6px; }
+    .school-icon { font-size: 16px; color: var(--accent); }
 
     .profile-info .bio { font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
 

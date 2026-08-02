@@ -13,7 +13,7 @@ import { SettingsService } from '../../core/services/settings.service';
 
       <div class="theme-row">
         <div class="theme-info">
-          <span class="theme-icon">{{ settings.theme() === 'dark' ? '🌙' : '☀️' }}</span>
+          <span class="theme-icon material-icons">{{ settings.theme() === 'dark' ? 'dark_mode' : 'light_mode' }}</span>
           <div>
             <div class="theme-name">{{ settings.theme() === 'dark' ? 'Dark Mode' : 'Light Mode' }}</div>
             <div class="theme-desc">Choose between dark and light themes.</div>
@@ -38,7 +38,7 @@ import { SettingsService } from '../../core/services/settings.service';
     }
 
     .theme-info { display: flex; align-items: center; gap: 14px; }
-    .theme-icon { font-size: 26px; }
+    .theme-icon { font-size: 26px; color: var(--accent); }
     .theme-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     .theme-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
 

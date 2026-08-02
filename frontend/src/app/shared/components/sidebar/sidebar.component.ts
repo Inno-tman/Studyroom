@@ -9,7 +9,7 @@ import { AuthService } from '../../../core/services/auth.service';
   template: `
     <aside class="sidebar" [class.hidden]="hidden">
       <div class="sidebar-header">
-        <span class="logo-icon">📚</span>
+        <span class="logo-icon material-icons">menu_book</span>
         <span class="logo-text">StudyRoom</span>
         <button class="collapse-btn" (click)="toggle.emit()" title="Hide sidebar" aria-label="Hide sidebar">
           <span class="material-icons">chevron_left</span>
@@ -92,7 +92,7 @@ import { AuthService } from '../../../core/services/auth.service';
       border-bottom: 1px solid var(--border);
     }
 
-    .logo-icon { font-size: 24px; }
+    .logo-icon { font-size: 24px; color: var(--accent); }
     .logo-text { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 
     .collapse-btn {

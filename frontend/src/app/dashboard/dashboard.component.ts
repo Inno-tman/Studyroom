@@ -25,28 +25,28 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 
       <div class="stats-grid">
         <div class="stat-card">
-          <span class="stat-icon">📚</span>
+          <span class="stat-icon material-icons">schedule</span>
           <div class="stat-info">
             <span class="stat-value">{{ stats.totalStudyHours }}</span>
             <span class="stat-label">Study Hours</span>
           </div>
         </div>
         <div class="stat-card">
-          <span class="stat-icon">✅</span>
+          <span class="stat-icon material-icons">check_circle</span>
           <div class="stat-info">
             <span class="stat-value">{{ stats.sessionsCompleted }}</span>
             <span class="stat-label">Sessions</span>
           </div>
         </div>
         <div class="stat-card">
-          <span class="stat-icon">🔥</span>
+          <span class="stat-icon material-icons">local_fire_department</span>
           <div class="stat-info">
             <span class="stat-value">{{ stats.dailyStreak }}</span>
             <span class="stat-label">Day Streak</span>
           </div>
         </div>
         <div class="stat-card">
-          <span class="stat-icon">📊</span>
+          <span class="stat-icon material-icons">bar_chart</span>
           <div class="stat-info">
             <span class="stat-value">{{ stats.weeklyStudyMinutes }}m</span>
             <span class="stat-label">This Week</span>
@@ -114,7 +114,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; }
 
-    .stat-icon { font-size: 32px; }
+    .stat-icon { font-size: 32px; color: var(--accent); }
     .stat-info { display: flex; flex-direction: column; }
     .stat-value { font-size: 24px; font-weight: 700; color: var(--text-primary); }
     .stat-label { font-size: 12px; color: var(--text-muted); }

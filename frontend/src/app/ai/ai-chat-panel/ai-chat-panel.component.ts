@@ -25,13 +25,13 @@ interface ChatMessage {
       <div class="panel-header">
         <div class="header-left">
           <button class="sidebar-toggle" (click)="showSidebar = !showSidebar" title="Conversation history">
-            <span>{{ showSidebar ? '✕' : '☰' }}</span>
+            <span class="material-icons">{{ showSidebar ? 'close' : 'menu' }}</span>
           </button>
-          <h2>{{ researchMode ? '📚 Research' : '🤖 Chat' }}</h2>
+          <h2><span class="material-icons h2-icon">{{ researchMode ? 'menu_book' : 'smart_toy' }}</span> {{ researchMode ? 'Research' : 'Chat' }}</h2>
         </div>
         <div class="header-actions">
           <button class="mode-toggle" (click)="toggleMode()" [class.active]="researchMode">
-            {{ researchMode ? '📄' : '💬' }}
+            <span class="material-icons">{{ researchMode ? 'description' : 'chat' }}</span>
           </button>
           <button class="new-chat-btn" (click)="newConversation()" title="New conversation">+</button>
         </div>
@@ -46,7 +46,7 @@ interface ChatMessage {
                 <div class="conv-subject">{{ c.subject || 'Untitled' }}</div>
                 <div class="conv-meta">{{ c.messageCount }} msgs · {{ c.createdAt | date:'short' }}</div>
               </div>
-              <button class="conv-del" (click)="deleteConversation(c.id, $event)" title="Delete conversation">✕</button>
+              <button class="conv-del" (click)="deleteConversation(c.id, $event)" title="Delete conversation"><span class="material-icons">close</span></button>
             </div>
             <div class="conv-empty" *ngIf="conversations.length === 0">No conversations yet</div>
           </div>
@@ -55,15 +55,14 @@ interface ChatMessage {
         <div class="chat-area">
           <div class="research-progress" *ngIf="researchMode && currentOutline.length > 0">
             <div class="phase" *ngFor="let phase of currentOutline" [class.active]="phase.phase === currentPhaseName" [class.done]="phase.completed">
-              <span class="phase-dot">{{ phase.completed ? '✓' : (phase.phase === currentPhaseName ? '●' : '○') }}</span>
-              <span class="phase-label">{{ phase.phase.split(':')[0] }}</span>
+              <span class="phase-dot"><span class="material-icons dot-icon">{{ phase.completed ? 'check' : (phase.phase === currentPhaseName ? 'circle' : 'radio_button_unchecked') }}</span></span>              <span class="phase-label">{{ phase.phase.split(':')[0] }}</span>
             </div>
           </div>
 
           <div class="messages" #messageContainer>
             <div class="welcome" *ngIf="messages.length === 0">
               <ng-container *ngIf="!researchMode; else researchWelcome">
-                <div class="welcome-icon">🤖</div>
+                <div class="welcome-icon"><span class="material-icons">smart_toy</span></div>
                 <h3>Academic Assistant</h3>
                 <p>Ask me anything about your studies!</p>
                 <div class="suggestions">
@@ -74,7 +73,7 @@ interface ChatMessage {
                 </div>
               </ng-container>
               <ng-template #researchWelcome>
-                <div class="welcome-icon">📚</div>
+                <div class="welcome-icon"><span class="material-icons">menu_book</span></div>
                 <h3>Research Assistant</h3>
                 <p>Search real academic papers and build your research step by step.</p>
                 <div class="suggestions">
@@ -94,7 +93,7 @@ interface ChatMessage {
                   <span class="bubble-time">{{ msg.createdAt | date:'shortTime' }}</span>
                 </div>
                 <div class="bubble-header user-header" *ngIf="msg.role === 'user'">
-                  <button class="edit-btn" *ngIf="editingIndex !== i" (click)="startEdit(i, $event)" title="Edit message">✎</button>
+                  <button class="edit-btn" *ngIf="editingIndex !== i" (click)="startEdit(i, $event)" title="Edit message"><span class="material-icons">edit</span></button>
                   <span class="bubble-time">{{ msg.createdAt | date:'shortTime' }}</span>
                 </div>
                 <ng-container *ngIf="editingIndex !== i; else editTemplate">
@@ -109,11 +108,11 @@ interface ChatMessage {
                 </ng-template>
                 <div class="msg-error" *ngIf="msg.isError">{{ msg.errorMessage }}</div>
                 <div class="download-bar" *ngIf="msg.role === 'assistant' && msg.content.length > 50 && !msg.isError">
-                  <button class="dl-btn" (click)="downloadDocx(msg)" title="Download as Word">📄 DOCX</button>
-                  <button class="dl-btn" (click)="downloadPdf(msg)" title="Download as PDF">📕 PDF</button>
+                  <button class="dl-btn" (click)="downloadDocx(msg)" title="Download as Word"><span class="material-icons">description</span> DOCX</button>
+                  <button class="dl-btn" (click)="downloadPdf(msg)" title="Download as PDF"><span class="material-icons">picture_as_pdf</span> PDF</button>
                 </div>
                 <div class="retry-bar" *ngIf="msg.isError">
-                  <button class="retry-btn" (click)="retry()">↻ Retry</button>
+                  <button class="retry-btn" (click)="retry()"><span class="material-icons">refresh</span> Retry</button>
                 </div>
                 <div class="refs" *ngIf="msg.references && msg.references.length > 0">
                   <div class="refs-title">References</div>
@@ -123,12 +122,12 @@ interface ChatMessage {
                       <span class="ref-authors">{{ ref.authors }} ({{ ref.year }})</span>
                       <span class="ref-title">{{ ref.title }}</span>
                       <span class="ref-venue" *ngIf="ref.venue">{{ ref.venue }}</span>
-                      <a *ngIf="ref.url" [href]="ref.url" target="_blank" class="ref-link">View paper →</a>
+                      <a *ngIf="ref.url" [href]="ref.url" target="_blank" class="ref-link">View paper <span class="material-icons">arrow_forward</span></a>
                     </div>
                   </div>
                 </div>
                 <div class="next-step" *ngIf="msg.nextPhase">
-                  <button class="next-btn" (click)="continueResearch(msg.nextPhase!)">Continue to {{ msg.nextPhase.split(':')[0] }} →</button>
+                  <button class="next-btn" (click)="continueResearch(msg.nextPhase!)">Continue to {{ msg.nextPhase.split(':')[0] }} <span class="material-icons">arrow_forward</span></button>
                 </div>
               </div>
             </div>
@@ -149,7 +148,7 @@ interface ChatMessage {
               [disabled]="loading"
             />
             <button class="send-btn" (click)="sendMessage()" [disabled]="loading || !question.trim()">
-              <span>➤</span>
+              <span class="material-icons">send</span>
             </button>
           </div>
         </div>
@@ -160,11 +159,14 @@ interface ChatMessage {
     .ai-panel { display: flex; flex-direction: column; height: 100%; background: var(--background); }
     .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
     .header-left { display: flex; align-items: center; gap: 10px; }
-    .header-left h2 { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .header-left h2 { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 6px; }
+    .h2-icon { font-size: 16px; }
     .sidebar-toggle, .new-chat-btn { background: none; border: 1px solid var(--border); color: var(--text-secondary); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .sidebar-toggle .material-icons { font-size: 15px; }
     .sidebar-toggle:hover, .new-chat-btn:hover { border-color: var(--accent); color: var(--accent); }
     .header-actions { display: flex; align-items: center; gap: 6px; }
     .mode-toggle { padding: 4px 8px; font-size: 13px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+    .mode-toggle .material-icons { font-size: 16px; vertical-align: middle; }
     .mode-toggle.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
 
     .layout { display: flex; flex: 1; overflow: hidden; }
@@ -178,6 +180,7 @@ interface ChatMessage {
     .conv-subject { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .conv-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
     .conv-del { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 10px; width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+    .conv-del .material-icons { font-size: 14px; }
     .conv-item:hover .conv-del { opacity: 1; }
     .conv-del:hover { background: rgba(255, 80, 80, 0.1); color: #ff5050; }
     .conv-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
@@ -187,11 +190,13 @@ interface ChatMessage {
     .phase { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 10px; color: var(--text-muted); white-space: nowrap; }
     .phase.active { background: rgba(56, 189, 248, 0.1); color: var(--accent); }
     .phase.done { color: var(--success); }
-    .phase-dot { font-size: 8px; }
+    .phase-dot { font-size: 8px; display: inline-flex; align-items: center; }
+    .dot-icon { font-size: 10px; }
 
     .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
     .welcome { text-align: center; padding: 40px 16px; }
-    .welcome-icon { font-size: 40px; margin-bottom: 12px; }
+    .welcome-icon { font-size: 40px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
+    .welcome-icon .material-icons { font-size: 40px; }
     .welcome h3 { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px; }
     .welcome p { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
     .suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -225,11 +230,13 @@ interface ChatMessage {
     .ref-authors { font-size: 10px; color: var(--text-secondary); }
     .ref-title { font-size: 11px; color: var(--text-primary); font-weight: 500; }
     .ref-venue { font-size: 10px; color: var(--text-muted); }
-    .ref-link { font-size: 10px; color: var(--accent); text-decoration: none; margin-top: 2px; }
+    .ref-link { font-size: 10px; color: var(--accent); text-decoration: none; margin-top: 2px; display: inline-flex; align-items: center; gap: 2px; }
+    .ref-link .material-icons { font-size: 11px; }
     .ref-link:hover { text-decoration: underline; }
 
     .next-step { margin-top: 8px; }
-    .next-btn { padding: 6px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+    .next-btn { padding: 6px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; }
+    .next-btn .material-icons { font-size: 13px; }
     .next-btn:hover { background: var(--accent); color: white; }
 
     .typing { display: flex; gap: 4px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; border-bottom-left-radius: 4px; width: fit-content; }
@@ -244,19 +251,23 @@ interface ChatMessage {
     .chat-input input::placeholder { color: var(--text-muted); }
     .chat-input input:disabled { opacity: 0.5; }
     .send-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); border: none; color: white; cursor: pointer; transition: background 0.15s; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .send-btn .material-icons { font-size: 18px; }
     .send-btn:hover:not(:disabled) { background: var(--primary-hover); }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .download-bar { display: flex; gap: 6px; margin-top: 8px; }
-    .dl-btn { padding: 4px 10px; font-size: 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+    .dl-btn { padding: 4px 10px; font-size: 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; }
+    .dl-btn .material-icons { font-size: 13px; }
     .dl-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(56, 189, 248, 0.05); }
 
     .msg-error { margin-top: 6px; padding: 6px 8px; background: rgba(255, 80, 80, 0.08); border: 1px solid rgba(255, 80, 80, 0.2); border-radius: 6px; font-size: 10px; color: #ff5050; }
     .retry-bar { margin-top: 8px; }
-    .retry-btn { padding: 6px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+    .retry-btn { padding: 6px 14px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; }
+    .retry-btn .material-icons { font-size: 13px; }
     .retry-btn:hover { background: var(--accent); color: white; }
 
-    .edit-btn { opacity: 0; background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 11px; padding: 2px 4px; border-radius: 3px; transition: all 0.15s; }
+    .edit-btn { opacity: 0; background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 11px; padding: 2px 4px; border-radius: 3px; transition: all 0.15s; display: inline-flex; align-items: center; }
+    .edit-btn .material-icons { font-size: 13px; }
     .user-header:hover .edit-btn { opacity: 1; }
     .edit-btn:hover { background: rgba(255,255,255,0.1); color: white; }
     .edit-textarea { width: 100%; min-height: 60px; padding: 6px 8px; background: var(--background); border: 1px solid var(--accent); border-radius: 6px; color: var(--text-primary); font-size: 12px; font-family: inherit; resize: vertical; outline: none; }

@@ -14,6 +14,6 @@ const content = `export const environment = {
 `;
 
 fs.writeFileSync(path.join(__dirname, 'src', 'environments', 'environment.prod.ts'), content);
-console.log('✅ Environment file generated');
+console.log('[OK] Environment file generated');
 console.log(`   API_URL: ${apiUrl}`);
 console.log(`   SIGNALR_URL: ${signalrUrl}`);
