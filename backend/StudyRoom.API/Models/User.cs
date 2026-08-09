@@ -19,7 +19,7 @@ public class User
     [JsonIgnore]
     public string PasswordHash { get; set; } = string.Empty;
 
-    [MaxLength(500)]
+    [MaxLength(2000000)]
     public string? AvatarUrl { get; set; }
 
     [MaxLength(100)]

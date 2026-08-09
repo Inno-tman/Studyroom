@@ -1,7 +1,8 @@
-import { Component, inject, input, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
+import { GooglePhotosService } from '../../core/services/google-photos.service';
 import { User } from '../../shared/models/user.model';
 
 @Component({
@@ -44,6 +45,28 @@ import { User } from '../../shared/models/user.model';
           </label>
         </div>
 
+        <div class="avatar-section">
+          <div class="avatar-preview" [class.has-photo]="avatarUrl">
+            <img *ngIf="avatarUrl" [src]="avatarUrl" alt="avatar preview" />
+            <span *ngIf="!avatarUrl" class="avatar-placeholder">Photo</span>
+          </div>
+
+          <div class="avatar-controls">
+            <button
+              type="button"
+              class="btn-secondary"
+              (click)="pickFromGooglePhotos()"
+              [disabled]="pickingFromPhotos()"
+            >
+              <span class="material-symbols-rounded">photo_library</span>
+              {{ pickingFromPhotos() ? 'Opening Photos…' : 'Select from Google Photos' }}
+            </button>
+            <p class="avatar-hint">
+              The photo is cropped to a square and stored as your avatar.
+            </p>
+          </div>
+        </div>
+
         <label>
           Avatar URL
           <input
@@ -53,10 +76,6 @@ import { User } from '../../shared/models/user.model';
             placeholder="https://example.com/avatar.jpg"
           />
         </label>
-
-        <div *ngIf="avatarUrl" class="avatar-preview">
-          <img [src]="avatarUrl" alt="avatar preview" />
-        </div>
 
         <label>
           Bio
@@ -102,8 +121,14 @@ import { User } from '../../shared/models/user.model';
     textarea { resize: vertical; }
     input:focus, textarea:focus { outline: none; border-color: var(--primary); }
 
-    .avatar-preview { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; margin-bottom: 16px; }
+    .avatar-section { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .avatar-preview { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border); background: var(--surface-hover); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-placeholder { font-size: 12px; color: var(--text-secondary); }
+    .avatar-controls { display: flex; flex-direction: column; gap: 6px; }
+    .avatar-controls .btn-secondary { display: inline-flex; align-items: center; gap: 8px; }
+    .avatar-controls .btn-secondary .material-symbols-rounded { font-size: 18px; }
+    .avatar-hint { font-size: 12px; color: var(--text-secondary); margin: 0; }
 
     .form-actions { display: flex; gap: 12px; }
 
@@ -124,6 +149,7 @@ import { User } from '../../shared/models/user.model';
 })
 export class ProfileSettingsComponent implements OnInit {
   private auth = inject(AuthService);
+  private googlePhotos = inject(GooglePhotosService);
 
   username = '';
   firstName = '';
@@ -135,6 +161,7 @@ export class ProfileSettingsComponent implements OnInit {
   saving = this.auth.saving;
   error = this.auth.error;
   success = this.auth.success;
+  pickingFromPhotos = signal(false);
 
   ngOnInit(): void {
     this.reset();
@@ -149,6 +176,18 @@ export class ProfileSettingsComponent implements OnInit {
     this.avatarUrl = user.avatarUrl ?? '';
     this.bio = user.bio ?? '';
     this.auth.clearMessages();
+  }
+
+  async pickFromGooglePhotos(): Promise<void> {
+    this.auth.clearMessages();
+    this.pickingFromPhotos.set(true);
+    try {
+      this.avatarUrl = await this.googlePhotos.pickAvatar();
+    } catch (err: any) {
+      this.auth.error.set(err?.message || 'Could not select a photo. Please try again.');
+    } finally {
+      this.pickingFromPhotos.set(false);
+    }
   }
 
   async save(): Promise<void> {
