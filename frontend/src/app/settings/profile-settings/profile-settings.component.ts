@@ -52,17 +52,35 @@ import { User } from '../../shared/models/user.model';
           </div>
 
           <div class="avatar-controls">
-            <button
-              type="button"
-              class="btn-secondary"
-              (click)="pickFromGooglePhotos()"
-              [disabled]="pickingFromPhotos()"
-            >
-              <span class="material-symbols-rounded">photo_library</span>
-              {{ pickingFromPhotos() ? 'Opening Photos…' : 'Select from Google Photos' }}
-            </button>
+            <div class="avatar-buttons">
+              <button
+                type="button"
+                class="btn-secondary"
+                (click)="fileInput?.click()"
+                [disabled]="uploadingFile()"
+              >
+                <span class="material-symbols-rounded">upload</span>
+                {{ uploadingFile() ? 'Uploading…' : 'Upload from device' }}
+              </button>
+              <button
+                type="button"
+                class="btn-secondary"
+                (click)="pickFromGooglePhotos()"
+                [disabled]="pickingFromPhotos()"
+              >
+                <span class="material-symbols-rounded">photo_library</span>
+                {{ pickingFromPhotos() ? 'Opening Photos…' : 'Select from Google Photos' }}
+              </button>
+            </div>
+            <input
+              #fileInput
+              type="file"
+              accept="image/*"
+              hidden
+              (change)="onFileSelected($event)"
+            />
             <p class="avatar-hint">
-              The photo is cropped to a square and stored as your avatar.
+              Photos are cropped to a square and stored as your avatar.
             </p>
           </div>
         </div>
@@ -126,8 +144,10 @@ import { User } from '../../shared/models/user.model';
     .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
     .avatar-placeholder { font-size: 12px; color: var(--text-secondary); }
     .avatar-controls { display: flex; flex-direction: column; gap: 6px; }
+    .avatar-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
     .avatar-controls .btn-secondary { display: inline-flex; align-items: center; gap: 8px; }
     .avatar-controls .btn-secondary .material-symbols-rounded { font-size: 18px; }
+    .avatar-controls .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
     .avatar-hint { font-size: 12px; color: var(--text-secondary); margin: 0; }
 
     .form-actions { display: flex; gap: 12px; }
@@ -162,6 +182,7 @@ export class ProfileSettingsComponent implements OnInit {
   error = this.auth.error;
   success = this.auth.success;
   pickingFromPhotos = signal(false);
+  uploadingFile = signal(false);
 
   ngOnInit(): void {
     this.reset();
@@ -188,6 +209,61 @@ export class ProfileSettingsComponent implements OnInit {
     } finally {
       this.pickingFromPhotos.set(false);
     }
+  }
+
+  async onFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.auth.error.set('Please choose an image file.');
+      return;
+    }
+
+    this.auth.clearMessages();
+    this.uploadingFile.set(true);
+    try {
+      this.avatarUrl = await this.readImageFile(file);
+    } catch {
+      this.auth.error.set('Could not read that image. Please try another file.');
+    } finally {
+      this.uploadingFile.set(false);
+      input.value = '';
+    }
+  }
+
+  private readImageFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve(this.resizeToSquare(img));
+        img.onerror = () => reject(new Error('image load failed'));
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error('file read failed'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private resizeToSquare(img: HTMLImageElement): string {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('No canvas context');
+    }
+
+    const scale = Math.max(size / img.width, size / img.height);
+    const sw = size / scale;
+    const sh = size / scale;
+    const sx = (img.width - sw) / 2;
+    const sy = (img.height - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+    return canvas.toDataURL('image/jpeg', 0.85);
   }
 
   async save(): Promise<void> {
