@@ -90,6 +90,7 @@ builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IRoomInvitationService, RoomInvitationService>();
 builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
@@ -239,6 +240,26 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS "IX_DirectMessages_SenderId" ON "DirectMessages" ("SenderId");
         CREATE INDEX IF NOT EXISTS "IX_DirectMessages_ReceiverId" ON "DirectMessages" ("ReceiverId");
         CREATE INDEX IF NOT EXISTS "IX_DirectMessages_CreatedAt" ON "DirectMessages" ("CreatedAt");
+
+        CREATE TABLE IF NOT EXISTS "Notifications" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Type" text NOT NULL,
+            "Title" text NOT NULL,
+            "Body" text NOT NULL,
+            "Icon" text NOT NULL DEFAULT 'notifications',
+            "ActorId" uuid NULL,
+            "ActorName" text NOT NULL DEFAULT '',
+            "ActorAvatarUrl" text NULL,
+            "Link" text NULL,
+            "IsRead" boolean NOT NULL DEFAULT false,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_Notifications" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_Notifications_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_Notifications_UserId" ON "Notifications" ("UserId");
+        CREATE INDEX IF NOT EXISTS "IX_Notifications_UserId_IsRead" ON "Notifications" ("UserId", "IsRead");
+        CREATE INDEX IF NOT EXISTS "IX_Notifications_CreatedAt" ON "Notifications" ("CreatedAt");
     """);
 }
 

@@ -10,13 +10,15 @@ public class PostService : IPostService
     private readonly IFriendshipRepository _friendRepo;
     private readonly IRoomRepository _roomRepo;
     private readonly IUserRepository _userRepo;
+    private readonly INotificationService _notificationService;
 
-    public PostService(IPostRepository postRepo, IFriendshipRepository friendRepo, IRoomRepository roomRepo, IUserRepository userRepo)
+    public PostService(IPostRepository postRepo, IFriendshipRepository friendRepo, IRoomRepository roomRepo, IUserRepository userRepo, INotificationService notificationService)
     {
         _postRepo = postRepo;
         _friendRepo = friendRepo;
         _roomRepo = roomRepo;
         _userRepo = userRepo;
+        _notificationService = notificationService;
     }
 
     public async Task<List<PostDto>> GetTimelineAsync(Guid userId)
@@ -123,6 +125,26 @@ public class PostService : IPostService
         });
 
         var author = await _userRepo.GetByIdAsync(userId);
+
+        var recipientId = parentId.HasValue
+            ? (await _postRepo.GetCommentByIdAsync(parentId.Value))!.UserId
+            : post.UserId;
+        if (recipientId != userId)
+        {
+            var recipient = await _userRepo.GetByIdAsync(recipientId);
+            var summary = dto.Content.Length > 120 ? dto.Content[..120] + "…" : dto.Content;
+            await _notificationService.CreateAsync(
+                recipientId,
+                "post_comment",
+                "New comment",
+                $"{BuildDisplayName(author)} commented on your post: \"{summary}\"",
+                icon: "comment",
+                actorId: userId,
+                actorName: BuildDisplayName(author),
+                actorAvatarUrl: author?.AvatarUrl,
+                link: "/timeline");
+        }
+
         return new CommentDto
         {
             Id = comment.Id,

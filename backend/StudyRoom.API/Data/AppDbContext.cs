@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<PostReaction> PostReactions => Set<PostReaction>();
     public DbSet<RoomInvitation> RoomInvitations => Set<RoomInvitation>();
     public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -133,6 +134,14 @@ public class AppDbContext : DbContext
             entity.HasIndex(d => d.CreatedAt);
             entity.HasOne(d => d.Sender).WithMany().HasForeignKey(d => d.SenderId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(d => d.Receiver).WithMany().HasForeignKey(d => d.ReceiverId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasIndex(n => n.UserId);
+            entity.HasIndex(n => new { n.UserId, n.IsRead });
+            entity.HasIndex(n => n.CreatedAt);
+            entity.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

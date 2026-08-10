@@ -9,15 +9,18 @@ public class RoomInvitationService : IRoomInvitationService
     private readonly IRoomInvitationRepository _inviteRepo;
     private readonly IRoomRepository _roomRepo;
     private readonly IUserRepository _userRepo;
+    private readonly INotificationService _notificationService;
 
     public RoomInvitationService(
         IRoomInvitationRepository inviteRepo,
         IRoomRepository roomRepo,
-        IUserRepository userRepo)
+        IUserRepository userRepo,
+        INotificationService notificationService)
     {
         _inviteRepo = inviteRepo;
         _roomRepo = roomRepo;
         _userRepo = userRepo;
+        _notificationService = notificationService;
     }
 
     public async Task<RoomInvitationDto> InviteAsync(Guid roomId, Guid inviterId, Guid inviteeId)
@@ -47,6 +50,19 @@ public class RoomInvitationService : IRoomInvitationService
         };
 
         await _inviteRepo.AddAsync(invitation);
+
+        var inviter = await _userRepo.GetByIdAsync(inviterId);
+        await _notificationService.CreateAsync(
+            inviteeId,
+            "room_invite",
+            "Room invitation",
+            $"{inviter?.Username ?? "Someone"} invited you to join \"{room.Name}\".",
+            icon: "mark_email_unread",
+            actorId: inviterId,
+            actorName: inviter?.Username ?? "Someone",
+            actorAvatarUrl: inviter?.AvatarUrl,
+            link: "/invitations");
+
         return Map(await _inviteRepo.GetByIdAsync(invitation.Id));
     }
 
@@ -81,6 +97,18 @@ public class RoomInvitationService : IRoomInvitationService
             RoomId = invitation.RoomId,
             UserId = userId
         });
+
+        var invitee = await _userRepo.GetByIdAsync(userId);
+        await _notificationService.CreateAsync(
+            invitation.InviterId,
+            "room_invite_accepted",
+            "Invitation accepted",
+            $"{invitee?.Username ?? "Someone"} accepted your invitation to join your room.",
+            icon: "check",
+            actorId: userId,
+            actorName: invitee?.Username ?? "Someone",
+            actorAvatarUrl: invitee?.AvatarUrl,
+            link: "/rooms");
 
         return Map(await _inviteRepo.GetByIdAsync(invitation.Id));
     }

@@ -2,6 +2,7 @@ import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -33,6 +34,11 @@ import { AuthService } from '../../../core/services/auth.service';
         <a routerLink="/people" routerLinkActive="active" class="nav-item">
           <span class="material-icons">people</span>
           <span>People</span>
+        </a>
+        <a routerLink="/notifications" routerLinkActive="active" class="nav-item">
+          <span class="material-icons">notifications</span>
+          <span>Notifications</span>
+          <span *ngIf="notificationService.unreadCount() > 0" class="badge">{{ notificationService.unreadCount() }}</span>
         </a>
         <a routerLink="/invitations" routerLinkActive="active" class="nav-item">
           <span class="material-icons">mark_email_unread</span>
@@ -144,6 +150,21 @@ import { AuthService } from '../../../core/services/auth.service';
       color: white;
     }
 
+    .badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: white;
+      font-size: var(--font-11);
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .sidebar-footer {
       padding: 10px 8px;
       border-top: 1px solid var(--border);
@@ -208,6 +229,7 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class SidebarComponent {
   auth = inject(AuthService);
+  notificationService = inject(NotificationService);
   @Input() hidden = false;
   @Output() toggle = new EventEmitter<void>();
 }

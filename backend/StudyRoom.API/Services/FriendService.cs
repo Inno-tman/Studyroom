@@ -9,12 +9,14 @@ public class FriendService : IFriendService
     private readonly IUserRepository _userRepo;
     private readonly IFriendshipRepository _friendRepo;
     private readonly IRoomRepository _roomRepo;
+    private readonly INotificationService _notificationService;
 
-    public FriendService(IUserRepository userRepo, IFriendshipRepository friendRepo, IRoomRepository roomRepo)
+    public FriendService(IUserRepository userRepo, IFriendshipRepository friendRepo, IRoomRepository roomRepo, INotificationService notificationService)
     {
         _userRepo = userRepo;
         _friendRepo = friendRepo;
         _roomRepo = roomRepo;
+        _notificationService = notificationService;
     }
 
     public async Task<List<UserSearchResultDto>> SearchUsersAsync(string query, Guid userId)
@@ -193,6 +195,18 @@ public class FriendService : IFriendService
             AddresseeId = toUserId,
             Status = "Pending"
         });
+
+        var requester = await _userRepo.GetByIdAsync(fromUserId);
+        await _notificationService.CreateAsync(
+            toUserId,
+            "friend_request",
+            "New friend request",
+            $"{BuildDisplayName(requester!)} sent you a friend request.",
+            icon: "person_add",
+            actorId: fromUserId,
+            actorName: BuildDisplayName(requester!),
+            actorAvatarUrl: requester?.AvatarUrl,
+            link: "/people");
     }
 
     public async Task AcceptRequestAsync(Guid requestId, Guid userId)
@@ -205,6 +219,18 @@ public class FriendService : IFriendService
 
         rel.Status = "Accepted";
         await _friendRepo.UpdateAsync(rel);
+
+        var accepter = await _userRepo.GetByIdAsync(userId);
+        await _notificationService.CreateAsync(
+            rel.RequesterId,
+            "friend_accept",
+            "Friend request accepted",
+            $"{BuildDisplayName(accepter!)} accepted your friend request.",
+            icon: "check",
+            actorId: userId,
+            actorName: BuildDisplayName(accepter!),
+            actorAvatarUrl: accepter?.AvatarUrl,
+            link: "/people");
     }
 
     public async Task DeleteRequestAsync(Guid requestId, Guid userId)

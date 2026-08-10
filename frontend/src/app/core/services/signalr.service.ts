@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 import { Message } from '../../shared/models/message.model';
 import { DirectMessage } from '../../shared/models/social.model';
+import { NotificationItem } from '../../shared/models/notification.model';
 
 @Injectable({ providedIn: 'root' })
 export class SignalRService {
@@ -19,6 +20,7 @@ export class SignalRService {
   private timerCompletedSubject = new Subject<any>();
   private notesUpdatedSubject = new Subject<any>();
   private directMessageSubject = new Subject<DirectMessage>();
+  private notificationSubject = new Subject<NotificationItem>();
 
   message$ = this.messageSubject.asObservable();
   userJoined$ = this.userJoinedSubject.asObservable();
@@ -30,6 +32,7 @@ export class SignalRService {
   timerCompleted$ = this.timerCompletedSubject.asObservable();
   notesUpdated$ = this.notesUpdatedSubject.asObservable();
   directMessage$ = this.directMessageSubject.asObservable();
+  notification$ = this.notificationSubject.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -53,6 +56,7 @@ export class SignalRService {
     this.hubConnection.on('TimerCompleted', (data: any) => this.timerCompletedSubject.next(data));
     this.hubConnection.on('NotesUpdated', (data: any) => this.notesUpdatedSubject.next(data));
     this.hubConnection.on('ReceiveDirectMessage', (msg: DirectMessage) => this.directMessageSubject.next(msg));
+    this.hubConnection.on('ReceiveNotification', (notification: NotificationItem) => this.notificationSubject.next(notification));
 
     await this.hubConnection.start();
   }
