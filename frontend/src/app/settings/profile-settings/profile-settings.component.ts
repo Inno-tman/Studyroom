@@ -36,24 +36,15 @@ import { User } from '../../shared/models/user.model';
 
           <div class="avatar-copy">
             <p class="avatar-title">Profile Photo</p>
-            <p class="avatar-hint">Click the avatar or browse to upload. JPG or PNG, cropped to a square.</p>
-            <button
-              type="button"
-              class="btn-upload"
-              (click)="fileInput?.click()"
-              [disabled]="uploadingFile()"
-            >
-              <span class="material-icons">{{ uploadingFile() ? 'hourglass_top' : 'upload' }}</span>
-              {{ uploadingFile() ? 'Uploading…' : 'Upload photo' }}
-            </button>
-            <input
-              #fileInput
-              type="file"
-              accept="image/*"
-              hidden
-              (change)="onFileSelected($event)"
-            />
+            <p class="avatar-hint">Click the photo to upload. JPG or PNG, cropped to a square.</p>
           </div>
+          <input
+            #fileInput
+            type="file"
+            accept="image/*"
+            class="visually-hidden"
+            (change)="onFileSelected($event)"
+          />
         </section>
 
         <div class="form-grid">
@@ -181,19 +172,13 @@ import { User } from '../../shared/models/user.model';
 
     .avatar-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .avatar-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
-    .avatar-hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 8px; }
-    .btn-upload {
-      display: inline-flex; align-items: center; gap: 8px;
-      align-self: flex-start;
-      background: var(--primary); color: white; border: none;
-      padding: 10px 18px; border-radius: 10px;
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .btn-upload:hover { background: var(--primary-hover); }
-    .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+    .avatar-hint { font-size: 13px; color: var(--text-secondary); margin: 0; }
 
-    .avatar-copy input[type="file"] { display: none; }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin-bottom: 20px; }
 
@@ -245,8 +230,6 @@ import { User } from '../../shared/models/user.model';
       .form-grid { grid-template-columns: 1fr; }
       .card { padding: 20px; }
       .avatar-section { flex-direction: column; align-items: center; text-align: center; }
-      .avatar-copy { align-items: center; }
-      .btn-upload { align-self: center; }
     }
   `]
 })
