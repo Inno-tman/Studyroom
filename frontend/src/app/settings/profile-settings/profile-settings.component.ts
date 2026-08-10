@@ -193,6 +193,8 @@ import { User } from '../../shared/models/user.model';
     .btn-upload:hover { background: var(--primary-hover); }
     .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    .avatar-copy input[type="file"] { display: none; }
+
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin-bottom: 20px; }
 
     label { display: block; margin-bottom: 20px; }
