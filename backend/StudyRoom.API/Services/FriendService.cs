@@ -8,11 +8,13 @@ public class FriendService : IFriendService
 {
     private readonly IUserRepository _userRepo;
     private readonly IFriendshipRepository _friendRepo;
+    private readonly IRoomRepository _roomRepo;
 
-    public FriendService(IUserRepository userRepo, IFriendshipRepository friendRepo)
+    public FriendService(IUserRepository userRepo, IFriendshipRepository friendRepo, IRoomRepository roomRepo)
     {
         _userRepo = userRepo;
         _friendRepo = friendRepo;
+        _roomRepo = roomRepo;
     }
 
     public async Task<List<UserSearchResultDto>> SearchUsersAsync(string query, Guid userId)
@@ -52,7 +54,9 @@ public class FriendService : IFriendService
         var myFriendships = await _friendRepo.GetAcceptedAsync(userId);
         var allAccepted = await _friendRepo.GetAllAcceptedAsync();
         var pending = await _friendRepo.GetPendingAsync(userId);
+        var roomMap = await _roomRepo.GetMembershipMapAsync();
 
+        var myRoomIds = roomMap.TryGetValue(userId, out var myRooms) ? myRooms : new HashSet<Guid>();
         var myFriendIds = myFriendships
             .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
             .ToHashSet();
@@ -73,17 +77,47 @@ public class FriendService : IFriendService
             .Concat(myFriendIds)
             .ToHashSet();
 
+        var myAge = me.BirthDate.HasValue ? AgeOf(me.BirthDate.Value) : (int?)null;
+        var myInterests = SplitTokens(me.Interests);
+
         var candidates = allUsers
             .Where(u => u.Id != userId && !connectedIds.Contains(u.Id))
             .Select(u =>
             {
                 var theirFriends = adjacency.TryGetValue(u.Id, out var s) ? s : new HashSet<Guid>();
                 var mutual = theirFriends.Count(f => myFriendIds.Contains(f));
+
                 var sameSchool = !string.IsNullOrWhiteSpace(me.SchoolName)
                     && !string.IsNullOrWhiteSpace(u.SchoolName)
                     && me.SchoolName.Equals(u.SchoolName, StringComparison.OrdinalIgnoreCase);
-                var score = (mutual * 100) + (sameSchool ? 10 : 0);
-                return (u, mutual, sameSchool, score);
+
+                var sameLocation = !string.IsNullOrWhiteSpace(me.Location)
+                    && !string.IsNullOrWhiteSpace(u.Location)
+                    && me.Location.Equals(u.Location, StringComparison.OrdinalIgnoreCase);
+
+                var theirRooms = roomMap.TryGetValue(u.Id, out var r) ? r : new HashSet<Guid>();
+                var sharedRooms = theirRooms.Intersect(myRoomIds).Count();
+
+                var ageNear = myAge.HasValue && u.BirthDate.HasValue
+                    && Math.Abs(myAge.Value - AgeOf(u.BirthDate.Value)) <= 3;
+
+                var sameMajor = !string.IsNullOrWhiteSpace(me.Major)
+                    && !string.IsNullOrWhiteSpace(u.Major)
+                    && me.Major.Equals(u.Major, StringComparison.OrdinalIgnoreCase);
+
+                var theirInterests = SplitTokens(u.Interests);
+                var interestOverlap = theirInterests.Count(i => myInterests.Contains(i, StringComparer.OrdinalIgnoreCase));
+
+                var score = (mutual * 100)
+                    + (sameSchool ? 25 : 0)
+                    + (sameLocation ? 20 : 0)
+                    + (sharedRooms * 10)
+                    + (ageNear ? 15 : 0)
+                    + (sameMajor ? 12 : 0)
+                    + (interestOverlap * 8);
+
+                var reason = BuildReason(mutual, sameSchool, sameLocation, sharedRooms, ageNear, sameMajor, interestOverlap);
+                return (u, mutual, sharedRooms, reason, score);
             })
             .Where(c => c.score > 0)
             .OrderByDescending(c => c.score)
@@ -101,8 +135,11 @@ public class FriendService : IFriendService
                 DisplayName = BuildDisplayName(c.u),
                 AvatarUrl = c.u.AvatarUrl,
                 SchoolName = c.u.SchoolName,
+                Location = c.u.Location,
                 Relationship = "None",
-                MutualCount = c.mutual
+                MutualCount = c.mutual,
+                SharedRoomCount = c.sharedRooms,
+                Reason = c.reason
             });
         }
 
@@ -204,5 +241,36 @@ public class FriendService : IFriendService
         if (string.IsNullOrWhiteSpace(u.FirstName) && string.IsNullOrWhiteSpace(u.LastName))
             return u.Username;
         return $"{u.FirstName} {u.LastName}".Trim();
+    }
+
+    private static int AgeOf(DateTime birthDate)
+    {
+        var today = DateTime.UtcNow;
+        var age = today.Year - birthDate.Year;
+        if (birthDate.Date > today.AddYears(-age)) age--;
+        return age;
+    }
+
+    private static List<string> SplitTokens(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return new List<string>();
+        return value.Split(',', ';', '\n', '\r')
+            .Select(t => t.Trim())
+            .Where(t => t.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string BuildReason(int mutual, bool sameSchool, bool sameLocation, int sharedRooms, bool ageNear, bool sameMajor, int interestOverlap)
+    {
+        var parts = new List<string>();
+        if (mutual > 0) parts.Add($"{mutual} mutual {(mutual == 1 ? "friend" : "friends")}");
+        if (sameSchool) parts.Add("same school");
+        if (sameLocation) parts.Add("nearby");
+        if (sharedRooms > 0) parts.Add($"{sharedRooms} shared {(sharedRooms == 1 ? "room" : "rooms")}");
+        if (ageNear) parts.Add("similar age");
+        if (sameMajor) parts.Add("same major");
+        if (interestOverlap > 0) parts.Add($"{interestOverlap} shared {(interestOverlap == 1 ? "interest" : "interests")}");
+        return parts.Count > 0 ? string.Join(" · ", parts) : "May know each other";
     }
 }

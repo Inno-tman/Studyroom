@@ -79,7 +79,34 @@ import { User } from '../../shared/models/user.model';
             <span class="field-label">School Name</span>
             <input type="text" name="schoolName" [(ngModel)]="schoolName" maxlength="150" />
           </label>
+
+          <label>
+            <span class="field-label">Location / City</span>
+            <input type="text" name="location" [(ngModel)]="location" maxlength="150" placeholder="e.g. Seattle, WA" />
+          </label>
+
+          <label>
+            <span class="field-label">Date of Birth</span>
+            <input type="date" name="birthDate" [(ngModel)]="birthDate" />
+          </label>
+
+          <label>
+            <span class="field-label">Major / Field of Study</span>
+            <input type="text" name="major" [(ngModel)]="major" maxlength="150" placeholder="e.g. Computer Science" />
+          </label>
         </div>
+
+        <label>
+          <span class="field-label">Interests</span>
+          <input
+            type="text"
+            name="interests"
+            [(ngModel)]="interests"
+            maxlength="500"
+            placeholder="Comma-separated, e.g. Math, Literature, Music"
+          />
+          <span class="char-count">{{ interests.length }}/500</span>
+        </label>
 
         <label>
           <span class="field-label">Bio</span>
@@ -240,6 +267,10 @@ export class ProfileSettingsComponent implements OnInit {
   firstName = '';
   lastName = '';
   schoolName = '';
+  location = '';
+  birthDate = '';
+  major = '';
+  interests = '';
   avatarUrl = '';
   bio = '';
 
@@ -262,6 +293,10 @@ export class ProfileSettingsComponent implements OnInit {
     this.firstName = user.firstName ?? '';
     this.lastName = user.lastName ?? '';
     this.schoolName = user.schoolName ?? '';
+    this.location = user.location ?? '';
+    this.birthDate = user.birthDate ? user.birthDate.slice(0, 10) : '';
+    this.major = user.major ?? '';
+    this.interests = user.interests ?? '';
     this.avatarUrl = user.avatarUrl ?? '';
     this.bio = user.bio ?? '';
     this.auth.clearMessages();
@@ -332,6 +367,10 @@ export class ProfileSettingsComponent implements OnInit {
       firstName: this.firstName.trim() || undefined,
       lastName: this.lastName.trim() || undefined,
       schoolName: this.schoolName.trim() || undefined,
+      location: this.location.trim() || undefined,
+      birthDate: this.birthDate || undefined,
+      major: this.major.trim() || undefined,
+      interests: this.interests.trim() || undefined,
       avatarUrl: this.avatarUrl.trim() || undefined,
       bio: this.bio.trim() || undefined
     });

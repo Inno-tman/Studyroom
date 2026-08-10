@@ -7,9 +7,12 @@ public class UserSearchResultDto
     public string? DisplayName { get; set; }
     public string? AvatarUrl { get; set; }
     public string? SchoolName { get; set; }
+    public string? Location { get; set; }
     public string Relationship { get; set; } = "None";
     public Guid? RelationshipId { get; set; }
     public int MutualCount { get; set; }
+    public int SharedRoomCount { get; set; }
+    public string? Reason { get; set; }
 }
 
 public class FriendRequestDto

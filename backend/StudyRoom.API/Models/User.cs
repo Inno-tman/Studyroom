@@ -34,6 +34,17 @@ public class User
     [MaxLength(150)]
     public string? SchoolName { get; set; }
 
+    [MaxLength(150)]
+    public string? Location { get; set; }
+
+    public DateTime? BirthDate { get; set; }
+
+    [MaxLength(150)]
+    public string? Major { get; set; }
+
+    [MaxLength(500)]
+    public string? Interests { get; set; }
+
     [MaxLength(1000)]
     public string? Bio { get; set; }
 

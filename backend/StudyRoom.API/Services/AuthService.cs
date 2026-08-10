@@ -102,6 +102,10 @@ public class AuthService : IAuthService
         user.FirstName = string.IsNullOrWhiteSpace(dto.FirstName) ? null : dto.FirstName.Trim();
         user.LastName = string.IsNullOrWhiteSpace(dto.LastName) ? null : dto.LastName.Trim();
         user.SchoolName = string.IsNullOrWhiteSpace(dto.SchoolName) ? null : dto.SchoolName.Trim();
+        user.Location = string.IsNullOrWhiteSpace(dto.Location) ? null : dto.Location.Trim();
+        user.BirthDate = dto.BirthDate;
+        user.Major = string.IsNullOrWhiteSpace(dto.Major) ? null : dto.Major.Trim();
+        user.Interests = string.IsNullOrWhiteSpace(dto.Interests) ? null : dto.Interests.Trim();
         user.Bio = string.IsNullOrWhiteSpace(dto.Bio) ? null : dto.Bio.Trim();
 
         await _userRepo.UpdateAsync(user);
@@ -173,6 +177,10 @@ public class AuthService : IAuthService
             FirstName = user.FirstName,
             LastName = user.LastName,
             SchoolName = user.SchoolName,
+            Location = user.Location,
+            BirthDate = user.BirthDate,
+            Major = user.Major,
+            Interests = user.Interests,
             Bio = user.Bio,
             Role = user.Role,
             ProfileComplete = !string.IsNullOrWhiteSpace(user.AvatarUrl),

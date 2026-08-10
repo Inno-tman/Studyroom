@@ -28,6 +28,10 @@ import { UserStats } from '../shared/models/stats.model';
           <h2>{{ displayName() }}</h2>
           <p>{{ auth.currentUser()?.email }}</p>
           <p *ngIf="auth.currentUser()?.schoolName" class="school"><span class="material-icons school-icon">school</span> {{ auth.currentUser()?.schoolName }}</p>
+          <p *ngIf="auth.currentUser()?.location" class="detail"><span class="material-icons">place</span> {{ auth.currentUser()?.location }}</p>
+          <p *ngIf="auth.currentUser()?.major" class="detail"><span class="material-icons">work</span> {{ auth.currentUser()?.major }}</p>
+          <p *ngIf="auth.currentUser()?.birthDate" class="detail"><span class="material-icons">cake</span> {{ age() }} years old</p>
+          <p *ngIf="auth.currentUser()?.interests" class="interests">{{ interestsTags() }}</p>
           <p *ngIf="auth.currentUser()?.bio" class="bio">{{ auth.currentUser()?.bio }}</p>
           <span class="role-badge">{{ auth.currentUser()?.role }}</span>
         </div>
@@ -69,6 +73,11 @@ import { UserStats } from '../shared/models/stats.model';
 
     .school { display: flex; align-items: center; gap: 6px; }
     .school-icon { font-size: var(--font-16); color: var(--accent); }
+
+    .detail { display: flex; align-items: center; gap: 6px; }
+    .detail .material-icons { font-size: var(--font-16); color: var(--accent); }
+
+    .interests { font-size: var(--font-14); color: var(--text-primary); font-weight: 500; }
 
     .profile-info .bio { font-size: var(--font-14); color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
 

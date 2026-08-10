@@ -6,6 +6,10 @@ export interface User {
   firstName?: string;
   lastName?: string;
   schoolName?: string;
+  location?: string;
+  birthDate?: string;
+  major?: string;
+  interests?: string;
   bio?: string;
   role: string;
   profileComplete?: boolean;
@@ -30,5 +34,9 @@ export interface UpdateProfileDto {
   firstName?: string;
   lastName?: string;
   schoolName?: string;
+  location?: string;
+  birthDate?: string;
+  major?: string;
+  interests?: string;
   bio?: string;
 }

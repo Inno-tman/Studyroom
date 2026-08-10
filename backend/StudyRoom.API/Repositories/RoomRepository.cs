@@ -99,4 +99,17 @@ public class RoomRepository : IRoomRepository
             .Include(rm => rm.Room).ThenInclude(r => r.Members)
             .Select(rm => rm.Room!)
             .ToListAsync();
+
+    public async Task<Dictionary<Guid, HashSet<Guid>>> GetMembershipMapAsync()
+    {
+        var memberships = await _context.RoomMembers.AsNoTracking().ToListAsync();
+        var map = new Dictionary<Guid, HashSet<Guid>>();
+        foreach (var m in memberships)
+        {
+            if (!map.TryGetValue(m.UserId, out var rooms))
+                map[m.UserId] = rooms = new HashSet<Guid>();
+            rooms.Add(m.RoomId);
+        }
+        return map;
+    }
 }

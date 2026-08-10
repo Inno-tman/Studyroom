@@ -17,4 +17,5 @@ public interface IRoomRepository
     Task<int> GetMemberCountAsync(Guid roomId);
     Task<RoomMember?> GetMembershipAsync(Guid roomId, Guid userId);
     Task<List<Room>> GetUserRoomsAsync(Guid userId);
+    Task<Dictionary<Guid, HashSet<Guid>>> GetMembershipMapAsync();
 }

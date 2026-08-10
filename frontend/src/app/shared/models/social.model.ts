@@ -4,9 +4,12 @@ export interface UserSearchResult {
   displayName?: string;
   avatarUrl?: string;
   schoolName?: string;
+  location?: string;
   relationship: 'None' | 'Friends' | 'RequestSent' | 'RequestReceived';
   relationshipId?: string;
   mutualCount?: number;
+  sharedRoomCount?: number;
+  reason?: string;
 }
 
 export interface Friend {
