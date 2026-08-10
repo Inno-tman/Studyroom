@@ -27,21 +27,23 @@ import { User } from '../../shared/models/user.model';
               <img *ngIf="avatarUrl" [src]="avatarUrl" alt="avatar preview" />
               <span *ngIf="!avatarUrl" class="material-icons avatar-placeholder">person</span>
               <div class="avatar-overlay" (click)="fileInput?.click()">
-                <span class="material-icons">photo_camera</span>
-                <span class="overlay-label">Change</span>
+                <span class="material-icons">{{ uploadingFile() ? 'hourglass_top' : 'photo_camera' }}</span>
+                <span class="overlay-label">{{ uploadingFile() ? 'Uploading…' : 'Change' }}</span>
               </div>
             </div>
-            <div class="avatar-initial" *ngIf="!avatarUrl">{{ displayNameInitial }}</div>
+            <span class="avatar-initial" *ngIf="!avatarUrl">{{ displayNameInitial }}</span>
           </div>
 
-          <div class="avatar-controls">
+          <div class="avatar-copy">
+            <p class="avatar-title">Profile Photo</p>
+            <p class="avatar-hint">Click the avatar or browse to upload. JPG or PNG, cropped to a square.</p>
             <button
               type="button"
               class="btn-upload"
               (click)="fileInput?.click()"
               [disabled]="uploadingFile()"
             >
-              <span class="material-icons">upload</span>
+              <span class="material-icons">{{ uploadingFile() ? 'hourglass_top' : 'upload' }}</span>
               {{ uploadingFile() ? 'Uploading…' : 'Upload photo' }}
             </button>
             <input
@@ -51,7 +53,6 @@ import { User } from '../../shared/models/user.model';
               hidden
               (change)="onFileSelected($event)"
             />
-            <p class="avatar-hint">JPG or PNG, cropped to a square avatar.</p>
           </div>
         </section>
 
@@ -171,24 +172,26 @@ import { User } from '../../shared/models/user.model';
     .overlay-label { font-size: 11px; font-weight: 600; }
 
     .avatar-initial {
-      position: absolute; bottom: -2px; right: -2px;
-      width: 30px; height: 30px; border-radius: 50%;
-      background: var(--primary); color: white; border: 3px solid var(--background);
+      position: absolute; bottom: 2px; right: 2px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--primary); color: white; border: 3px solid var(--surface);
       display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700;
+      font-size: 12px; font-weight: 700;
     }
 
-    .avatar-controls { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .avatar-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .avatar-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .avatar-hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 8px; }
     .btn-upload {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      display: inline-flex; align-items: center; gap: 8px;
+      align-self: flex-start;
       background: var(--primary); color: white; border: none;
       padding: 10px 18px; border-radius: 10px;
       font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: background 0.15s ease; align-self: flex-start;
+      transition: background 0.15s ease;
     }
     .btn-upload:hover { background: var(--primary-hover); }
     .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
-    .avatar-hint { font-size: 12px; color: var(--text-secondary); margin: 0; }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin-bottom: 20px; }
 
@@ -240,6 +243,7 @@ import { User } from '../../shared/models/user.model';
       .form-grid { grid-template-columns: 1fr; }
       .card { padding: 20px; }
       .avatar-section { flex-direction: column; align-items: center; text-align: center; }
+      .avatar-copy { align-items: center; }
       .btn-upload { align-self: center; }
     }
   `]
@@ -281,8 +285,13 @@ export class ProfileSettingsComponent implements OnInit {
   async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file) return;
+    input.value = '';
+    if (file) {
+      await this.processFile(file);
+    }
+  }
 
+  private async processFile(file: File): Promise<void> {
     if (!file.type.startsWith('image/')) {
       this.auth.error.set('Please choose an image file.');
       return;
@@ -296,7 +305,6 @@ export class ProfileSettingsComponent implements OnInit {
       this.auth.error.set('Could not read that image. Please try another file.');
     } finally {
       this.uploadingFile.set(false);
-      input.value = '';
     }
   }
 
