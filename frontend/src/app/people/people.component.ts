@@ -15,38 +15,17 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
         <p class="page-subtitle">Discover classmates, send requests and build your network.</p>
       </div>
 
-      <!-- Discover -->
-      <div *ngIf="suggestions.length > 0" class="card">
-        <div class="card-head">
-          <div class="card-head-icon"><span class="material-icons">explore</span></div>
-          <div>
-            <h2>Discover</h2>
-            <p class="card-subtitle">People you may know, ranked by how likely you are to connect.</p>
-          </div>
-        </div>
-        <div *ngFor="let user of suggestions" class="person-row">
-          <div class="person-avatar" [class.has-image]="user.avatarUrl">
-            <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
-            <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
-          </div>
-          <div class="person-info">
-            <span class="person-name">{{ user.displayName || user.username }}</span>
-            <span class="person-sub">{{ '@' + user.username }}</span>
-            <span *ngIf="user.reason" class="person-reason">{{ user.reason }}</span>
-          </div>
-          <button
-            *ngIf="user.relationship === 'None'"
-            class="btn-primary"
-            (click)="sendRequest(user)"
-          >
-            Add Friend
-          </button>
-          <span *ngIf="user.relationship === 'RequestSent'" class="status-label">Request Sent</span>
-        </div>
+      <div class="view-toggle">
+        <button class="view-btn" [class.active]="mode === 'discover'" (click)="mode = 'discover'">
+          <span class="material-icons">explore</span> Discover
+        </button>
+        <button class="view-btn" [class.active]="mode === 'friends'" (click)="mode = 'friends'">
+          <span class="material-icons">group</span> Friends
+        </button>
       </div>
 
       <!-- Search -->
-      <div class="card">
+      <div *ngIf="mode === 'discover'" class="card">
         <div class="card-head">
           <div class="card-head-icon"><span class="material-icons">search</span></div>
           <div>
@@ -97,9 +76,39 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
         <div *ngIf="query && !loading && results.length === 0" class="empty">No people found.</div>
       </div>
 
+      <!-- Discover -->
+      <div *ngIf="mode === 'discover' && suggestions.length > 0" class="card">
+        <div class="card-head">
+          <div class="card-head-icon"><span class="material-icons">explore</span></div>
+          <div>
+            <h2>Discover</h2>
+            <p class="card-subtitle">People you may know, ranked by how likely you are to connect.</p>
+          </div>
+        </div>
+        <div *ngFor="let user of suggestions" class="person-row">
+          <div class="person-avatar" [class.has-image]="user.avatarUrl">
+            <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
+            <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+          </div>
+          <div class="person-info">
+            <span class="person-name">{{ user.displayName || user.username }}</span>
+            <span class="person-sub">{{ '@' + user.username }}</span>
+            <span *ngIf="user.reason" class="person-reason">{{ user.reason }}</span>
+          </div>
+          <button
+            *ngIf="user.relationship === 'None'"
+            class="btn-primary"
+            (click)="sendRequest(user)"
+          >
+            Add Friend
+          </button>
+          <span *ngIf="user.relationship === 'RequestSent'" class="status-label">Request Sent</span>
+        </div>
+      </div>
+
       <div class="cards-row">
         <!-- Friend Requests -->
-        <div class="card">
+        <div *ngIf="mode === 'friends'" class="card">
           <div class="card-head">
             <div class="card-head-icon"><span class="material-icons">person_add</span></div>
             <div>
@@ -125,7 +134,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
         </div>
 
         <!-- My Friends -->
-        <div class="card">
+        <div *ngIf="mode === 'friends'" class="card">
           <div class="card-head">
             <div class="card-head-icon"><span class="material-icons">group</span></div>
             <div>
@@ -155,6 +164,33 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     .page-header { margin-bottom: 24px; }
     .page-header h1 { font-size: var(--font-24); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
     .page-subtitle { font-size: var(--font-14); color: var(--text-secondary); }
+
+    .view-toggle {
+      display: inline-flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+    .view-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      background: none;
+      color: var(--text-secondary);
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: var(--font-14);
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .view-btn .material-icons { font-size: var(--font-18); }
+    .view-btn:hover { color: var(--text-primary); }
+    .view-btn.active { background: var(--primary); color: white; }
 
     .card {
       background: var(--surface);
@@ -246,6 +282,7 @@ export class PeopleComponent implements OnInit {
   requests: Friend[] = [];
   friends: Friend[] = [];
   loading = false;
+  mode: 'discover' | 'friends' = 'discover';
 
   async ngOnInit() {
     await this.loadAll();
