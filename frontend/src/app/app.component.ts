@@ -1,5 +1,6 @@
 import { Component, signal, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { NgIf } from '@angular/common';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { ProfileReminderComponent } from './shared/components/profile-reminder/profile-reminder.component';
 import { NotificationService } from './core/services/notification.service';
@@ -7,13 +8,13 @@ import { NotificationService } from './core/services/notification.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, ProfileReminderComponent],
+  imports: [RouterOutlet, SidebarComponent, ProfileReminderComponent, NgIf],
   template: `
     <div class="app-container">
       <app-sidebar [hidden]="sidebarHidden()" (toggle)="toggleSidebar()" />
       <div class="main-wrapper" [class.sidebar-hidden]="sidebarHidden()">
-        <button class="menu-btn" [class.nav-open]="!sidebarHidden()" (click)="toggleSidebar()" aria-label="Toggle navigation">
-          <span class="material-icons">{{ sidebarHidden() ? 'menu' : 'chevron_right' }}</span>
+        <button class="menu-btn" *ngIf="sidebarHidden()" (click)="toggleSidebar()" aria-label="Open navigation">
+          <span class="material-icons">menu</span>
         </button>
         <app-profile-reminder />
         <main class="main-content">
@@ -39,11 +40,6 @@ import { NotificationService } from './core/services/notification.service';
       justify-content: center;
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      transition: right 0.25s ease;
-    }
-
-    .menu-btn.nav-open {
-      right: calc(var(--sidebar-width) + 12px);
     }
 
     .menu-btn:hover { background: var(--surface-hover); }
