@@ -28,7 +28,7 @@ import { User } from '../../shared/models/user.model';
               <span *ngIf="!avatarUrl" class="material-icons avatar-placeholder">person</span>
               <div class="avatar-overlay" (click)="fileInput?.click()">
                 <span class="material-icons">{{ uploadingFile() ? 'hourglass_top' : 'photo_camera' }}</span>
-                <span class="overlay-label">{{ uploadingFile() ? 'Uploading…' : 'Change' }}</span>
+                <span class="overlay-label">{{ uploadingFile() ? 'Uploadingâ€¦' : 'Change' }}</span>
               </div>
             </div>
             <span class="avatar-initial" *ngIf="!avatarUrl">{{ displayNameInitial }}</span>
@@ -88,7 +88,7 @@ import { User } from '../../shared/models/user.model';
             [(ngModel)]="bio"
             rows="4"
             maxlength="1000"
-            placeholder="Tell others about yourself…"
+            placeholder="Tell others about yourselfâ€¦"
           ></textarea>
           <span class="char-count">{{ bio.length }}/1000</span>
         </label>
@@ -101,7 +101,7 @@ import { User } from '../../shared/models/user.model';
         <div class="form-actions">
           <button type="submit" [disabled]="profileForm.invalid || saving()" class="btn-primary">
             <span class="material-icons">check</span>
-            {{ saving() ? 'Saving…' : 'Save Changes' }}
+            {{ saving() ? 'Savingâ€¦' : 'Save Changes' }}
           </button>
           <button type="button" class="btn-secondary" (click)="reset()">Discard</button>
         </div>
@@ -129,9 +129,9 @@ import { User } from '../../shared/models/user.model';
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    .card-head-icon .material-icons { font-size: 22px; }
-    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0; }
-    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin: 2px 0 0; }
+    .card-head-icon .material-icons { font-size: var(--font-22); }
+    .card h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin: 0; }
+    .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin: 2px 0 0; }
 
     .avatar-section {
       display: flex; align-items: center; gap: 24px;
@@ -150,7 +150,7 @@ import { User } from '../../shared/models/user.model';
       box-shadow: 0 4px 14px rgba(0,0,0,0.18);
     }
     .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
-    .avatar-placeholder { font-size: 40px; color: var(--text-muted); }
+    .avatar-placeholder { font-size: var(--font-40); color: var(--text-muted); }
 
     .avatar-overlay {
       position: absolute; inset: 0; border-radius: 50%;
@@ -159,20 +159,20 @@ import { User } from '../../shared/models/user.model';
       gap: 2px; opacity: 0; cursor: pointer; transition: opacity 0.2s ease;
     }
     .avatar-overlay:hover, .avatar-preview:hover .avatar-overlay { opacity: 1; }
-    .avatar-overlay .material-icons { font-size: 22px; }
-    .overlay-label { font-size: 11px; font-weight: 600; }
+    .avatar-overlay .material-icons { font-size: var(--font-22); }
+    .overlay-label { font-size: var(--font-11); font-weight: 600; }
 
     .avatar-initial {
       position: absolute; bottom: 2px; right: 2px;
       width: 28px; height: 28px; border-radius: 50%;
       background: var(--primary); color: white; border: 3px solid var(--surface);
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700;
+      font-size: var(--font-12); font-weight: 700;
     }
 
     .avatar-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .avatar-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
-    .avatar-hint { font-size: 13px; color: var(--text-secondary); margin: 0; }
+    .avatar-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); margin: 0; }
+    .avatar-hint { font-size: var(--font-13); color: var(--text-secondary); margin: 0; }
 
     .visually-hidden {
       position: absolute; width: 1px; height: 1px;
@@ -183,23 +183,23 @@ import { User } from '../../shared/models/user.model';
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin-bottom: 20px; }
 
     label { display: block; margin-bottom: 20px; }
-    .field-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .field-label { display: block; margin-bottom: 6px; font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); }
 
     input, textarea {
       display: block; width: 100%; padding: 10px 12px;
       background: var(--background); border: 1px solid var(--border);
-      border-radius: 10px; color: var(--text-primary); font-size: 14px; font-family: inherit;
+      border-radius: 10px; color: var(--text-primary); font-size: var(--font-14); font-family: inherit;
       box-sizing: border-box; transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     textarea { resize: vertical; }
     input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent); }
     input.invalid { border-color: var(--error); }
-    .field-error { display: block; margin-top: 6px; font-size: 12px; color: var(--error); }
+    .field-error { display: block; margin-top: 6px; font-size: var(--font-12); color: var(--error); }
 
-    .char-count { display: block; text-align: right; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
+    .char-count { display: block; text-align: right; margin-top: 4px; font-size: var(--font-11); color: var(--text-muted); }
 
     .avatar-url { margin-bottom: 20px; }
-    .avatar-url input { color: var(--text-muted); font-size: 12px; opacity: 0.85; cursor: not-allowed; }
+    .avatar-url input { color: var(--text-muted); font-size: var(--font-12); opacity: 0.85; cursor: not-allowed; }
 
     .form-actions { display: flex; gap: 12px; margin-top: 4px; }
 
@@ -207,7 +207,7 @@ import { User } from '../../shared/models/user.model';
       display: inline-flex; align-items: center; gap: 8px;
       background: var(--primary); color: white; border: none;
       padding: 11px 22px; border-radius: 10px;
-      font-size: 14px; font-weight: 600; cursor: pointer;
+      font-size: var(--font-14); font-weight: 600; cursor: pointer;
       transition: background 0.15s ease;
     }
     .btn-primary:hover { background: var(--primary-hover); }
@@ -218,13 +218,13 @@ import { User } from '../../shared/models/user.model';
       background: var(--surface-hover); color: var(--text-primary);
       border: 1px solid var(--border);
       padding: 10px 20px; border-radius: 10px;
-      font-size: 14px; font-weight: 500; cursor: pointer;
+      font-size: var(--font-14); font-weight: 500; cursor: pointer;
       transition: opacity 0.15s ease;
     }
     .btn-secondary:hover { opacity: 0.85; }
 
-    .form-error { display: flex; align-items: center; gap: 6px; color: var(--error); font-size: 13px; margin-top: 16px; }
-    .form-success { display: flex; align-items: center; gap: 6px; color: var(--success); font-size: 13px; margin-top: 16px; }
+    .form-error { display: flex; align-items: center; gap: 6px; color: var(--error); font-size: var(--font-13); margin-top: 16px; }
+    .form-success { display: flex; align-items: center; gap: 6px; color: var(--success); font-size: var(--font-13); margin-top: 16px; }
 
     @media (max-width: 768px) {
       .form-grid { grid-template-columns: 1fr; }

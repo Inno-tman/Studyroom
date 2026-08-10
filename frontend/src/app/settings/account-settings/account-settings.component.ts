@@ -55,7 +55,7 @@ import { AuthService } from '../../core/services/auth.service';
 
         <div class="form-actions">
           <button type="submit" [disabled]="passwordForm.invalid || savingPassword || confirmPassword !== newPassword" class="btn-primary">
-            {{ savingPassword ? 'Saving…' : 'Update Password' }}
+            {{ savingPassword ? 'Savingâ€¦' : 'Update Password' }}
           </button>
         </div>
 
@@ -66,8 +66,8 @@ import { AuthService } from '../../core/services/auth.service';
   `,
   styles: [`
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
-    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+    .card h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin-bottom: 24px; }
 
     .info-row {
       display: flex;
@@ -75,31 +75,31 @@ import { AuthService } from '../../core/services/auth.service';
       padding: 10px 0;
       border-bottom: 1px solid var(--border);
     }
-    .info-label { font-size: 14px; color: var(--text-secondary); }
-    .info-value { font-size: 14px; color: var(--text-primary); font-weight: 500; }
+    .info-label { font-size: var(--font-14); color: var(--text-secondary); }
+    .info-value { font-size: var(--font-14); color: var(--text-primary); font-weight: 500; }
     .capitalize { text-transform: capitalize; }
 
     hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 
-    .section-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
+    .section-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
 
-    label { display: block; margin-bottom: 16px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+    label { display: block; margin-bottom: 16px; font-size: var(--font-14); font-weight: 500; color: var(--text-secondary); }
     input {
       display: block; width: 100%; margin-top: 6px; padding: 10px 12px;
       background: var(--background); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-primary); font-size: 14px;
+      border-radius: 8px; color: var(--text-primary); font-size: var(--font-14);
       box-sizing: border-box;
     }
     input:focus { outline: none; border-color: var(--primary); }
 
     .form-actions { margin-top: 4px; }
 
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: var(--font-14); font-weight: 600; cursor: pointer; }
     .btn-primary:hover { opacity: 0.85; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .form-error { color: var(--error); font-size: 13px; margin-top: 8px; }
-    .form-success { color: var(--success); font-size: 13px; margin-top: 8px; }
+    .form-error { color: var(--error); font-size: var(--font-13); margin-top: 8px; }
+    .form-success { color: var(--success); font-size: var(--font-13); margin-top: 8px; }
   `]
 })
 export class AccountSettingsComponent {

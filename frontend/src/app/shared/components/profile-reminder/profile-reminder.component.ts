@@ -10,7 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
   template: `
     <div *ngIf="showReminder()" class="reminder-banner">
       <span class="reminder-icon material-icons">warning_amber</span>
-      <span class="reminder-text">Your profile is incomplete — add a profile picture so others can recognize you.</span>
+      <span class="reminder-text">Your profile is incomplete â€” add a profile picture so others can recognize you.</span>
       <button class="reminder-action" (click)="goToProfile()">Complete Profile</button>
     </div>
   `,
@@ -23,10 +23,10 @@ import { AuthService } from '../../../core/services/auth.service';
       background: rgba(245, 158, 11, 0.12);
       border-bottom: 1px solid rgba(245, 158, 11, 0.3);
       color: var(--text-primary);
-      font-size: 14px;
+      font-size: var(--font-14);
     }
 
-    .reminder-icon { font-size: 16px; color: #f59e0b; }
+    .reminder-icon { font-size: var(--font-16); color: #f59e0b; }
 
     .reminder-text { flex: 1; }
 
@@ -36,7 +36,7 @@ import { AuthService } from '../../../core/services/auth.service';
       border: none;
       padding: 6px 14px;
       border-radius: 6px;
-      font-size: 13px;
+      font-size: var(--font-13);
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;

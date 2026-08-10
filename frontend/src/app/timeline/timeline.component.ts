@@ -35,7 +35,7 @@ import { Post } from '../shared/models/social.model';
         </div>
       </div>
 
-      <div *ngIf="loading" class="empty-state">Loading…</div>
+      <div *ngIf="loading" class="empty-state">Loadingâ€¦</div>
       <div *ngIf="!loading && posts.length === 0" class="empty-state">
         No posts yet. Share something with your friends!
       </div>
@@ -134,7 +134,7 @@ import { Post } from '../shared/models/social.model';
                   <input
                     type="text"
                     [(ngModel)]="post.newComment"
-                    placeholder="Write a reply…"
+                    placeholder="Write a replyâ€¦"
                     (keyup.enter)="reply(post)"
                   />
                   <button class="btn-primary small" (click)="reply(post)" [disabled]="!post.newComment?.trim()">Post</button>
@@ -147,7 +147,7 @@ import { Post } from '../shared/models/social.model';
               <input
                 type="text"
                 [(ngModel)]="post.newComment"
-                placeholder="Write a comment…"
+                placeholder="Write a commentâ€¦"
                 (keyup.enter)="comment(post)"
               />
               <button class="btn-primary small" (click)="comment(post)" [disabled]="!post.newComment?.trim()">Post</button>
@@ -180,14 +180,14 @@ import { Post } from '../shared/models/social.model';
 
     textarea {
       flex: 1; width: 100%; background: var(--background); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px; color: var(--text-primary); font-size: 14px;
+      border-radius: 8px; padding: 12px; color: var(--text-primary); font-size: var(--font-14);
       font-family: inherit; resize: none; box-sizing: border-box;
     }
     textarea:focus { outline: none; border-color: var(--primary); }
 
     .composer-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
 
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 8px; font-size: var(--font-14); font-weight: 600; cursor: pointer; }
     .btn-primary:hover { opacity: 0.85; }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary.small { padding: 6px 14px; }
@@ -207,36 +207,36 @@ import { Post } from '../shared/models/social.model';
       display: flex; align-items: center; justify-content: center;
       font-weight: 700; color: white; overflow: hidden; flex-shrink: 0;
     }
-    .post-avatar.small { width: 32px; height: 32px; font-size: 12px; }
+    .post-avatar.small { width: 32px; height: 32px; font-size: var(--font-12); }
     .post-avatar.has-image img, .comment-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .post-meta { display: flex; flex-direction: column; flex: 1; }
-    .post-author { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-    .post-time { font-size: 12px; color: var(--text-muted); }
+    .post-author { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
+    .post-time { font-size: var(--font-12); color: var(--text-muted); }
 
     .delete-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 6px; }
     .delete-btn:hover { color: var(--error); }
 
-    .post-body p { font-size: 15px; color: var(--text-primary); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
-    .share-note { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+    .post-body p { font-size: var(--font-15); color: var(--text-primary); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+    .share-note { font-size: var(--font-13); color: var(--text-muted); margin-bottom: 4px; }
 
     .shared-card {
       margin-top: 12px; background: var(--background); border: 1px solid var(--border);
       border-radius: 8px; padding: 12px;
     }
-    .shared-card p { font-size: 14px; color: var(--text-primary); line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+    .shared-card p { font-size: var(--font-14); color: var(--text-primary); line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
 
-    .post-stats { display: flex; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+    .post-stats { display: flex; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: var(--font-13); color: var(--text-muted); }
 
     .post-actions { display: flex; padding: 4px 0; }
     .action-btn {
       flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
-      background: none; border: none; color: var(--text-secondary); font-size: 14px;
+      background: none; border: none; color: var(--text-secondary); font-size: var(--font-14);
       font-weight: 500; cursor: pointer; padding: 8px; border-radius: 8px;
     }
     .action-btn:hover { background: var(--surface-hover); }
     .action-btn.active { color: var(--error); }
-    .action-btn .material-icons { font-size: 20px; }
+    .action-btn .material-icons { font-size: var(--font-20); }
 
     .comments-section { border-top: 1px solid var(--border); padding-top: 12px; }
     .comment { display: flex; gap: 10px; margin-bottom: 10px; }
@@ -244,7 +244,7 @@ import { Post } from '../shared/models/social.model';
     .comment-avatar {
       width: 30px; height: 30px; border-radius: 50%; background: var(--primary);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: white; font-size: 12px; overflow: hidden; flex-shrink: 0;
+      font-weight: 700; color: white; font-size: var(--font-12); overflow: hidden; flex-shrink: 0;
     }
 
     .comment-body { flex: 1; min-width: 0; }
@@ -252,12 +252,12 @@ import { Post } from '../shared/models/social.model';
     .comment-bubble {
       background: var(--background); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column;
     }
-    .comment-author { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-    .comment-text { font-size: 14px; color: var(--text-secondary); }
+    .comment-author { font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .comment-text { font-size: var(--font-14); color: var(--text-secondary); }
 
     .comment-actions { margin-top: 4px; }
     .reply-btn {
-      background: none; border: none; color: var(--text-muted); font-size: 12px;
+      background: none; border: none; color: var(--text-muted); font-size: var(--font-12);
       font-weight: 600; cursor: pointer; padding: 2px 4px;
     }
     .reply-btn:hover { color: var(--primary); }
@@ -267,12 +267,12 @@ import { Post } from '../shared/models/social.model';
 
     .comment-input.reply-input { margin-top: 6px; }
 
-    .no-comments { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+    .no-comments { font-size: var(--font-13); color: var(--text-muted); margin-bottom: 10px; }
 
     .comment-input { display: flex; gap: 8px; margin-top: 8px; }
     .comment-input input {
       flex: 1; background: var(--background); border: 1px solid var(--border); border-radius: 8px;
-      padding: 8px 12px; color: var(--text-primary); font-size: 14px;
+      padding: 8px 12px; color: var(--text-primary); font-size: var(--font-14);
     }
     .comment-input input:focus { outline: none; border-color: var(--primary); }
   `]

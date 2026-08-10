@@ -54,11 +54,11 @@ import { Subscription } from 'rxjs';
 
     .timer-mode { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
 
-    .mode-btn { padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .mode-btn { padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: var(--font-13); font-weight: 600; cursor: pointer; transition: all 0.15s; }
     .mode-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
     .mode-btn:hover:not(.active) { border-color: var(--text-muted); }
 
-    .timer-display { font-size: 64px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary); margin-bottom: 16px; letter-spacing: 4px; transition: color 0.3s; }
+    .timer-display { font-size: var(--font-64); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary); margin-bottom: 16px; letter-spacing: 4px; transition: color 0.3s; }
     .timer-display.break-mode { color: var(--success); }
 
     .timer-controls { display: flex; justify-content: center; gap: 12px; }
@@ -67,9 +67,9 @@ import { Subscription } from 'rxjs';
     .control-btn:hover { border-color: var(--primary); }
     .control-btn.primary { background: var(--primary); border-color: var(--primary); color: white; }
     .control-btn.primary:hover { background: var(--primary-hover); }
-    .control-btn .material-icons { font-size: 24px; }
+    .control-btn .material-icons { font-size: var(--font-24); }
 
-    .timer-info { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--success); }
+    .timer-info { margin-top: 12px; font-size: var(--font-13); font-weight: 600; color: var(--success); }
   `]
 })
 export class PomodoroTimerComponent implements OnInit, OnDestroy {

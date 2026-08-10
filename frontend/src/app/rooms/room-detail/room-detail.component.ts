@@ -72,7 +72,7 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
               <button class="dialog-close" (click)="showInviteDialog = false"><span class="material-icons">close</span></button>
             </div>
             <div class="invite-dialog-body">
-              <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite — everyone you know is already here!</p>
+              <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite â€” everyone you know is already here!</p>
               <div *ngFor="let friend of invitableFriends" class="invite-row">
                 <div class="member-avatar" [class.has-image]="friend.avatarUrl">
                   <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
@@ -158,26 +158,26 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
 
     .room-header { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 
-    .back-link { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); text-decoration: none; font-size: 13px; margin-bottom: 12px; }
+    .back-link { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); text-decoration: none; font-size: var(--font-13); margin-bottom: 12px; }
     .back-link:hover { color: var(--accent); }
-    .back-link .material-icons { font-size: 18px; }
+    .back-link .material-icons { font-size: var(--font-18); }
 
-    .room-info h1 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+    .room-info h1 { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
 
     .room-badges { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-    .subject-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-    .members-badge { background: rgba(34, 197, 94, 0.1); color: var(--success); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-    .private-badge { background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .subject-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; }
+    .members-badge { background: rgba(34, 197, 94, 0.1); color: var(--success); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; }
+    .private-badge { background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; }
 
-    .room-description { font-size: 13px; color: var(--text-secondary); }
+    .room-description { font-size: var(--font-13); color: var(--text-secondary); }
 
     .room-actions { display: flex; gap: 8px; }
 
-    .btn-primary { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+    .btn-primary { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: var(--font-14); font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .btn-outline-danger { padding: 10px 20px; background: transparent; border: 1px solid var(--error); border-radius: 8px; color: var(--error); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+    .btn-outline-danger { padding: 10px 20px; background: transparent; border: 1px solid var(--error); border-radius: 8px; color: var(--error); font-size: var(--font-14); font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
     .btn-outline-danger:hover { background: rgba(239, 68, 68, 0.1); }
 
     .room-content { margin-top: 16px; }
@@ -187,25 +187,25 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
       padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     }
 
-    .members-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
+    .members-title { font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
 
     .members-avatars { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .member-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 20px; background: var(--background); border: 1px solid var(--border); }
 
-    .member-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 11px; overflow: hidden; flex-shrink: 0; }
+    .member-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: var(--font-11); overflow: hidden; flex-shrink: 0; }
     .member-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
-    .member-name { font-size: 12px; color: var(--text-primary); }
+    .member-name { font-size: var(--font-12); color: var(--text-primary); }
 
     .invite-btn {
       margin-left: auto; display: flex; align-items: center; gap: 4px;
       padding: 6px 12px; background: transparent; border: 1px solid var(--primary);
-      border-radius: 8px; color: var(--primary); font-size: 12px; font-weight: 600;
+      border-radius: 8px; color: var(--primary); font-size: var(--font-12); font-weight: 600;
       cursor: pointer; transition: background 0.15s;
     }
     .invite-btn:hover { background: rgba(56, 189, 248, 0.1); }
-    .invite-btn .material-icons { font-size: 16px; }
+    .invite-btn .material-icons { font-size: var(--font-16); }
 
     .invite-dialog-backdrop {
       position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
@@ -222,21 +222,21 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
       display: flex; align-items: center; justify-content: space-between;
       padding: 16px; border-bottom: 1px solid var(--border);
     }
-    .invite-dialog-header h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .invite-dialog-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
 
     .dialog-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
     .dialog-close:hover { color: var(--text-primary); }
 
     .invite-dialog-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-    .invite-hint { font-size: 13px; color: var(--text-muted); }
+    .invite-hint { font-size: var(--font-13); color: var(--text-muted); }
 
     .invite-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
     .invite-row:hover { background: var(--background); }
-    .invite-name { flex: 1; font-size: 13px; font-weight: 500; color: var(--text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .invite-name { flex: 1; font-size: var(--font-13); font-weight: 500; color: var(--text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .btn-invite {
       padding: 6px 12px; background: var(--primary); border: none; border-radius: 8px;
-      color: white; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;
+      color: white; font-size: var(--font-12); font-weight: 600; cursor: pointer; flex-shrink: 0;
     }
     .btn-invite:hover:not(:disabled) { background: var(--primary-hover); }
     .btn-invite:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -246,48 +246,48 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
     .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
 
     .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
-    .panel-header h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .panel-header h2 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
 
-    .online-count { font-size: 12px; color: var(--success); }
+    .online-count { font-size: var(--font-12); color: var(--success); }
 
     .chat-panel { height: 500px; }
 
     .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
 
     .day-divider { display: flex; align-items: center; justify-content: center; padding: 12px 0 8px; }
-    .day-divider span { font-size: 11px; color: var(--text-muted); background: var(--background); border: 1px solid var(--border); padding: 3px 10px; border-radius: 12px; }
+    .day-divider span { font-size: var(--font-11); color: var(--text-muted); background: var(--background); border: 1px solid var(--border); padding: 3px 10px; border-radius: 12px; }
 
     .message { display: flex; gap: 10px; padding: 2px 0; }
 
     .message.own { justify-content: flex-end; }
     .message.own .message-body { align-items: flex-end; }
 
-    .message-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; color: white; flex-shrink: 0; overflow: hidden; align-self: flex-end; margin-bottom: 2px; }
+    .message-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: var(--font-12); color: white; flex-shrink: 0; overflow: hidden; align-self: flex-end; margin-bottom: 2px; }
     .message-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .message-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .message-header { margin-bottom: 2px; padding-left: 2px; }
-    .message-user { font-size: 12px; font-weight: 600; color: var(--accent); }
+    .message-user { font-size: var(--font-12); font-weight: 600; color: var(--accent); }
 
     .bubble { max-width: 70%; padding: 8px 12px; border-radius: 14px; background: var(--background); border: 1px solid var(--border); display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; word-break: break-word; }
     .message.own .bubble { background: var(--primary); border-color: var(--primary); border-bottom-right-radius: 4px; }
     .message:not(.own):not(.avatar-gap) .bubble { border-bottom-left-radius: 4px; }
 
-    .bubble-content { font-size: 13px; color: var(--text-primary); line-height: 1.45; white-space: pre-wrap; }
+    .bubble-content { font-size: var(--font-13); color: var(--text-primary); line-height: 1.45; white-space: pre-wrap; }
     .message.own .bubble-content { color: white; }
 
-    .message-time { font-size: 10px; color: var(--text-muted); align-self: flex-end; }
+    .message-time { font-size: var(--font-10); color: var(--text-muted); align-self: flex-end; }
     .message.own .message-time { color: rgba(255,255,255,0.7); }
 
     .chat-input { display: flex; align-items: center; padding: 12px; border-top: 1px solid var(--border); gap: 8px; }
-    .chat-input input { flex: 1; padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; outline: none; }
+    .chat-input input { flex: 1; padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none; }
     .chat-input input:focus { border-color: var(--primary); }
     .chat-input input::placeholder { color: var(--text-muted); }
 
     .send-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--primary); border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
     .send-btn:hover:not(:disabled) { background: var(--primary-hover); }
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .send-btn .material-icons { font-size: 18px; }
+    .send-btn .material-icons { font-size: var(--font-18); }
 
     .notes-panel { height: 500px; }
     .notes-panel ::ng-deep app-notes-editor { flex: 1; display: flex; flex-direction: column; }

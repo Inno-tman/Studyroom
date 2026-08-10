@@ -71,11 +71,11 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       color: var(--text-secondary);
       text-decoration: none;
       font-weight: 500;
-      font-size: 14px;
+      font-size: var(--font-14);
       transition: all 0.15s ease;
     }
 
-    .settings-item .material-icons { font-size: 20px; }
+    .settings-item .material-icons { font-size: var(--font-20); }
 
     .settings-item:hover {
       background: var(--surface-hover);

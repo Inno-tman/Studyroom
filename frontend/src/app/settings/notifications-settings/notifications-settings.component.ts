@@ -98,10 +98,10 @@ type BoolPrefKey = {
   `,
   styles: [`
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
-    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+    .card h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin-bottom: 24px; }
 
-    .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 0 4px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .section-title { font-size: var(--font-13); font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 0 4px; padding-top: 16px; border-top: 1px solid var(--border); }
 
     .pref-row {
       display: flex;
@@ -115,9 +115,9 @@ type BoolPrefKey = {
     .pref-row:last-child { border-bottom: none; }
 
     .pref-info { display: flex; align-items: center; gap: 14px; min-width: 0; }
-    .pref-icon { font-size: 22px; color: var(--text-secondary); flex-shrink: 0; }
-    .pref-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    .pref-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    .pref-icon { font-size: var(--font-22); color: var(--text-secondary); flex-shrink: 0; }
+    .pref-name { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .pref-desc { font-size: var(--font-13); color: var(--text-secondary); margin-top: 2px; }
 
     .theme-toggle {
       width: 48px;
@@ -157,7 +157,7 @@ type BoolPrefKey = {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      font-size: 12px;
+      font-size: var(--font-12);
       font-weight: 600;
       color: var(--text-secondary);
     }
@@ -168,7 +168,7 @@ type BoolPrefKey = {
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text-primary);
-      font-size: 13px;
+      font-size: var(--font-13);
       outline: none;
     }
 

@@ -68,7 +68,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
                 type="text"
                 [(ngModel)]="newMessage"
                 (keyup.enter)="send()"
-                placeholder="Type a message…"
+                placeholder="Type a messageâ€¦"
                 [disabled]="sending"
               />
               <button class="send-btn" (click)="send()" [disabled]="!newMessage.trim() || sending">
@@ -108,8 +108,8 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .convo-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .convo-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-    .convo-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-    .convo-last { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .convo-name { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
+    .convo-last { font-size: var(--font-12); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -120,23 +120,23 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       border-bottom: 1px solid var(--border);
     }
     .chat-header .convo-avatar { width: 36px; height: 36px; }
-    .chat-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .chat-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
 
     .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 
     .bubble { max-width: 70%; padding: 10px 14px; border-radius: 12px; align-self: flex-start; background: var(--background); border: 1px solid var(--border); }
-    .bubble p { font-size: 14px; color: var(--text-primary); word-wrap: break-word; white-space: pre-wrap; }
-    .bubble-time { display: block; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .bubble p { font-size: var(--font-14); color: var(--text-primary); word-wrap: break-word; white-space: pre-wrap; }
+    .bubble-time { display: block; font-size: var(--font-11); color: var(--text-muted); margin-top: 4px; }
     .bubble.mine { align-self: flex-end; background: var(--primary); border-color: var(--primary); }
     .bubble.mine p { color: white; }
     .bubble.mine .bubble-time { color: rgba(255,255,255,0.8); }
 
-    .empty { color: var(--text-muted); font-size: 13px; padding: 12px; text-align: center; }
+    .empty { color: var(--text-muted); font-size: var(--font-13); padding: 12px; text-align: center; }
 
     .chat-input { display: flex; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
     .chat-input input {
       flex: 1; padding: 10px 12px; background: var(--background); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none;
+      border-radius: 8px; color: var(--text-primary); font-size: var(--font-14); outline: none;
     }
     .chat-input input:focus { border-color: var(--primary); }
 
@@ -146,7 +146,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     }
     .send-btn:hover { opacity: 0.85; }
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .send-btn .material-icons { font-size: 18px; }
+    .send-btn .material-icons { font-size: var(--font-18); }
 
     @media (max-width: 768px) {
       .messages-layout { flex-direction: column; height: auto; }

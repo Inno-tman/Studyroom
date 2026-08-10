@@ -20,7 +20,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           <input
             type="text"
             [(ngModel)]="query"
-            placeholder="Search by name, username or school…"
+            placeholder="Search by name, username or schoolâ€¦"
             (input)="search()"
           />
         </div>
@@ -33,7 +33,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
             </div>
             <div class="person-info">
               <span class="person-name">{{ user.displayName || user.username }}</span>
-              <span class="person-sub">{{ '@' + user.username }}{{ user.schoolName ? ' · ' + user.schoolName : '' }}</span>
+              <span class="person-sub">{{ '@' + user.username }}{{ user.schoolName ? ' Â· ' + user.schoolName : '' }}</span>
             </div>
             <button
               *ngIf="user.relationship === 'None'"
@@ -109,7 +109,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     .search-box .material-icons { color: var(--text-muted); }
     .search-box input {
       flex: 1; background: none; border: none; color: var(--text-primary);
-      font-size: 14px; outline: none;
+      font-size: var(--font-14); outline: none;
     }
 
     .search-results {
@@ -133,13 +133,13 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     .person-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .person-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-    .person-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    .person-sub { font-size: 13px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .person-name { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .person-sub { font-size: var(--font-13); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .row-actions { display: flex; gap: 8px; }
 
     .btn-primary, .btn-success, .btn-secondary {
-      border: none; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+      border: none; padding: 7px 14px; border-radius: 8px; font-size: var(--font-13); font-weight: 600; cursor: pointer;
     }
     .btn-primary { background: var(--primary); color: white; }
     .btn-success { background: var(--success); color: white; }
@@ -147,14 +147,14 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     .btn-primary:hover, .btn-success:hover, .btn-secondary:hover { opacity: 0.85; }
     .btn-primary.small, .btn-success.small, .btn-secondary.small { padding: 5px 12px; }
 
-    .status-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .status-label { font-size: var(--font-13); color: var(--text-muted); font-weight: 500; }
     .status-label.friends { color: var(--success); }
 
     .sections { display: flex; flex-direction: column; gap: 32px; }
 
-    .section h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+    .section h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
 
-    .empty { color: var(--text-muted); font-size: 14px; padding: 12px 0; }
+    .empty { color: var(--text-muted); font-size: var(--font-14); padding: 12px 0; }
   `]
 })
 export class PeopleComponent implements OnInit {

@@ -95,8 +95,8 @@ import { AuthService } from '../../../core/services/auth.service';
       border-bottom: 1px solid var(--border);
     }
 
-    .logo-icon { font-size: 24px; color: var(--accent); }
-    .logo-text { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .logo-icon { font-size: var(--font-24); color: var(--accent); }
+    .logo-text { font-size: var(--font-18); font-weight: 700; color: var(--text-primary); }
 
     .collapse-btn {
       margin-left: auto;
@@ -166,7 +166,7 @@ import { AuthService } from '../../../core/services/auth.service';
       align-items: center;
       justify-content: center;
       font-weight: 600;
-      font-size: 14px;
+      font-size: var(--font-14);
       color: white;
       overflow: hidden;
       flex-shrink: 0;
@@ -179,8 +179,8 @@ import { AuthService } from '../../../core/services/auth.service';
       flex-direction: column;
     }
 
-    .username { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-    .role { font-size: 11px; color: var(--text-muted); text-transform: capitalize; }
+    .username { font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .role { font-size: var(--font-11); color: var(--text-muted); text-transform: capitalize; }
 
     .logout-btn {
       background: none;

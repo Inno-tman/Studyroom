@@ -14,7 +14,7 @@ import { RoomInvitation } from '../shared/models/social.model';
         <h1>Room Invitations</h1>
       </div>
 
-      <div *ngIf="loading" class="loading">Loading…</div>
+      <div *ngIf="loading" class="loading">Loadingâ€¦</div>
 
       <div *ngIf="!loading && invitations.length === 0" class="empty">
         <p>You have no pending room invitations.</p>
@@ -26,7 +26,7 @@ import { RoomInvitation } from '../shared/models/social.model';
           <div class="invite-info">
             <span class="invite-room">{{ inv.roomName }}</span>
             <span class="invite-subject">{{ inv.roomSubject || 'General' }}</span>
-            <span class="invite-meta">{{ inv.inviterName }} invited you · {{ inv.createdAt | date: 'medium' }}</span>
+            <span class="invite-meta">{{ inv.inviterName }} invited you Â· {{ inv.createdAt | date: 'medium' }}</span>
           </div>
           <div class="invite-actions">
             <button class="btn-accept" (click)="accept(inv)" [disabled]="processing">
@@ -57,23 +57,23 @@ import { RoomInvitation } from '../shared/models/social.model';
       width: 48px; height: 48px; border-radius: 12px; background: rgba(56, 189, 248, 0.1);
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .invite-icon .material-icons { color: var(--accent); font-size: 24px; }
+    .invite-icon .material-icons { color: var(--accent); font-size: var(--font-24); }
 
     .invite-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-    .invite-room { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    .invite-subject { font-size: 12px; color: var(--accent); margin-bottom: 2px; }
-    .invite-meta { font-size: 12px; color: var(--text-muted); }
+    .invite-room { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .invite-subject { font-size: var(--font-12); color: var(--accent); margin-bottom: 2px; }
+    .invite-meta { font-size: var(--font-12); color: var(--text-muted); }
 
     .invite-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
     .btn-accept {
       display: flex; align-items: center; gap: 4px; padding: 8px 14px;
       background: var(--primary); border: none; border-radius: 8px; color: white;
-      font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+      font-size: var(--font-13); font-weight: 600; cursor: pointer; transition: background 0.15s;
     }
     .btn-accept:hover:not(:disabled) { background: var(--primary-hover); }
     .btn-accept:disabled, .btn-decline:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-accept .material-icons { font-size: 16px; }
+    .btn-accept .material-icons { font-size: var(--font-16); }
 
     .btn-decline {
       width: 36px; height: 36px; border-radius: 8px; background: transparent;
@@ -81,7 +81,7 @@ import { RoomInvitation } from '../shared/models/social.model';
       display: flex; align-items: center; justify-content: center; transition: background 0.15s;
     }
     .btn-decline:hover:not(:disabled) { background: rgba(239, 68, 68, 0.1); }
-    .btn-decline .material-icons { font-size: 16px; }
+    .btn-decline .material-icons { font-size: var(--font-16); }
 
     @media (max-width: 600px) {
       .invite-card { flex-direction: column; align-items: flex-start; }

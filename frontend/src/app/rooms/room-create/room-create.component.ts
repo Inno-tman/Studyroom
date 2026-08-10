@@ -60,25 +60,25 @@ import { RoomService } from '../../core/services/room.service';
   `,
   styles: [`
     .create-room { max-width: 640px; }
-    .btn-outline { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-weight: 500; text-decoration: none; }
+    .btn-outline { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); font-weight: 500; text-decoration: none; }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
 
     .form-container { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
     form { display: flex; flex-direction: column; gap: 20px; }
 
     .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-group input, .form-group select, .form-group textarea { padding: 12px 16px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; transition: border-color 0.15s; font-family: inherit; }
+    .form-group label { font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input, .form-group select, .form-group textarea { padding: 12px 16px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-14); outline: none; transition: border-color 0.15s; font-family: inherit; }
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
     .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); }
     .form-group textarea { resize: vertical; }
 
     .checkbox-group { flex-direction: row; }
-    .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none !important; font-size: 14px !important; color: var(--text-primary) !important; }
+    .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none !important; font-size: var(--font-14) !important; color: var(--text-primary) !important; }
     .checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
 
-    .error { color: var(--error); font-size: 13px; }
-    .btn-primary { padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s; align-self: flex-start; }
+    .error { color: var(--error); font-size: var(--font-13); }
+    .btn-primary { padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: var(--font-15); font-weight: 600; cursor: pointer; transition: background 0.15s; align-self: flex-start; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
   `]

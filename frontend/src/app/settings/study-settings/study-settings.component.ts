@@ -69,8 +69,8 @@ import { SettingsService } from '../../core/services/settings.service';
   `,
   styles: [`
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
-    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+    .card h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin-bottom: 24px; }
 
     .pref-row {
       display: flex;
@@ -84,9 +84,9 @@ import { SettingsService } from '../../core/services/settings.service';
     .pref-row:last-child { border-bottom: none; }
 
     .pref-info { display: flex; align-items: center; gap: 14px; min-width: 0; }
-    .pref-icon { font-size: 22px; color: var(--text-secondary); flex-shrink: 0; }
-    .pref-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    .pref-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    .pref-icon { font-size: var(--font-22); color: var(--text-secondary); flex-shrink: 0; }
+    .pref-name { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .pref-desc { font-size: var(--font-13); color: var(--text-secondary); margin-top: 2px; }
 
     .number-input {
       display: flex;
@@ -103,7 +103,7 @@ import { SettingsService } from '../../core/services/settings.service';
       background: transparent;
       border: none;
       color: var(--text-primary);
-      font-size: 15px;
+      font-size: var(--font-15);
       font-weight: 600;
       text-align: right;
       outline: none;
@@ -111,7 +111,7 @@ import { SettingsService } from '../../core/services/settings.service';
 
     .number-input input:focus { border-color: var(--primary); }
 
-    .number-input .unit { font-size: 12px; color: var(--text-muted); }
+    .number-input .unit { font-size: var(--font-12); color: var(--text-muted); }
 
     .theme-toggle {
       width: 48px;

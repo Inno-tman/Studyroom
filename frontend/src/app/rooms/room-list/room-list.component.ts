@@ -67,11 +67,11 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
     .filters { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
 
     .search-box { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; flex: 1; min-width: 200px; }
-    .search-box .material-icons { color: var(--text-muted); font-size: 20px; }
-    .search-box input { flex: 1; padding: 10px 0; background: none; border: none; color: var(--text-primary); font-size: 14px; outline: none; }
+    .search-box .material-icons { color: var(--text-muted); font-size: var(--font-20); }
+    .search-box input { flex: 1; padding: 10px 0; background: none; border: none; color: var(--text-primary); font-size: var(--font-14); outline: none; }
     .search-box input::placeholder { color: var(--text-muted); }
 
-    .subject-filter { padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; cursor: pointer; }
+    .subject-filter { padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-14); outline: none; cursor: pointer; }
 
     .room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 
@@ -81,15 +81,15 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
     .room-card.empty:hover { border-color: var(--border); }
 
     .room-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-    .room-card-header h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); flex: 1; }
-    .subject-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-    .room-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .room-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+    .room-card-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); flex: 1; }
+    .subject-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; white-space: nowrap; }
+    .room-desc { font-size: var(--font-13); color: var(--text-secondary); margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .room-meta { display: flex; justify-content: space-between; font-size: var(--font-12); color: var(--text-muted); }
 
-    .btn-primary { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.15s; }
+    .btn-primary { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: var(--font-14); font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.15s; }
     .btn-primary:hover { background: var(--primary-hover); }
 
-    .btn-outline { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; transition: all 0.15s; }
+    .btn-outline { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); font-weight: 500; text-decoration: none; cursor: pointer; transition: all 0.15s; }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
   `]
 })

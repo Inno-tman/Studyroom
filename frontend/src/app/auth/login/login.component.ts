@@ -85,7 +85,7 @@ declare global {
     }
 
     .auth-header { text-align: center; margin-bottom: 32px; }
-    .auth-header h1 { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+    .auth-header h1 { font-size: var(--font-24); font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
     .auth-header p { color: var(--text-secondary); }
 
     .social-login { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 24px; }
@@ -96,7 +96,7 @@ declare global {
       gap: 12px;
       width: 100%;
       color: var(--text-muted);
-      font-size: 12px;
+      font-size: var(--font-12);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -116,7 +116,7 @@ declare global {
     }
 
     .form-group label {
-      font-size: 13px;
+      font-size: var(--font-13);
       font-weight: 600;
       color: var(--text-secondary);
       text-transform: uppercase;
@@ -129,7 +129,7 @@ declare global {
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text-primary);
-      font-size: 14px;
+      font-size: var(--font-14);
       outline: none;
       transition: border-color 0.15s;
     }
@@ -142,7 +142,7 @@ declare global {
       color: var(--text-muted);
     }
 
-    .error { color: var(--error); font-size: 13px; }
+    .error { color: var(--error); font-size: var(--font-13); }
 
     .btn-primary {
       padding: 12px 24px;
@@ -150,7 +150,7 @@ declare global {
       color: white;
       border: none;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: var(--font-15);
       font-weight: 600;
       cursor: pointer;
       transition: background 0.15s;
@@ -159,7 +159,7 @@ declare global {
     .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .auth-footer { text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: 13px; }
+    .auth-footer { text-align: center; margin-top: 24px; color: var(--text-secondary); font-size: var(--font-13); }
     .auth-footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
     .auth-footer a:hover { text-decoration: underline; }
   `]

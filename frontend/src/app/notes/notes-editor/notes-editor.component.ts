@@ -20,7 +20,7 @@ import { Subscription } from 'rxjs';
   `,
   styles: [`
     .notes-editor { flex: 1; display: flex; flex-direction: column; }
-    textarea { flex: 1; padding: 16px; background: var(--background); border: none; color: var(--text-primary); font-size: 14px; font-family: 'JetBrains Mono', 'Fira Code', monospace; line-height: 1.6; resize: none; outline: none; min-height: 300px; }
+    textarea { flex: 1; padding: 16px; background: var(--background); border: none; color: var(--text-primary); font-size: var(--font-14); font-family: 'JetBrains Mono', 'Fira Code', monospace; line-height: 1.6; resize: none; outline: none; min-height: 300px; }
     textarea::placeholder { color: var(--text-muted); }
   `]
 })

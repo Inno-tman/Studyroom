@@ -110,8 +110,8 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
   `,
   styles: [`
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
-    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+    .card h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin-bottom: 24px; }
 
     .setting-row {
       display: flex;
@@ -125,9 +125,9 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
     .setting-row:last-child { border-bottom: none; }
 
     .setting-info { display: flex; align-items: center; gap: 14px; min-width: 0; }
-    .setting-icon { font-size: 22px; color: var(--text-secondary); flex-shrink: 0; }
-    .setting-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-    .setting-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    .setting-icon { font-size: var(--font-22); color: var(--text-secondary); flex-shrink: 0; }
+    .setting-name { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .setting-desc { font-size: var(--font-13); color: var(--text-secondary); margin-top: 2px; }
 
     .theme-toggle {
       width: 48px;
@@ -187,7 +187,7 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
       border-radius: 6px;
       background: transparent;
       color: var(--text-secondary);
-      font-size: 13px;
+      font-size: var(--font-13);
       font-weight: 500;
       cursor: pointer;
       transition: all 0.15s ease;

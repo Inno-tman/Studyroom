@@ -61,18 +61,18 @@ import { UserStats } from '../shared/models/stats.model';
 
     .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; display: flex; align-items: center; gap: 24px; margin-bottom: 32px; }
 
-    .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
+    .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: var(--font-28); font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
     .profile-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
-    .profile-info h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
-    .profile-info p { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+    .profile-info h2 { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .profile-info p { font-size: var(--font-14); color: var(--text-secondary); margin-bottom: 8px; }
 
     .school { display: flex; align-items: center; gap: 6px; }
-    .school-icon { font-size: 16px; color: var(--accent); }
+    .school-icon { font-size: var(--font-16); color: var(--accent); }
 
-    .profile-info .bio { font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+    .profile-info .bio { font-size: var(--font-14); color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
 
-    .role-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .role-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: var(--font-12); font-weight: 600; }
 
     .edit-btn {
       display: inline-flex;
@@ -82,24 +82,24 @@ import { UserStats } from '../shared/models/stats.model';
       color: white;
       padding: 8px 16px;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: var(--font-14);
       font-weight: 600;
       text-decoration: none;
       transition: opacity 0.15s;
     }
 
     .edit-btn:hover { opacity: 0.85; }
-    .edit-btn .material-icons { font-size: 18px; }
+    .edit-btn .material-icons { font-size: var(--font-18); }
 
     .stats-section { margin-top: 32px; }
-    .stats-section h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
+    .stats-section h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
 
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
 
-    .stat-value { display: block; font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
-    .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { display: block; font-size: var(--font-28); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .stat-label { font-size: var(--font-12); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
     @media (max-width: 768px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
