@@ -17,7 +17,6 @@ public class StudyRoomHub : Hub
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IDirectMessageRepository _dmRepo;
     private readonly IUserRepository _userRepo;
-    private readonly INotificationService _notificationService;
     private static readonly Dictionary<string, string> _onlineUsers = new();
     private static readonly Dictionary<string, string> _userGroups = new();
 
@@ -26,15 +25,13 @@ public class StudyRoomHub : Hub
         IRoomRepository roomRepo,
         IStudySessionRepository sessionRepo,
         IDirectMessageRepository dmRepo,
-        IUserRepository userRepo,
-        INotificationService notificationService)
+        IUserRepository userRepo)
     {
         _messageRepo = messageRepo;
         _roomRepo = roomRepo;
         _sessionRepo = sessionRepo;
         _dmRepo = dmRepo;
         _userRepo = userRepo;
-        _notificationService = notificationService;
     }
 
     private Guid UserId => Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -185,16 +182,6 @@ public class StudyRoomHub : Hub
             createdAt = message.CreatedAt
         };
 
-        await _notificationService.CreateAsync(
-            receiver,
-            "direct_message",
-            "New message",
-            $"You have a new message from {Username}.",
-            icon: "chat",
-            actorId: UserId,
-            actorName: Username,
-            link: "/messages");
-
         await Clients.Group(GetUserGroup(receiverId)).SendAsync("ReceiveDirectMessage", dto);
         await Clients.Group(GetUserGroup(UserId.ToString())).SendAsync("ReceiveDirectMessage", dto);
     }
@@ -213,8 +200,7 @@ public class StudyRoomHub : Hub
             return;
         }
 
-        bool isParticipant = message.SenderId == UserId || message.ReceiverId == UserId;
-        if (!isParticipant) return;
+        if (message.SenderId != UserId) return;
 
         await dmRepo.DeleteAsync(id);
 

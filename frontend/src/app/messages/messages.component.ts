@@ -61,7 +61,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
                   <p>{{ msg.content }}</p>
                   <span class="bubble-time">{{ msg.createdAt | date: 'shortTime' }}</span>
                 </div>
-                <button class="delete-msg" (click)="deleteMessage(msg)" title="Delete message" aria-label="Delete message">
+                <button class="delete-msg" *ngIf="msg.senderId === myId" (click)="deleteMessage(msg)" title="Delete message" aria-label="Delete message">
                   <span class="material-icons">close</span>
                 </button>
               </div>

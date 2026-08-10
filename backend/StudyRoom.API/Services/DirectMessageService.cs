@@ -130,8 +130,8 @@ public class DirectMessageService : IDirectMessageService
         var message = await _dmRepo.GetByIdAsync(messageId)
             ?? throw new KeyNotFoundException("Message not found.");
 
-        if (message.SenderId != userId && message.ReceiverId != userId)
-            throw new UnauthorizedAccessException("Not allowed to delete this message.");
+        if (message.SenderId != userId)
+            throw new UnauthorizedAccessException("You can only delete messages you sent.");
 
         await _dmRepo.DeleteAsync(messageId);
     }
