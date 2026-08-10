@@ -10,7 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
   template: `
     <div *ngIf="showReminder()" class="reminder-banner">
       <span class="reminder-icon material-icons">warning_amber</span>
-      <span class="reminder-text">Your profile is incomplete â€” add a profile picture so others can recognize you.</span>
+      <span class="reminder-text">Your profile is incomplete — add a profile picture so others can recognize you.</span>
       <button class="reminder-action" (click)="goToProfile()">Complete Profile</button>
     </div>
   `,

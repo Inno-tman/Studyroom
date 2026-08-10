@@ -43,6 +43,72 @@ public class FriendService : IFriendService
         return result;
     }
 
+    public async Task<List<UserSearchResultDto>> SuggestUsersAsync(Guid userId, int count)
+    {
+        var me = await _userRepo.GetByIdAsync(userId);
+        if (me == null) return new List<UserSearchResultDto>();
+
+        var allUsers = await _userRepo.GetAllAsync();
+        var myFriendships = await _friendRepo.GetAcceptedAsync(userId);
+        var allAccepted = await _friendRepo.GetAllAcceptedAsync();
+        var pending = await _friendRepo.GetPendingAsync(userId);
+
+        var myFriendIds = myFriendships
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
+            .ToHashSet();
+
+        var adjacency = new Dictionary<Guid, HashSet<Guid>>();
+        foreach (var f in allAccepted)
+        {
+            if (!adjacency.TryGetValue(f.RequesterId, out var set1))
+                adjacency[f.RequesterId] = set1 = new HashSet<Guid>();
+            set1.Add(f.AddresseeId);
+            if (!adjacency.TryGetValue(f.AddresseeId, out var set2))
+                adjacency[f.AddresseeId] = set2 = new HashSet<Guid>();
+            set2.Add(f.RequesterId);
+        }
+
+        var connectedIds = pending
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
+            .Concat(myFriendIds)
+            .ToHashSet();
+
+        var candidates = allUsers
+            .Where(u => u.Id != userId && !connectedIds.Contains(u.Id))
+            .Select(u =>
+            {
+                var theirFriends = adjacency.TryGetValue(u.Id, out var s) ? s : new HashSet<Guid>();
+                var mutual = theirFriends.Count(f => myFriendIds.Contains(f));
+                var sameSchool = !string.IsNullOrWhiteSpace(me.SchoolName)
+                    && !string.IsNullOrWhiteSpace(u.SchoolName)
+                    && me.SchoolName.Equals(u.SchoolName, StringComparison.OrdinalIgnoreCase);
+                var score = (mutual * 100) + (sameSchool ? 10 : 0);
+                return (u, mutual, sameSchool, score);
+            })
+            .Where(c => c.score > 0)
+            .OrderByDescending(c => c.score)
+            .ThenBy(c => c.u.Username)
+            .Take(count)
+            .ToList();
+
+        var result = new List<UserSearchResultDto>();
+        foreach (var c in candidates)
+        {
+            result.Add(new UserSearchResultDto
+            {
+                Id = c.u.Id,
+                Username = c.u.Username,
+                DisplayName = BuildDisplayName(c.u),
+                AvatarUrl = c.u.AvatarUrl,
+                SchoolName = c.u.SchoolName,
+                Relationship = "None",
+                MutualCount = c.mutual
+            });
+        }
+
+        return result;
+    }
+
     public async Task<List<FriendRequestDto>> GetFriendsAsync(Guid userId)
     {
         var rels = await _friendRepo.GetFriendIdsAsync(userId);

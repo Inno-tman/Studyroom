@@ -6,6 +6,7 @@ export interface UserSearchResult {
   schoolName?: string;
   relationship: 'None' | 'Friends' | 'RequestSent' | 'RequestReceived';
   relationshipId?: string;
+  mutualCount?: number;
 }
 
 export interface Friend {

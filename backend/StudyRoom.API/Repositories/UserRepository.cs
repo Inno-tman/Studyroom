@@ -52,4 +52,6 @@ public class UserRepository : IUserRepository
             .Take(50)
             .ToListAsync();
     }
+
+    public async Task<List<User>> GetAllAsync() => await _context.Users.AsNoTracking().ToListAsync();
 }

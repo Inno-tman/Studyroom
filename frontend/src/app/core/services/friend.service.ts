@@ -12,6 +12,10 @@ export class FriendService {
     return this.http.get<UserSearchResult[]>(`${environment.apiUrl}/users/search`, { params: { q: query } });
   }
 
+  getSuggestions(): Observable<UserSearchResult[]> {
+    return this.http.get<UserSearchResult[]>(`${environment.apiUrl}/users/suggestions`);
+  }
+
   getFriends(): Observable<Friend[]> {
     return this.http.get<Friend[]>(`${environment.apiUrl}/friends`);
   }

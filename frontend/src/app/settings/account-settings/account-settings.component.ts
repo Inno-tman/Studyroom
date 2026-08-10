@@ -55,7 +55,7 @@ import { AuthService } from '../../core/services/auth.service';
 
         <div class="form-actions">
           <button type="submit" [disabled]="passwordForm.invalid || savingPassword || confirmPassword !== newPassword" class="btn-primary">
-            {{ savingPassword ? 'Savingâ€¦' : 'Update Password' }}
+            {{ savingPassword ? 'Saving…' : 'Update Password' }}
           </button>
         </div>
 

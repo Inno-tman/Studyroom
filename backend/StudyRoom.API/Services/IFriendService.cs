@@ -5,6 +5,7 @@ namespace StudyRoom.API.Services;
 public interface IFriendService
 {
     Task<List<UserSearchResultDto>> SearchUsersAsync(string query, Guid userId);
+    Task<List<UserSearchResultDto>> SuggestUsersAsync(Guid userId, int count = 20);
     Task<List<FriendRequestDto>> GetFriendsAsync(Guid userId);
     Task<List<FriendRequestDto>> GetIncomingRequestsAsync(Guid userId);
     Task SendRequestAsync(Guid fromUserId, Guid toUserId);

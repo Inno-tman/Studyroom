@@ -14,13 +14,41 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
         <h1>People</h1>
       </div>
 
+      <div *ngIf="suggestions.length > 0" class="section">
+        <h2>Discover</h2>
+        <p class="section-hint">People you may know, ranked by how likely you are to connect.</p>
+        <div class="list-card">
+          <div *ngFor="let user of suggestions" class="person-row">
+          <div class="person-avatar" [class.has-image]="user.avatarUrl">
+            <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
+            <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+          </div>
+          <div class="person-info">
+            <span class="person-name">{{ user.displayName || user.username }}</span>
+            <span class="person-sub">
+              {{ '@' + user.username }}{{ user.schoolName ? ' · ' + user.schoolName : '' }}
+              <span *ngIf="user.mutualCount && user.mutualCount > 0" class="mutual">{{ user.mutualCount }} mutual {{ user.mutualCount === 1 ? 'friend' : 'friends' }}</span>
+            </span>
+          </div>
+          <button
+            *ngIf="user.relationship === 'None'"
+            class="btn-primary small"
+            (click)="sendRequest(user)"
+          >
+            Add Friend
+          </button>
+          <span *ngIf="user.relationship === 'RequestSent'" class="status-label">Request Sent</span>
+          </div>
+        </div>
+      </div>
+
       <div class="search-section">
         <div class="search-box">
           <span class="material-icons">search</span>
           <input
             type="text"
             [(ngModel)]="query"
-            placeholder="Search by name, username or schoolâ€¦"
+            placeholder="Search by name, username or school…"
             (input)="search()"
           />
         </div>
@@ -33,7 +61,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
             </div>
             <div class="person-info">
               <span class="person-name">{{ user.displayName || user.username }}</span>
-              <span class="person-sub">{{ '@' + user.username }}{{ user.schoolName ? ' Â· ' + user.schoolName : '' }}</span>
+              <span class="person-sub">{{ '@' + user.username }}{{ user.schoolName ? ' · ' + user.schoolName : '' }}</span>
             </div>
             <button
               *ngIf="user.relationship === 'None'"
@@ -152,7 +180,12 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
 
     .sections { display: flex; flex-direction: column; gap: 32px; }
 
+    .list-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .list-card .person-row:last-child { border-bottom: none; }
+
     .section h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+    .section-hint { font-size: var(--font-13); color: var(--text-muted); margin: -6px 0 12px; }
+    .mutual { color: var(--primary); font-weight: 500; margin-left: 4px; }
 
     .empty { color: var(--text-muted); font-size: var(--font-14); padding: 12px 0; }
   `]
@@ -162,6 +195,7 @@ export class PeopleComponent implements OnInit {
 
   query = '';
   results: UserSearchResult[] = [];
+  suggestions: UserSearchResult[] = [];
   requests: Friend[] = [];
   friends: Friend[] = [];
   loading = false;
@@ -171,7 +205,11 @@ export class PeopleComponent implements OnInit {
   }
 
   async loadAll(): Promise<void> {
-    await Promise.all([this.loadRequests(), this.loadFriends()]);
+    await Promise.all([this.loadRequests(), this.loadFriends(), this.loadSuggestions()]);
+  }
+
+  async loadSuggestions(): Promise<void> {
+    this.suggestions = (await this.friendService.getSuggestions().toPromise()) || [];
   }
 
   async loadRequests(): Promise<void> {

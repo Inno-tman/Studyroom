@@ -35,7 +35,7 @@ import { Post } from '../shared/models/social.model';
         </div>
       </div>
 
-      <div *ngIf="loading" class="empty-state">Loadingâ€¦</div>
+      <div *ngIf="loading" class="empty-state">Loading…</div>
       <div *ngIf="!loading && posts.length === 0" class="empty-state">
         No posts yet. Share something with your friends!
       </div>
@@ -134,7 +134,7 @@ import { Post } from '../shared/models/social.model';
                   <input
                     type="text"
                     [(ngModel)]="post.newComment"
-                    placeholder="Write a replyâ€¦"
+                    placeholder="Write a reply…"
                     (keyup.enter)="reply(post)"
                   />
                   <button class="btn-primary small" (click)="reply(post)" [disabled]="!post.newComment?.trim()">Post</button>
@@ -147,7 +147,7 @@ import { Post } from '../shared/models/social.model';
               <input
                 type="text"
                 [(ngModel)]="post.newComment"
-                placeholder="Write a commentâ€¦"
+                placeholder="Write a comment…"
                 (keyup.enter)="comment(post)"
               />
               <button class="btn-primary small" (click)="comment(post)" [disabled]="!post.newComment?.trim()">Post</button>

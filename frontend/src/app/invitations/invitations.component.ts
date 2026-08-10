@@ -14,7 +14,7 @@ import { RoomInvitation } from '../shared/models/social.model';
         <h1>Room Invitations</h1>
       </div>
 
-      <div *ngIf="loading" class="loading">Loadingâ€¦</div>
+      <div *ngIf="loading" class="loading">Loading…</div>
 
       <div *ngIf="!loading && invitations.length === 0" class="empty">
         <p>You have no pending room invitations.</p>
@@ -26,7 +26,7 @@ import { RoomInvitation } from '../shared/models/social.model';
           <div class="invite-info">
             <span class="invite-room">{{ inv.roomName }}</span>
             <span class="invite-subject">{{ inv.roomSubject || 'General' }}</span>
-            <span class="invite-meta">{{ inv.inviterName }} invited you Â· {{ inv.createdAt | date: 'medium' }}</span>
+            <span class="invite-meta">{{ inv.inviterName }} invited you · {{ inv.createdAt | date: 'medium' }}</span>
           </div>
           <div class="invite-actions">
             <button class="btn-accept" (click)="accept(inv)" [disabled]="processing">

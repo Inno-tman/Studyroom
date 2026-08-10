@@ -12,4 +12,5 @@ public interface IUserRepository
     Task<bool> UsernameExistsAsync(string username);
     Task<bool> EmailExistsAsync(string email);
     Task<List<User>> SearchAsync(string query, Guid excludeId);
+    Task<List<User>> GetAllAsync();
 }

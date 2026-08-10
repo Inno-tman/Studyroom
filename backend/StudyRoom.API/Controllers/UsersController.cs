@@ -22,4 +22,11 @@ public class UsersController : ControllerBase
         var results = await _friendService.SearchUsersAsync(q, UserId);
         return Ok(results);
     }
+
+    [HttpGet("suggestions")]
+    public async Task<IActionResult> Suggestions([FromQuery] int count = 20)
+    {
+        var results = await _friendService.SuggestUsersAsync(UserId, count);
+        return Ok(results);
+    }
 }

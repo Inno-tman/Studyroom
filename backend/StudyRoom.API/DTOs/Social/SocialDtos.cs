@@ -9,6 +9,7 @@ public class UserSearchResultDto
     public string? SchoolName { get; set; }
     public string Relationship { get; set; } = "None";
     public Guid? RelationshipId { get; set; }
+    public int MutualCount { get; set; }
 }
 
 public class FriendRequestDto

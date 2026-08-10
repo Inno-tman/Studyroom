@@ -29,6 +29,24 @@ public class FriendshipRepository : IFriendshipRepository
         return accepted;
     }
 
+    public async Task<List<Friendship>> GetAcceptedAsync(Guid userId) =>
+        await _context.Friendships
+            .Where(f => f.Status == "Accepted" && (f.RequesterId == userId || f.AddresseeId == userId))
+            .AsNoTracking()
+            .ToListAsync();
+
+    public async Task<List<Friendship>> GetAllAcceptedAsync() =>
+        await _context.Friendships
+            .Where(f => f.Status == "Accepted")
+            .AsNoTracking()
+            .ToListAsync();
+
+    public async Task<List<Friendship>> GetPendingAsync(Guid userId) =>
+        await _context.Friendships
+            .Where(f => f.Status == "Pending" && (f.RequesterId == userId || f.AddresseeId == userId))
+            .AsNoTracking()
+            .ToListAsync();
+
     public async Task<List<Friendship>> GetIncomingAsync(Guid userId) =>
         await _context.Friendships
             .Where(f => f.AddresseeId == userId && f.Status == "Pending")

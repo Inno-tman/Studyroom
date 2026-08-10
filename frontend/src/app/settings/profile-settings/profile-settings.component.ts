@@ -28,7 +28,7 @@ import { User } from '../../shared/models/user.model';
               <span *ngIf="!avatarUrl" class="material-icons avatar-placeholder">person</span>
               <div class="avatar-overlay" (click)="fileInput?.click()">
                 <span class="material-icons">{{ uploadingFile() ? 'hourglass_top' : 'photo_camera' }}</span>
-                <span class="overlay-label">{{ uploadingFile() ? 'Uploadingâ€¦' : 'Change' }}</span>
+                <span class="overlay-label">{{ uploadingFile() ? 'Uploading…' : 'Change' }}</span>
               </div>
             </div>
             <span class="avatar-initial" *ngIf="!avatarUrl">{{ displayNameInitial }}</span>
@@ -88,7 +88,7 @@ import { User } from '../../shared/models/user.model';
             [(ngModel)]="bio"
             rows="4"
             maxlength="1000"
-            placeholder="Tell others about yourselfâ€¦"
+            placeholder="Tell others about yourself…"
           ></textarea>
           <span class="char-count">{{ bio.length }}/1000</span>
         </label>
@@ -101,7 +101,7 @@ import { User } from '../../shared/models/user.model';
         <div class="form-actions">
           <button type="submit" [disabled]="profileForm.invalid || saving()" class="btn-primary">
             <span class="material-icons">check</span>
-            {{ saving() ? 'Savingâ€¦' : 'Save Changes' }}
+            {{ saving() ? 'Saving…' : 'Save Changes' }}
           </button>
           <button type="button" class="btn-secondary" (click)="reset()">Discard</button>
         </div>

@@ -72,7 +72,7 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
               <button class="dialog-close" (click)="showInviteDialog = false"><span class="material-icons">close</span></button>
             </div>
             <div class="invite-dialog-body">
-              <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite â€” everyone you know is already here!</p>
+              <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite — everyone you know is already here!</p>
               <div *ngFor="let friend of invitableFriends" class="invite-row">
                 <div class="member-avatar" [class.has-image]="friend.avatarUrl">
                   <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />

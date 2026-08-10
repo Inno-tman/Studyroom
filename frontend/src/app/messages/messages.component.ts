@@ -68,7 +68,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
                 type="text"
                 [(ngModel)]="newMessage"
                 (keyup.enter)="send()"
-                placeholder="Type a messageâ€¦"
+                placeholder="Type a message…"
                 [disabled]="sending"
               />
               <button class="send-btn" (click)="send()" [disabled]="!newMessage.trim() || sending">

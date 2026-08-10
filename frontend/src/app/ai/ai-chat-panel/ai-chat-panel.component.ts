@@ -44,7 +44,7 @@ interface ChatMessage {
             <div class="conv-item" *ngFor="let c of conversations" (click)="loadConversation(c.id)" [class.active]="c.id === currentConvId">
               <div class="conv-item-body">
                 <div class="conv-subject">{{ c.subject || 'Untitled' }}</div>
-                <div class="conv-meta">{{ c.messageCount }} msgs Â· {{ c.createdAt | date:'short' }}</div>
+                <div class="conv-meta">{{ c.messageCount }} msgs · {{ c.createdAt | date:'short' }}</div>
               </div>
               <button class="conv-del" (click)="deleteConversation(c.id, $event)" title="Delete conversation"><span class="material-icons">close</span></button>
             </div>
