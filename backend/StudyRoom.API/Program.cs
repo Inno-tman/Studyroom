@@ -10,11 +10,9 @@ using StudyRoom.API.Middleware;
 using StudyRoom.API.Repositories;
 using StudyRoom.API.Services;
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-{
-    Args = args,
-    DisableFileWatcher = true
-});
+Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
+
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
