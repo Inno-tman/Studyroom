@@ -1,11 +1,12 @@
 import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { NgIf } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [NgIf, RouterLink, RouterLinkActive],
   template: `
     <aside class="sidebar" [class.hidden]="hidden">
       <div class="sidebar-header">
@@ -90,8 +91,8 @@ import { AuthService } from '../../../core/services/auth.service';
     .sidebar-header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 20px 16px;
+      gap: 10px;
+      padding: 14px 12px;
       border-bottom: 1px solid var(--border);
     }
 
@@ -115,7 +116,7 @@ import { AuthService } from '../../../core/services/auth.service';
 
     .sidebar-nav {
       flex: 1;
-      padding: 12px 8px;
+      padding: 8px 8px;
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -124,8 +125,8 @@ import { AuthService } from '../../../core/services/auth.service';
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
+      gap: 10px;
+      padding: 8px 10px;
       border-radius: 8px;
       color: var(--text-secondary);
       text-decoration: none;
@@ -144,11 +145,12 @@ import { AuthService } from '../../../core/services/auth.service';
     }
 
     .sidebar-footer {
-      padding: 12px 8px;
+      padding: 10px 8px;
       border-top: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
     }
 
     .user-info {
