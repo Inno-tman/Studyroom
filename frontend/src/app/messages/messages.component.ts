@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { AuthService } from '../core/services/auth.service';
 import { SignalRService } from '../core/services/signalr.service';
 import { DirectMessageService } from '../core/services/direct-message.service';
+import { NotificationService } from '../core/services/notification.service';
 import { Conversation, DirectMessage } from '../shared/models/social.model';
 
 @Component({
@@ -31,7 +32,10 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               <ng-template #convoInitial>{{ (convo.displayName || convo.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
             <div class="convo-info">
-              <span class="convo-name">{{ convo.displayName || convo.username }}</span>
+              <div class="convo-top">
+                <span class="convo-name">{{ convo.displayName || convo.username }}</span>
+                <span *ngIf="(convo.unreadCount ?? 0) > 0" class="convo-unread">{{ convo.unreadCount }}</span>
+              </div>
               <span class="convo-last">{{ convo.lastMessage ? convo.lastMessage : 'No messages yet' }}</span>
             </div>
           </button>
@@ -51,14 +55,15 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               <span class="chat-title">{{ activeUser.displayName || activeUser.username }}</span>
             </div>
 
-            <div class="messages" #messageContainer>
-              <div
-                *ngFor="let msg of messages"
-                class="bubble"
-                [class.mine]="msg.senderId === myId"
-              >
-                <p>{{ msg.content }}</p>
-                <span class="bubble-time">{{ msg.createdAt | date: 'shortTime' }}</span>
+<div class="messages" #messageContainer>
+              <div *ngFor="let msg of messages" class="bubble-wrap" [class.mine]="msg.senderId === myId">
+                <div class="bubble">
+                  <p>{{ msg.content }}</p>
+                  <span class="bubble-time">{{ msg.createdAt | date: 'shortTime' }}</span>
+                </div>
+                <button class="delete-msg" (click)="deleteMessage(msg)" title="Delete message" aria-label="Delete message">
+                  <span class="material-icons">close</span>
+                </button>
               </div>
               <div *ngIf="messages.length === 0" class="empty">Say hello!</div>
             </div>
@@ -108,7 +113,13 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .convo-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .convo-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-    .convo-name { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
+    .convo-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .convo-name { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .convo-unread {
+      margin-left: auto; background: var(--primary); color: white; font-size: var(--font-11); font-weight: 700;
+      min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
     .convo-last { font-size: var(--font-12); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -124,12 +135,24 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
 
     .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 
-    .bubble { max-width: 70%; padding: 10px 14px; border-radius: 12px; align-self: flex-start; background: var(--background); border: 1px solid var(--border); }
+    .bubble-wrap { display: flex; align-items: flex-end; gap: 6px; max-width: 70%; align-self: flex-start; }
+    .bubble-wrap.mine { align-self: flex-end; flex-direction: row-reverse; }
+    .bubble { padding: 10px 14px; border-radius: 12px; background: var(--background); border: 1px solid var(--border); }
     .bubble p { font-size: var(--font-14); color: var(--text-primary); word-wrap: break-word; white-space: pre-wrap; }
     .bubble-time { display: block; font-size: var(--font-11); color: var(--text-muted); margin-top: 4px; }
-    .bubble.mine { align-self: flex-end; background: var(--primary); border-color: var(--primary); }
-    .bubble.mine p { color: white; }
-    .bubble.mine .bubble-time { color: rgba(255,255,255,0.8); }
+    .bubble-wrap.mine .bubble { background: var(--primary); border-color: var(--primary); }
+    .bubble-wrap.mine .bubble p { color: white; }
+    .bubble-wrap.mine .bubble-time { color: rgba(255,255,255,0.8); }
+
+    .delete-msg {
+      width: 24px; height: 24px; border-radius: 50%; border: none; background: none;
+      color: var(--text-muted); cursor: pointer; font-size: var(--font-14);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      opacity: 0; transition: opacity 0.15s ease, color 0.15s ease;
+    }
+    .delete-msg .material-icons { font-size: var(--font-16); }
+    .bubble-wrap:hover .delete-msg { opacity: 1; }
+    .delete-msg:hover { background: rgba(255,0,0,0.1); color: var(--error); }
 
     .empty { color: var(--text-muted); font-size: var(--font-13); padding: 12px; text-align: center; }
 
@@ -159,6 +182,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private signalR = inject(SignalRService);
   private dmService = inject(DirectMessageService);
+  private notificationService = inject(NotificationService);
 
   myId = this.auth.currentUser()?.id ?? '';
   conversations: Conversation[] = [];
@@ -168,6 +192,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   newMessage = '';
   sending = false;
   private dmSub?: Subscription;
+  private deletedSub?: Subscription;
 
   async ngOnInit() {
     await this.signalR.startConnection();
@@ -177,6 +202,11 @@ export class MessagesComponent implements OnInit, OnDestroy {
           this.messages = [...this.messages, msg];
         }
       }
+      this.loadConversations();
+      this.notificationService.refreshMessagesUnread();
+    });
+    this.deletedSub = this.signalR.messageDeleted$.subscribe(id => {
+      this.messages = this.messages.filter(m => m.id !== id);
       this.loadConversations();
     });
     await this.loadConversations();
@@ -190,6 +220,8 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.activeUserId = userId;
     this.activeUser = this.conversations.find(c => c.userId === userId);
     this.messages = (await this.dmService.getConversation(userId).toPromise()) || [];
+    this.conversations = this.conversations.map(c => c.userId === userId ? { ...c, unreadCount: 0 } : c);
+    this.notificationService.refreshMessagesUnread();
   }
 
   async send(): Promise<void> {
@@ -206,7 +238,16 @@ export class MessagesComponent implements OnInit, OnDestroy {
     }
   }
 
+  async deleteMessage(msg: DirectMessage): Promise<void> {
+    if (!msg.id) return;
+    if (!confirm('Delete this message?')) return;
+    await this.signalR.deleteDirectMessage(msg.id).catch(() => {});
+    this.messages = this.messages.filter(m => m.id !== msg.id);
+    await this.loadConversations();
+  }
+
   ngOnDestroy(): void {
     this.dmSub?.unsubscribe();
+    this.deletedSub?.unsubscribe();
   }
 }

@@ -5,6 +5,7 @@ using StudyRoom.API.DTOs.Messages;
 using StudyRoom.API.Models;
 using StudyRoom.API.Repositories;
 using StudyRoom.API.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace StudyRoom.API.Hubs;
 
@@ -188,7 +189,7 @@ public class StudyRoomHub : Hub
             receiver,
             "direct_message",
             "New message",
-            message.Content,
+            $"You have a new message from {Username}.",
             icon: "chat",
             actorId: UserId,
             actorName: Username,
@@ -196,6 +197,30 @@ public class StudyRoomHub : Hub
 
         await Clients.Group(GetUserGroup(receiverId)).SendAsync("ReceiveDirectMessage", dto);
         await Clients.Group(GetUserGroup(UserId.ToString())).SendAsync("ReceiveDirectMessage", dto);
+    }
+
+    public async Task DeleteDirectMessage(string messageId)
+    {
+        var id = Guid.Parse(messageId);
+
+        using var scope = Context.GetHttpContext()!.RequestServices.CreateScope();
+        var dmRepo = scope.ServiceProvider.GetRequiredService<IDirectMessageRepository>();
+        var message = await dmRepo.GetByIdAsync(id);
+
+        if (message == null)
+        {
+            await Clients.Caller.SendAsync("MessageDeleted", messageId);
+            return;
+        }
+
+        bool isParticipant = message.SenderId == UserId || message.ReceiverId == UserId;
+        if (!isParticipant) return;
+
+        await dmRepo.DeleteAsync(id);
+
+        var groupA = GetUserGroup(message.SenderId.ToString());
+        var groupB = GetUserGroup(message.ReceiverId.ToString());
+        await Clients.Groups(new[] { groupA, groupB }).SendAsync("MessageDeleted", messageId);
     }
 
     public override async Task OnConnectedAsync()

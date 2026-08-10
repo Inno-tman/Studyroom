@@ -19,4 +19,8 @@ export class DirectMessageService {
   send(receiverId: string, content: string): Observable<DirectMessage> {
     return this.http.post<DirectMessage>(`${environment.apiUrl}/messages/direct`, { receiverId, content });
   }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/messages/direct/${id}`);
+  }
 }

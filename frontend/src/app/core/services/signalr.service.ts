@@ -21,6 +21,7 @@ export class SignalRService {
   private notesUpdatedSubject = new Subject<any>();
   private directMessageSubject = new Subject<DirectMessage>();
   private notificationSubject = new Subject<NotificationItem>();
+  private messageDeletedSubject = new Subject<string>();
 
   message$ = this.messageSubject.asObservable();
   userJoined$ = this.userJoinedSubject.asObservable();
@@ -33,6 +34,7 @@ export class SignalRService {
   notesUpdated$ = this.notesUpdatedSubject.asObservable();
   directMessage$ = this.directMessageSubject.asObservable();
   notification$ = this.notificationSubject.asObservable();
+  messageDeleted$ = this.messageDeletedSubject.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -57,6 +59,7 @@ export class SignalRService {
     this.hubConnection.on('NotesUpdated', (data: any) => this.notesUpdatedSubject.next(data));
     this.hubConnection.on('ReceiveDirectMessage', (msg: DirectMessage) => this.directMessageSubject.next(msg));
     this.hubConnection.on('ReceiveNotification', (notification: NotificationItem) => this.notificationSubject.next(notification));
+    this.hubConnection.on('MessageDeleted', (messageId: string) => this.messageDeletedSubject.next(messageId));
 
     await this.hubConnection.start();
   }
@@ -75,6 +78,10 @@ export class SignalRService {
 
   async sendDirectMessage(receiverId: string, content: string): Promise<void> {
     await this.hubConnection.invoke('SendDirectMessage', receiverId, content);
+  }
+
+  async deleteDirectMessage(messageId: string): Promise<void> {
+    await this.hubConnection.invoke('DeleteDirectMessage', messageId);
   }
 
   async startTimer(roomId: string, durationMinutes: number): Promise<void> {

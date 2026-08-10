@@ -56,6 +56,7 @@ public class DirectMessageService : IDirectMessageService
     public async Task<List<DirectMessageDto>> GetConversationAsync(Guid userA, Guid userB)
     {
         var messages = await _dmRepo.GetConversationAsync(userA, userB);
+        await _dmRepo.MarkReadAsync(userA, userB);
         return messages.Select(Map).ToList();
     }
 
@@ -66,6 +67,11 @@ public class DirectMessageService : IDirectMessageService
             .GroupBy(m => m.SenderId == userId ? m.ReceiverId : m.SenderId)
             .OrderByDescending(g => g.Max(m => m.CreatedAt))
             .ToList();
+
+        var unreadMap = recent
+            .Where(m => m.ReceiverId == userId && !m.IsRead)
+            .GroupBy(m => m.SenderId)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         var result = new List<ConversationDto>();
         var seen = new HashSet<Guid>();
@@ -87,7 +93,8 @@ public class DirectMessageService : IDirectMessageService
                 Username = other.Username,
                 AvatarUrl = other.AvatarUrl,
                 LastMessage = last.Content,
-                LastMessageAt = last.CreatedAt
+                LastMessageAt = last.CreatedAt,
+                UnreadCount = unreadMap.GetValueOrDefault(otherUserId)
             });
         }
 
@@ -113,6 +120,20 @@ public class DirectMessageService : IDirectMessageService
         }
 
         return result.OrderByDescending(c => c.LastMessageAt).ToList();
+    }
+
+    public async Task<int> GetUnreadCountAsync(Guid userId) =>
+        await _dmRepo.GetUnreadCountAsync(userId);
+
+    public async Task DeleteAsync(Guid messageId, Guid userId)
+    {
+        var message = await _dmRepo.GetByIdAsync(messageId)
+            ?? throw new KeyNotFoundException("Message not found.");
+
+        if (message.SenderId != userId && message.ReceiverId != userId)
+            throw new UnauthorizedAccessException("Not allowed to delete this message.");
+
+        await _dmRepo.DeleteAsync(messageId);
     }
 
     private static DirectMessageDto Map(DirectMessage m) => new()

@@ -24,6 +24,13 @@ public class DirectMessagesController : ControllerBase
         return Ok(conversations);
     }
 
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount()
+    {
+        var count = await _dmService.GetUnreadCountAsync(UserId);
+        return Ok(new { count });
+    }
+
     [HttpGet("{otherUserId}")]
     public async Task<IActionResult> GetConversation(Guid otherUserId)
     {
@@ -46,6 +53,24 @@ public class DirectMessagesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        try
+        {
+            await _dmService.DeleteAsync(id, UserId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
         }
         catch (UnauthorizedAccessException ex)
         {

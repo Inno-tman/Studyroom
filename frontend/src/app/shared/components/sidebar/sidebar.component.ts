@@ -14,7 +14,7 @@ import { NotificationService } from '../../../core/services/notification.service
         <span class="logo-icon material-icons">menu_book</span>
         <span class="logo-text">StudyRoom</span>
         <button class="collapse-btn" (click)="toggle.emit()" title="Hide sidebar" aria-label="Hide sidebar">
-          <span class="material-icons">chevron_left</span>
+          <span class="material-icons">chevron_right</span>
         </button>
       </div>
 
@@ -47,6 +47,7 @@ import { NotificationService } from '../../../core/services/notification.service
         <a routerLink="/messages" routerLinkActive="active" class="nav-item">
           <span class="material-icons">chat</span>
           <span>Messages</span>
+          <span *ngIf="notificationService.messageUnreadCount() > 0" class="badge">{{ notificationService.messageUnreadCount() }}</span>
         </a>
         <a routerLink="/profile" routerLinkActive="active" class="nav-item">
           <span class="material-icons">person</span>
@@ -79,11 +80,12 @@ import { NotificationService } from '../../../core/services/notification.service
     .sidebar {
       position: fixed;
       top: 0;
-      left: 0;
+      right: 0;
       width: var(--sidebar-width);
       height: 100vh;
       background: var(--secondary);
-      border-right: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+      border-right: none;
       display: flex;
       flex-direction: column;
       z-index: 100;
@@ -91,7 +93,7 @@ import { NotificationService } from '../../../core/services/notification.service
     }
 
     .sidebar.hidden {
-      transform: translateX(-100%);
+      transform: translateX(100%);
     }
 
     .sidebar-header {

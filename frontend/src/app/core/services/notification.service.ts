@@ -7,6 +7,7 @@ import { SignalRService } from './signalr.service';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
 import { Message } from '../../shared/models/message.model';
+import { DirectMessage } from '../../shared/models/social.model';
 import { NotificationItem, NotificationList } from '../../shared/models/notification.model';
 
 @Injectable({ providedIn: 'root' })
@@ -18,6 +19,7 @@ export class NotificationService implements OnDestroy {
   private router = inject(Router);
 
   readonly unreadCount = signal(0);
+  readonly messageUnreadCount = signal(0);
   private readonly list = signal<NotificationItem[]>([]);
   readonly items = this.list.asReadonly();
   readonly loading = signal(false);
@@ -28,6 +30,7 @@ export class NotificationService implements OnDestroy {
   constructor() {
     this.subs.push(
       this.signalR.message$.subscribe(msg => this.handleRoomMessage(msg)),
+      this.signalR.directMessage$.subscribe(msg => this.handleDirectMessage(msg)),
       this.signalR.notification$.subscribe(n => this.handleRealtimeNotification(n))
     );
 
@@ -45,7 +48,16 @@ export class NotificationService implements OnDestroy {
     this.initialized = true;
 
     await this.signalR.startConnection();
-    await this.refresh();
+    await Promise.all([this.refresh(), this.refreshMessagesUnread()]);
+  }
+
+  async refreshMessagesUnread(): Promise<void> {
+    if (!this.auth.isAuthenticated()) return;
+    try {
+      const data = await this.http.get<{ count: number }>(`${environment.apiUrl}/messages/direct/unread-count`).toPromise();
+      this.messageUnreadCount.set(data?.count ?? 0);
+    } catch {
+    }
   }
 
   async refresh(): Promise<void> {
@@ -114,10 +126,19 @@ async markRead(id: string): Promise<void> {
 
     this.list.update(items => [n, ...items.filter(i => i.id !== n.id)]);
     if (!n.isRead) this.unreadCount.update(c => c + 1);
+    if (n.type === 'direct_message' || n.type === 'stale_message') {
+      this.refreshMessagesUnread();
+    }
 
     if (!this.categoryEnabled(n.type)) return;
     this.playSound();
     this.showDesktopNotification(n.title, n.body);
+  }
+
+  private handleDirectMessage(msg: DirectMessage): void {
+    const me = this.auth.currentUser()?.id;
+    if (msg.senderId === me) return;
+    this.refreshMessagesUnread();
   }
 
   private handleRoomMessage(msg: Message): void {

@@ -16,6 +16,10 @@ public class DirectMessage
     [Required, MaxLength(2000)]
     public string Content { get; set; } = string.Empty;
 
+    public bool IsRead { get; set; }
+
+    public bool UnreadNotificationSent { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey(nameof(SenderId))]

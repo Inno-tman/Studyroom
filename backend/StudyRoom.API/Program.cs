@@ -97,6 +97,8 @@ builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSetti
 builder.Services.AddHttpClient<IAIAcademicService, AIAcademicService>();
 builder.Services.AddHttpClient<IResearchService, ResearchService>();
 
+builder.Services.AddHostedService<StaleDirectMessageNotifier>();
+
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -240,6 +242,8 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS "IX_DirectMessages_SenderId" ON "DirectMessages" ("SenderId");
         CREATE INDEX IF NOT EXISTS "IX_DirectMessages_ReceiverId" ON "DirectMessages" ("ReceiverId");
         CREATE INDEX IF NOT EXISTS "IX_DirectMessages_CreatedAt" ON "DirectMessages" ("CreatedAt");
+        ALTER TABLE "DirectMessages" ADD COLUMN IF NOT EXISTS "IsRead" boolean NOT NULL DEFAULT false;
+        ALTER TABLE "DirectMessages" ADD COLUMN IF NOT EXISTS "UnreadNotificationSent" boolean NOT NULL DEFAULT false;
 
         CREATE TABLE IF NOT EXISTS "Notifications" (
             "Id" uuid NOT NULL,

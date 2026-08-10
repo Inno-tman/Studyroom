@@ -65,6 +65,7 @@ export interface Conversation {
   avatarUrl?: string;
   lastMessage: string;
   lastMessageAt: string;
+  unreadCount?: number;
 }
 
 export interface RoomInvitation {

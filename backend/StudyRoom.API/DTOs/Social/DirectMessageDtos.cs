@@ -25,6 +25,7 @@ public class ConversationDto
     public string? AvatarUrl { get; set; }
     public string LastMessage { get; set; } = string.Empty;
     public DateTime LastMessageAt { get; set; }
+    public int UnreadCount { get; set; }
 }
 
 public class RoomInvitationDto
