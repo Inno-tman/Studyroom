@@ -130,6 +130,25 @@ export class ProfileComponent implements OnInit {
     return user?.username ?? '';
   }
 
+  age(): number | null {
+    const birthDate = this.auth.currentUser()?.birthDate;
+    if (!birthDate) return null;
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    if (birth.getMonth() > today.getMonth() || (birth.getMonth() === today.getMonth() && birth.getDate() > today.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  interestsTags(): string {
+    const interests = this.auth.currentUser()?.interests;
+    if (!interests) return '';
+    return interests.split(/[,;]/).map(t => t.trim()).filter(Boolean).join(' · ');
+  }
+
   async ngOnInit() {
     try {
       this.stats = await this.statsService.getStats().toPromise() || this.stats;
