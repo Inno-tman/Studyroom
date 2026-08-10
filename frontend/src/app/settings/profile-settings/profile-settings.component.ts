@@ -2,7 +2,6 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
-import { GooglePhotosService } from '../../core/services/google-photos.service';
 import { User } from '../../shared/models/user.model';
 
 @Component({
@@ -11,13 +10,54 @@ import { User } from '../../shared/models/user.model';
   imports: [NgIf, FormsModule],
   template: `
     <div class="card">
-      <h2>Profile</h2>
-      <p class="card-subtitle">Update your personal information.</p>
+      <div class="card-head">
+        <div class="card-head-icon">
+          <span class="material-icons">person</span>
+        </div>
+        <div>
+          <h2>Profile</h2>
+          <p class="card-subtitle">Update your personal information.</p>
+        </div>
+      </div>
 
       <form (ngSubmit)="save()" #profileForm="ngForm">
+        <section class="avatar-section">
+          <div class="avatar-wrap">
+            <div class="avatar-preview" [class.has-photo]="avatarUrl">
+              <img *ngIf="avatarUrl" [src]="avatarUrl" alt="avatar preview" />
+              <span *ngIf="!avatarUrl" class="material-icons avatar-placeholder">person</span>
+              <div class="avatar-overlay" (click)="fileInput?.click()">
+                <span class="material-icons">photo_camera</span>
+                <span class="overlay-label">Change</span>
+              </div>
+            </div>
+            <div class="avatar-initial" *ngIf="!avatarUrl">{{ displayNameInitial }}</div>
+          </div>
+
+          <div class="avatar-controls">
+            <button
+              type="button"
+              class="btn-upload"
+              (click)="fileInput?.click()"
+              [disabled]="uploadingFile()"
+            >
+              <span class="material-icons">upload</span>
+              {{ uploadingFile() ? 'Uploading…' : 'Upload photo' }}
+            </button>
+            <input
+              #fileInput
+              type="file"
+              accept="image/*"
+              hidden
+              (change)="onFileSelected($event)"
+            />
+            <p class="avatar-hint">JPG or PNG, cropped to a square avatar.</p>
+          </div>
+        </section>
+
         <div class="form-grid">
           <label>
-            Username
+            <span class="field-label">Username</span>
             <input
               type="text"
               name="username"
@@ -26,77 +66,31 @@ import { User } from '../../shared/models/user.model';
               minlength="3"
               maxlength="50"
               #usernameField="ngModel"
+              [class.invalid]="usernameField.invalid && usernameField.touched"
             />
+            <span *ngIf="usernameField.invalid && usernameField.touched" class="field-error">
+              Must be at least 3 characters.
+            </span>
           </label>
 
           <label>
-            First Name
+            <span class="field-label">First Name</span>
             <input type="text" name="firstName" [(ngModel)]="firstName" maxlength="100" />
           </label>
 
           <label>
-            Last Name
+            <span class="field-label">Last Name</span>
             <input type="text" name="lastName" [(ngModel)]="lastName" maxlength="100" />
           </label>
 
           <label>
-            School Name
+            <span class="field-label">School Name</span>
             <input type="text" name="schoolName" [(ngModel)]="schoolName" maxlength="150" />
           </label>
         </div>
 
-        <div class="avatar-section">
-          <div class="avatar-preview" [class.has-photo]="avatarUrl">
-            <img *ngIf="avatarUrl" [src]="avatarUrl" alt="avatar preview" />
-            <span *ngIf="!avatarUrl" class="avatar-placeholder">Photo</span>
-          </div>
-
-          <div class="avatar-controls">
-            <div class="avatar-buttons">
-              <button
-                type="button"
-                class="btn-secondary"
-                (click)="fileInput?.click()"
-                [disabled]="uploadingFile()"
-              >
-                <span class="material-symbols-rounded">upload</span>
-                {{ uploadingFile() ? 'Uploading…' : 'Upload from device' }}
-              </button>
-              <button
-                type="button"
-                class="btn-secondary"
-                (click)="pickFromGooglePhotos()"
-                [disabled]="pickingFromPhotos()"
-              >
-                <span class="material-symbols-rounded">photo_library</span>
-                {{ pickingFromPhotos() ? 'Opening Photos…' : 'Select from Google Photos' }}
-              </button>
-            </div>
-            <input
-              #fileInput
-              type="file"
-              accept="image/*"
-              hidden
-              (change)="onFileSelected($event)"
-            />
-            <p class="avatar-hint">
-              Photos are cropped to a square and stored as your avatar.
-            </p>
-          </div>
-        </div>
-
         <label>
-          Avatar URL
-          <input
-            type="text"
-            name="avatarUrl"
-            [(ngModel)]="avatarUrl"
-            placeholder="https://example.com/avatar.jpg"
-          />
-        </label>
-
-        <label>
-          Bio
+          <span class="field-label">Bio</span>
           <textarea
             name="bio"
             [(ngModel)]="bio"
@@ -104,72 +98,154 @@ import { User } from '../../shared/models/user.model';
             maxlength="1000"
             placeholder="Tell others about yourself…"
           ></textarea>
+          <span class="char-count">{{ bio.length }}/1000</span>
         </label>
 
-        <div *ngIf="usernameField.invalid && usernameField.touched" class="form-error">
-          Username must be at least 3 characters.
+        <div class="avatar-url" *ngIf="avatarUrl">
+          <span class="field-label">Avatar URL</span>
+          <input type="text" name="avatarUrl" [(ngModel)]="avatarUrl" readonly />
         </div>
 
         <div class="form-actions">
           <button type="submit" [disabled]="profileForm.invalid || saving()" class="btn-primary">
+            <span class="material-icons">check</span>
             {{ saving() ? 'Saving…' : 'Save Changes' }}
           </button>
-          <button type="button" class="btn-secondary" (click)="reset()">Reset</button>
+          <button type="button" class="btn-secondary" (click)="reset()">Discard</button>
         </div>
 
         <div *ngIf="error()" class="form-error">{{ error() }}</div>
-        <div *ngIf="success()" class="form-success">{{ success() }}</div>
+        <div *ngIf="success()" class="form-success">
+          <span class="material-icons">check_circle</span>
+          {{ success() }}
+        </div>
       </form>
     </div>
   `,
   styles: [`
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
-    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
-
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-    label { display: block; margin-bottom: 16px; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
-    input, textarea {
-      display: block; width: 100%; margin-top: 6px; padding: 10px 12px;
-      background: var(--background); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-primary); font-size: 14px; font-family: inherit;
-      box-sizing: border-box;
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 32px 32px;
     }
-    textarea { resize: vertical; }
-    input:focus, textarea:focus { outline: none; border-color: var(--primary); }
 
-    .avatar-section { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-    .avatar-preview { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border); background: var(--surface-hover); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+    .card-head-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--primary); color: white;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .card-head-icon .material-icons { font-size: 22px; }
+    .card h2 { font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin: 2px 0 0; }
+
+    .avatar-section {
+      display: flex; align-items: center; gap: 24px;
+      padding: 20px; margin-bottom: 24px;
+      background: var(--background); border: 1px dashed var(--border);
+      border-radius: 14px;
+      flex-wrap: wrap;
+    }
+
+    .avatar-wrap { position: relative; flex-shrink: 0; }
+    .avatar-preview {
+      width: 96px; height: 96px; border-radius: 50%;
+      overflow: hidden; border: 3px solid var(--primary);
+      background: var(--surface-hover);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
     .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
-    .avatar-placeholder { font-size: 12px; color: var(--text-secondary); }
-    .avatar-controls { display: flex; flex-direction: column; gap: 6px; }
-    .avatar-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-    .avatar-controls .btn-secondary { display: inline-flex; align-items: center; gap: 8px; }
-    .avatar-controls .btn-secondary .material-symbols-rounded { font-size: 18px; }
-    .avatar-controls .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .avatar-placeholder { font-size: 40px; color: var(--text-muted); }
+
+    .avatar-overlay {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(0,0,0,0.5); color: white;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; opacity: 0; cursor: pointer; transition: opacity 0.2s ease;
+    }
+    .avatar-overlay:hover, .avatar-preview:hover .avatar-overlay { opacity: 1; }
+    .avatar-overlay .material-icons { font-size: 22px; }
+    .overlay-label { font-size: 11px; font-weight: 600; }
+
+    .avatar-initial {
+      position: absolute; bottom: -2px; right: -2px;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--primary); color: white; border: 3px solid var(--background);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+    }
+
+    .avatar-controls { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .btn-upload {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--primary); color: white; border: none;
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s ease; align-self: flex-start;
+    }
+    .btn-upload:hover { background: var(--primary-hover); }
+    .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
     .avatar-hint { font-size: 12px; color: var(--text-secondary); margin: 0; }
 
-    .form-actions { display: flex; gap: 12px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin-bottom: 20px; }
 
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-    .btn-primary:hover { opacity: 0.85; }
+    label { display: block; margin-bottom: 20px; }
+    .field-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+
+    input, textarea {
+      display: block; width: 100%; padding: 10px 12px;
+      background: var(--background); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text-primary); font-size: 14px; font-family: inherit;
+      box-sizing: border-box; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    textarea { resize: vertical; }
+    input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent); }
+    input.invalid { border-color: var(--error); }
+    .field-error { display: block; margin-top: 6px; font-size: 12px; color: var(--error); }
+
+    .char-count { display: block; text-align: right; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
+
+    .avatar-url { margin-bottom: 20px; }
+    .avatar-url input { color: var(--text-muted); font-size: 12px; opacity: 0.85; cursor: not-allowed; }
+
+    .form-actions { display: flex; gap: 12px; margin-top: 4px; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--primary); color: white; border: none;
+      padding: 11px 22px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .btn-secondary { background: var(--surface-hover); color: var(--text-primary); border: 1px solid var(--border); padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface-hover); color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 10px 20px; border-radius: 10px;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
     .btn-secondary:hover { opacity: 0.85; }
 
-    .form-error { color: var(--error); font-size: 13px; margin-top: 8px; }
-    .form-success { color: var(--success); font-size: 13px; margin-top: 8px; }
+    .form-error { display: flex; align-items: center; gap: 6px; color: var(--error); font-size: 13px; margin-top: 16px; }
+    .form-success { display: flex; align-items: center; gap: 6px; color: var(--success); font-size: 13px; margin-top: 16px; }
 
     @media (max-width: 768px) {
       .form-grid { grid-template-columns: 1fr; }
+      .card { padding: 20px; }
+      .avatar-section { flex-direction: column; align-items: center; text-align: center; }
+      .btn-upload { align-self: center; }
     }
   `]
 })
 export class ProfileSettingsComponent implements OnInit {
   private auth = inject(AuthService);
-  private googlePhotos = inject(GooglePhotosService);
 
   username = '';
   firstName = '';
@@ -181,11 +257,14 @@ export class ProfileSettingsComponent implements OnInit {
   saving = this.auth.saving;
   error = this.auth.error;
   success = this.auth.success;
-  pickingFromPhotos = signal(false);
   uploadingFile = signal(false);
 
   ngOnInit(): void {
     this.reset();
+  }
+
+  get displayNameInitial(): string {
+    return (this.username || this.firstName || '?').charAt(0).toUpperCase();
   }
 
   reset(): void {
@@ -197,18 +276,6 @@ export class ProfileSettingsComponent implements OnInit {
     this.avatarUrl = user.avatarUrl ?? '';
     this.bio = user.bio ?? '';
     this.auth.clearMessages();
-  }
-
-  async pickFromGooglePhotos(): Promise<void> {
-    this.auth.clearMessages();
-    this.pickingFromPhotos.set(true);
-    try {
-      this.avatarUrl = await this.googlePhotos.pickAvatar();
-    } catch (err: any) {
-      this.auth.error.set(err?.message || 'Could not select a photo. Please try again.');
-    } finally {
-      this.pickingFromPhotos.set(false);
-    }
   }
 
   async onFileSelected(event: Event): Promise<void> {
