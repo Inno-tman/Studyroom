@@ -22,6 +22,7 @@ public class AppDbContext : DbContext
     public DbSet<RoomInvitation> RoomInvitations => Set<RoomInvitation>();
     public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +143,13 @@ public class AppDbContext : DbContext
             entity.HasIndex(n => new { n.UserId, n.IsRead });
             entity.HasIndex(n => n.CreatedAt);
             entity.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PushSubscription>(entity =>
+        {
+            entity.HasIndex(p => p.UserId);
+            entity.HasIndex(p => p.Endpoint).IsUnique();
+            entity.HasOne<User>().WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

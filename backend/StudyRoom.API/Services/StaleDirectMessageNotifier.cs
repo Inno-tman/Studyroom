@@ -5,7 +5,7 @@ namespace StudyRoom.API.Services;
 public class StaleDirectMessageNotifier : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly TimeSpan _staleAfter = TimeSpan.FromHours(24);
+    private readonly TimeSpan _staleAfter = TimeSpan.FromHours(12);
 
     public StaleDirectMessageNotifier(IServiceScopeFactory scopeFactory)
     {

@@ -184,6 +184,12 @@ public class StudyRoomHub : Hub
 
         await Clients.Group(GetUserGroup(receiverId)).SendAsync("ReceiveDirectMessage", dto);
         await Clients.Group(GetUserGroup(UserId.ToString())).SendAsync("ReceiveDirectMessage", dto);
+
+        using (var pushScope = Context.GetHttpContext()!.RequestServices.CreateScope())
+        {
+            var pushService = pushScope.ServiceProvider.GetRequiredService<IPushService>();
+            await pushService.SendToUserAsync(receiver, "New message", $"You have a new message from {Username}.", link: "/messages");
+        }
     }
 
     public async Task DeleteDirectMessage(string messageId)

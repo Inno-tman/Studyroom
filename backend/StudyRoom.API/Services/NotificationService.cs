@@ -11,11 +11,13 @@ public class NotificationService : INotificationService
 {
     private readonly AppDbContext _context;
     private readonly IHubContext<StudyRoomHub> _hub;
+    private readonly IPushService _pushService;
 
-    public NotificationService(AppDbContext context, IHubContext<StudyRoomHub> hub)
+    public NotificationService(AppDbContext context, IHubContext<StudyRoomHub> hub, IPushService pushService)
     {
         _context = context;
         _hub = hub;
+        _pushService = pushService;
     }
 
     public async Task<NotificationDto> CreateAsync(Guid userId, string type, string title, string body,
@@ -40,6 +42,7 @@ public class NotificationService : INotificationService
         var dto = Map(notification);
 
         await _hub.Clients.Group(UserGroup(userId)).SendAsync("ReceiveNotification", dto);
+        await _pushService.SendToUserAsync(userId, title, body, link: link);
         return dto;
     }
 

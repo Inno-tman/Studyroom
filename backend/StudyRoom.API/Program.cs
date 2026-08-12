@@ -7,6 +7,7 @@ using StudyRoom.API.Authentication;
 using StudyRoom.API.Data;
 using StudyRoom.API.Hubs;
 using StudyRoom.API.Middleware;
+using StudyRoom.API.Models;
 using StudyRoom.API.Repositories;
 using StudyRoom.API.Services;
 
@@ -96,6 +97,9 @@ builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>(
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddHttpClient<IAIAcademicService, AIAcademicService>();
 builder.Services.AddHttpClient<IResearchService, ResearchService>();
+
+builder.Services.Configure<VapidSettings>(builder.Configuration.GetSection("Vapid"));
+builder.Services.AddScoped<IPushService, PushService>();
 
 builder.Services.AddHostedService<StaleDirectMessageNotifier>();
 
@@ -264,6 +268,20 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS "IX_Notifications_UserId" ON "Notifications" ("UserId");
         CREATE INDEX IF NOT EXISTS "IX_Notifications_UserId_IsRead" ON "Notifications" ("UserId", "IsRead");
         CREATE INDEX IF NOT EXISTS "IX_Notifications_CreatedAt" ON "Notifications" ("CreatedAt");
+
+        CREATE TABLE IF NOT EXISTS "PushSubscriptions" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Endpoint" text NOT NULL,
+            "P256dh" text NOT NULL,
+            "Auth" text NOT NULL,
+            "UserAgent" text NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_PushSubscriptions" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_PushSubscriptions_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_PushSubscriptions_Endpoint" ON "PushSubscriptions" ("Endpoint");
+        CREATE INDEX IF NOT EXISTS "IX_PushSubscriptions_UserId" ON "PushSubscriptions" ("UserId");
     """);
 }
 

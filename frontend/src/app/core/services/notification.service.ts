@@ -9,6 +9,7 @@ import { environment } from '../../../environments/environment';
 import { Message } from '../../shared/models/message.model';
 import { DirectMessage } from '../../shared/models/social.model';
 import { NotificationItem, NotificationList } from '../../shared/models/notification.model';
+import { PushService } from './push.service';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService implements OnDestroy {
@@ -17,6 +18,7 @@ export class NotificationService implements OnDestroy {
   private auth = inject(AuthService);
   private http = inject(HttpClient);
   private router = inject(Router);
+  private push = inject(PushService);
 
   readonly unreadCount = signal(0);
   readonly messageUnreadCount = signal(0);
@@ -49,6 +51,7 @@ export class NotificationService implements OnDestroy {
 
     await this.signalR.startConnection();
     await Promise.all([this.refresh(), this.refreshMessagesUnread()]);
+    await this.push.init();
   }
 
   async refreshMessagesUnread(): Promise<void> {
@@ -95,10 +98,17 @@ async markRead(id: string): Promise<void> {
 
   async requestPermission(): Promise<boolean> {
     if (!('Notification' in window)) return false;
-    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'granted') {
+      await this.push.subscribeNow();
+      return true;
+    }
     if (Notification.permission === 'denied') return false;
     const permission = await Notification.requestPermission();
-    return permission === 'granted';
+    if (permission === 'granted') {
+      await this.push.requestPermission();
+      return true;
+    }
+    return false;
   }
 
   playSound(): void {
