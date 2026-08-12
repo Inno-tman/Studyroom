@@ -148,7 +148,10 @@ async markRead(id: string): Promise<void> {
   private handleDirectMessage(msg: DirectMessage): void {
     const me = this.auth.currentUser()?.id;
     if (msg.senderId === me) return;
+    if (!this.settings.prefs().directMessages) return;
     this.refreshMessagesUnread();
+    this.playSound();
+    this.showDesktopNotification(msg.senderName, 'You have a new message.');
   }
 
   private handleRoomMessage(msg: Message): void {
