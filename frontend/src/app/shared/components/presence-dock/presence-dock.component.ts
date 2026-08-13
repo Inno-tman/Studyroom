@@ -16,7 +16,7 @@ interface PresenceUser {
   standalone: true,
   imports: [NgFor, NgIf],
   template: `
-    <div class="presence-dock" *ngIf="users().length > 0">
+    <div class="presence-dock" *ngIf="showDock()">
       <div class="dock-header" (click)="toggleExpanded()">
         <span class="material-icons dock-pulse">pulse</span>
         <span class="dock-title">{{ users().length }} studying now</span>
@@ -112,5 +112,13 @@ export class PresenceDockComponent implements OnInit, OnDestroy {
 
   toggleExpanded(): void {
     this.expanded.update(e => !e);
+  }
+
+  showDock(): boolean {
+    return this.users().length > 0 && !this.isMessagesPage();
+  }
+
+  private isMessagesPage(): boolean {
+    return this.router.url.startsWith('/messages');
   }
 }

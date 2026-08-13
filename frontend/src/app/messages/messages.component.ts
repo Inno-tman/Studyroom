@@ -94,8 +94,13 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .messages-page { max-width: 1100px; }
 
     .messages-layout {
-      display: flex; height: calc(100vh - 96px); min-height: 420px;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+      display: flex;
+      height: calc(100vh - 140px);
+      min-height: 400px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
     }
 
     .conversations {
@@ -109,8 +114,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     }
     .convo-item:hover { background: var(--surface-hover); }
     .convo-item.active { background: var(--surface-hover); border-left: 3px solid var(--primary); }
-
-    .convo-item .avatar, .chat-header .avatar { width: 42px; height: 42px; }
+    .convo-item .avatar { width: 42px; height: 42px; }
 
     .convo-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .convo-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -122,33 +126,41 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     }
     .convo-last { font-size: var(--font-12); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; height: 100%; overflow: hidden; }
+    .chat-area {
+      flex: 1; display: flex; flex-direction: column; min-width: 0;
+      position: relative; height: 100%; overflow: hidden;
+    }
 
     .back-btn {
       display: none; align-items: center; justify-content: center;
       width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
-      border: none; background: none; color: var(--text-primary);
-      cursor: pointer;
+      border: none; background: none; color: var(--text-primary); cursor: pointer;
     }
     .back-btn:hover { background: var(--surface-hover); }
     .back-btn .material-icons { font-size: var(--font-22); }
 
-    .chat-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+    .chat-placeholder {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: var(--font-14);
+    }
 
     .chat-header {
       display: flex; align-items: center; gap: 12px; padding: 10px 16px;
       border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-    .chat-avatar { width: 40px; height: 40px; flex-shrink: 0; }
+    .chat-avatar { width: 38px; height: 38px; flex-shrink: 0; }
     .chat-title-wrap { display: flex; align-items: center; min-width: 0; flex: 1; }
     .chat-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .messages { flex: 1 1 auto; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+    .messages {
+      flex: 1 1 auto; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 8px; min-height: 0;
+    }
 
     .bubble-wrap { display: flex; align-items: flex-end; gap: 6px; max-width: 70%; align-self: flex-start; }
     .bubble-wrap.mine { align-self: flex-end; flex-direction: row-reverse; }
-    .bubble { padding: 10px 14px; border-radius: 12px; background: var(--background); border: 1px solid var(--border); }
-    .bubble p { font-size: var(--font-14); color: var(--text-primary); word-wrap: break-word; white-space: pre-wrap; }
+    .bubble { padding: 8px 14px; border-radius: 14px; background: var(--background); border: 1px solid var(--border); }
+    .bubble p { font-size: var(--font-14); color: var(--text-primary); word-wrap: break-word; white-space: pre-wrap; margin: 0; }
     .bubble-time { display: block; font-size: var(--font-11); color: var(--text-muted); margin-top: 4px; }
     .bubble-wrap.mine .bubble { background: var(--primary); border-color: var(--primary); }
     .bubble-wrap.mine .bubble p { color: white; }
@@ -166,16 +178,20 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
 
     .empty { color: var(--text-muted); font-size: var(--font-13); padding: 12px; text-align: center; }
 
-    .chat-input { display: flex; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .chat-input {
+      display: flex; align-items: center; gap: 8px; padding: 12px;
+      border-top: 1px solid var(--border); flex-shrink: 0;
+    }
     .chat-input input {
-      flex: 1; padding: 10px 12px; background: var(--background); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-primary); font-size: var(--font-14); outline: none;
+      flex: 1; padding: 10px 14px; background: var(--background); border: 1px solid var(--border);
+      border-radius: 20px; color: var(--text-primary); font-size: var(--font-14); outline: none;
     }
     .chat-input input:focus { border-color: var(--primary); }
 
     .send-btn {
-      width: 38px; height: 38px; border-radius: 8px; background: var(--primary); border: none;
+      width: 40px; height: 40px; border-radius: 50%; background: var(--primary); border: none;
       color: white; display: flex; align-items: center; justify-content: center; cursor: pointer;
+      flex-shrink: 0; transition: opacity 0.15s;
     }
     .send-btn:hover { opacity: 0.85; }
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -186,15 +202,15 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       .page-header { display: none; }
       .messages-layout {
         flex-direction: column;
-        height: calc(100vh - 176px);
+        height: calc(100vh - 32px);
         border: none; border-radius: 0; min-height: 0;
       }
-      .conversations { width: 100%; border-right: none; height: 100%; flex: 1 1 auto; overflow-y: auto; }
+      .conversations { width: 100%; border-right: none; flex: 1 1 auto; height: 100%; overflow-y: auto; }
       .conversations.mobile-hidden { display: none; }
-      .chat-area { display: none; border: none; height: 100%; flex: 1 1 auto; }
-      .chat-area.mobile-open { display: flex; }
+      .chat-area { display: none; border: none; }
+      .chat-area.mobile-open { display: flex; flex: 1 1 auto; height: 100%; }
       .back-btn { display: inline-flex; }
-      .messages { padding-top: 12px; min-height: 0; }
+      .messages { padding-top: 12px; }
     }
   `]
 })
