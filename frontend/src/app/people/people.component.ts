@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FriendService } from '../core/services/friend.service';
@@ -16,7 +16,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
       </div>
 
       <div class="view-toggle">
-        <button class="view-btn" [class.active]="mode === 'discover'" (click)="mode = 'discover'">
+        <button class="view-btn" [class.active]="mode === 'discover'" (click)="showDiscover()">
           <span class="material-icons">explore</span> Discover
         </button>
         <button class="view-btn" [class.active]="mode === 'friends'" (click)="mode = 'friends'">
@@ -82,8 +82,9 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           <div class="card-head-icon"><span class="material-icons">explore</span></div>
           <div>
             <h2>Discover</h2>
-            <p class="card-subtitle">People you may know, ranked by how likely you are to connect.</p>
+            <p class="card-subtitle">People you may know first, then others worth connecting with.</p>
           </div>
+          <span class="discover-count">{{ suggestions.length }} people</span>
         </div>
         <div *ngFor="let user of suggestions" class="person-row">
           <div class="person-avatar" [class.has-image]="user.avatarUrl">
@@ -236,6 +237,12 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     .card-head-icon.sent { background: var(--text-secondary); }
     .card-head h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin: 0; }
     .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin: 2px 0 0; }
+    .discover-count {
+      margin-left: auto; flex-shrink: 0;
+      font-size: var(--font-12); font-weight: 600; color: var(--text-secondary);
+      background: var(--background); border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 12px;
+    }
 
     .search-box {
       display: flex; align-items: center; gap: 10px;
@@ -310,9 +317,15 @@ export class PeopleComponent implements OnInit {
   friends: Friend[] = [];
   loading = false;
   mode: 'discover' | 'friends' = 'discover';
+  private refreshTimer?: any;
 
   async ngOnInit() {
     await this.loadAll();
+    this.refreshTimer = setInterval(() => this.loadSuggestions(), 60000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
   }
 
   async loadAll(): Promise<void> {
@@ -321,6 +334,11 @@ export class PeopleComponent implements OnInit {
 
   async loadSuggestions(): Promise<void> {
     this.suggestions = (await this.friendService.getSuggestions().toPromise()) || [];
+  }
+
+  async showDiscover(): Promise<void> {
+    this.mode = 'discover';
+    await this.loadSuggestions();
   }
 
   async loadRequests(): Promise<void> {

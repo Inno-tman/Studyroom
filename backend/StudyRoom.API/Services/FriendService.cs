@@ -118,10 +118,12 @@ public class FriendService : IFriendService
                     + (sameMajor ? 12 : 0)
                     + (interestOverlap * 8);
 
-                var reason = BuildReason(mutual, sameSchool, sameLocation, sharedRooms, ageNear, sameMajor, interestOverlap);
+                var reason = score > 0
+                    ? BuildReason(mutual, sameSchool, sameLocation, sharedRooms, ageNear, sameMajor, interestOverlap)
+                    : null;
+
                 return (u, mutual, sharedRooms, reason, score);
             })
-            .Where(c => c.score > 0)
             .OrderByDescending(c => c.score)
             .ThenBy(c => c.u.Username)
             .Take(count)

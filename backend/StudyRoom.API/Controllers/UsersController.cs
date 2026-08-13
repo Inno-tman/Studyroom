@@ -24,7 +24,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("suggestions")]
-    public async Task<IActionResult> Suggestions([FromQuery] int count = 20)
+    public async Task<IActionResult> Suggestions([FromQuery] int count = 50)
     {
         var results = await _friendService.SuggestUsersAsync(UserId, count);
         return Ok(results);
