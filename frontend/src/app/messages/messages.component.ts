@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, AfterViewChecked, ViewChild, ElementRef } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -42,20 +42,22 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
         </div>
 
         <div class="chat-area" [class.mobile-open]="isMobile && activeUser">
-          <button class="back-btn" *ngIf="isMobile && activeUser" (click)="closeConversation()" aria-label="Back to conversations">
-            <span class="material-icons">arrow_back</span>
-          </button>
           <div *ngIf="!activeUser" class="chat-placeholder">
             Select a conversation to start chatting.
           </div>
 
           <ng-container *ngIf="activeUser">
             <div class="chat-header">
-              <div class="avatar" [class.has-image]="activeUser.avatarUrl">
+              <button class="back-btn" (click)="closeConversation()" aria-label="Back to conversations">
+                <span class="material-icons">arrow_back</span>
+              </button>
+              <div class="chat-avatar" [class.has-image]="activeUser.avatarUrl">
                 <img *ngIf="activeUser.avatarUrl; else activeInitial" [src]="activeUser.avatarUrl" alt="" />
                 <ng-template #activeInitial>{{ (activeUser.displayName || activeUser.username).charAt(0).toUpperCase() }}</ng-template>
               </div>
-              <span class="chat-title">{{ activeUser.displayName || activeUser.username }}</span>
+              <div class="chat-title-wrap">
+                <span class="chat-title">{{ activeUser.displayName || activeUser.username }}</span>
+              </div>
             </div>
 
 <div class="messages" #messageContainer>
@@ -124,9 +126,9 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
 
     .back-btn {
       display: none; align-items: center; justify-content: center;
-      width: 36px; height: 36px; border-radius: 8px;
+      width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
       border: none; background: none; color: var(--text-primary);
-      cursor: pointer; flex-shrink: 0;
+      cursor: pointer;
     }
     .back-btn:hover { background: var(--surface-hover); }
     .back-btn .material-icons { font-size: var(--font-22); }
@@ -134,10 +136,12 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .chat-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
 
     .chat-header {
-      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-    .chat-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .chat-avatar { width: 40px; height: 40px; flex-shrink: 0; }
+    .chat-title-wrap { display: flex; align-items: center; min-width: 0; flex: 1; }
+    .chat-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 
@@ -162,7 +166,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
 
     .empty { color: var(--text-muted); font-size: var(--font-13); padding: 12px; text-align: center; }
 
-    .chat-input { display: flex; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
+    .chat-input { display: flex; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
     .chat-input input {
       flex: 1; padding: 10px 12px; background: var(--background); border: 1px solid var(--border);
       border-radius: 8px; color: var(--text-primary); font-size: var(--font-14); outline: none;
@@ -178,20 +182,29 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .send-btn .material-icons { font-size: var(--font-18); }
 
     @media (max-width: 768px) {
-      .messages-layout { flex-direction: column; }
-      .conversations { width: 100%; border-right: none; border-bottom: 1px solid var(--border); height: auto; }
+      .messages-page { max-width: none; }
+      .page-header { display: none; }
+      .messages-layout {
+        flex-direction: column; height: calc(100dvh - 120px);
+        border: none; border-radius: 0; min-height: 0;
+      }
+      .conversations {
+        width: 100%; border-right: none; height: auto; flex: 1;
+      }
       .conversations.mobile-hidden { display: none; }
-      .chat-area { display: none; }
-      .chat-area.mobile-open { display: flex; }
+      .chat-area { display: none; border: none; }
+      .chat-area.mobile-open { display: flex; flex: 1; }
       .back-btn { display: inline-flex; }
+      .messages { padding-top: 12px; }
     }
   `]
 })
-export class MessagesComponent implements OnInit, OnDestroy {
+export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   private auth = inject(AuthService);
   private signalR = inject(SignalRService);
   private dmService = inject(DirectMessageService);
   private notificationService = inject(NotificationService);
+  @ViewChild('messageContainer') private messagesEl?: ElementRef;
 
   myId = this.auth.currentUser()?.id ?? '';
   conversations: Conversation[] = [];
@@ -203,6 +216,23 @@ export class MessagesComponent implements OnInit, OnDestroy {
   isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
   private dmSub?: Subscription;
   private deletedSub?: Subscription;
+  private shouldScroll = false;
+
+  ngAfterViewChecked(): void {
+    if (this.shouldScroll) {
+      this.scrollToBottom();
+      this.shouldScroll = false;
+    }
+  }
+
+  private scrollToBottom(): void {
+    setTimeout(() => {
+      try {
+        const el = this.messagesEl?.nativeElement as HTMLElement | undefined;
+        if (el) el.scrollTop = el.scrollHeight;
+      } catch { }
+    }, 0);
+  }
 
   async ngOnInit() {
     await this.signalR.startConnection();
@@ -210,6 +240,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
       if (msg.senderId === this.activeUserId || msg.receiverId === this.activeUserId) {
         if (!this.messages.some(m => m.id && m.id === msg.id)) {
           this.messages = [...this.messages, msg];
+          this.shouldScroll = true;
         }
       }
       this.loadConversations();
@@ -232,6 +263,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.messages = (await this.dmService.getConversation(userId).toPromise()) || [];
     this.conversations = this.conversations.map(c => c.userId === userId ? { ...c, unreadCount: 0 } : c);
     this.notificationService.refreshMessagesUnread();
+    this.shouldScroll = true;
   }
 
   closeConversation(): void {
@@ -252,6 +284,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
     } finally {
       this.sending = false;
     }
+    this.shouldScroll = true;
   }
 
   async deleteMessage(msg: DirectMessage): Promise<void> {
