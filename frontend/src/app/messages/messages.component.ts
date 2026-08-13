@@ -19,7 +19,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       </div>
 
       <div class="messages-layout">
-        <div class="conversations">
+        <div class="conversations" [class.mobile-hidden]="isMobile && activeUser">
           <div *ngIf="conversations.length === 0" class="empty">No conversations yet. Message your friends!</div>
           <button
             *ngFor="let convo of conversations"
@@ -41,7 +41,10 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
           </button>
         </div>
 
-        <div class="chat-area">
+        <div class="chat-area" [class.mobile-open]="isMobile && activeUser">
+          <button class="back-btn" *ngIf="isMobile && activeUser" (click)="closeConversation()" aria-label="Back to conversations">
+            <span class="material-icons">arrow_back</span>
+          </button>
           <div *ngIf="!activeUser" class="chat-placeholder">
             Select a conversation to start chatting.
           </div>
@@ -117,7 +120,16 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     }
     .convo-last { font-size: var(--font-12); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+
+    .back-btn {
+      display: none; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 8px;
+      border: none; background: none; color: var(--text-primary);
+      cursor: pointer; flex-shrink: 0;
+    }
+    .back-btn:hover { background: var(--surface-hover); }
+    .back-btn .material-icons { font-size: var(--font-22); }
 
     .chat-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
 
@@ -166,9 +178,12 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .send-btn .material-icons { font-size: var(--font-18); }
 
     @media (max-width: 768px) {
-      .messages-layout { flex-direction: column; height: auto; }
-      .conversations { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 200px; }
-      .chat-area { height: 400px; }
+      .messages-layout { flex-direction: column; }
+      .conversations { width: 100%; border-right: none; border-bottom: 1px solid var(--border); height: auto; }
+      .conversations.mobile-hidden { display: none; }
+      .chat-area { display: none; }
+      .chat-area.mobile-open { display: flex; }
+      .back-btn { display: inline-flex; }
     }
   `]
 })
@@ -185,6 +200,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   activeUser?: Conversation;
   newMessage = '';
   sending = false;
+  isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
   private dmSub?: Subscription;
   private deletedSub?: Subscription;
 
@@ -216,6 +232,12 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.messages = (await this.dmService.getConversation(userId).toPromise()) || [];
     this.conversations = this.conversations.map(c => c.userId === userId ? { ...c, unreadCount: 0 } : c);
     this.notificationService.refreshMessagesUnread();
+  }
+
+  closeConversation(): void {
+    this.activeUserId = '';
+    this.activeUser = undefined;
+    this.messages = [];
   }
 
   async send(): Promise<void> {
