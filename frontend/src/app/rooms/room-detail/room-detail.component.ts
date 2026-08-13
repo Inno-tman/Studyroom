@@ -154,10 +154,16 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
 
       <div class="call-panel" *ngIf="isMember && inCall">
         <div class="call-header">
-          <h2><span class="live-dot"></span> {{ room?.name }} — Live Call</h2>
+          <h2><span class="live-dot"></span> {{ room?.name }} — Video Call</h2>
+          <span class="call-hint">Share this room with a friend to connect</span>
           <button class="dialog-close" (click)="toggleCall()" title="End call"><span class="material-icons">close</span></button>
         </div>
-        <div class="call-frame" #callContainer></div>
+        <iframe
+          class="call-frame"
+          [src]="callUrl"
+          allow="camera; microphone; speaker-selection; display-capture; fullscreen; clipboard-read; clipboard-write; web-share; autoplay; picture-in-picture"
+          allowfullscreen
+        ></iframe>
       </div>
 
       <div class="join-prompt" *ngIf="!isMember && room">
@@ -319,12 +325,12 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
     .timer-section { margin-top: 0; }
 
     .call-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-top: 0; margin-bottom: 16px; }
-    .call-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
+    .call-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
     .call-header h2 { display: flex; align-items: center; gap: 8px; font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
     .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .call-frame { width: 100%; height: 480px; background: #000; }
-    .call-frame iframe { width: 100%; height: 100%; border: 0; }
+    .call-hint { flex: 1; font-size: var(--font-12); color: var(--text-muted); }
+    .call-frame { width: 100%; height: 480px; border: 0; display: block; }
 
     .join-prompt { text-align: center; padding: 48px; color: var(--text-muted); }
 
@@ -355,7 +361,6 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
-  @ViewChild('callContainer', { static: false }) callContainer?: ElementRef;
 
   roomId = '';
   room?: Room;
@@ -372,10 +377,20 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   invitingId = '';
   inCall = false;
   private notesSub?: Subscription;
-  private jitsiApi?: any;
 
   get currentUserId(): string | undefined {
     return this.auth.currentUser()?.id;
+  }
+
+  get callUrl(): any {
+    const user = this.auth.currentUser();
+    const name = encodeURIComponent(user?.username || user?.email || 'Student');
+    const room = encodeURIComponent(`studyroom-${this.roomId}`);
+    return `https://c2c.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1`;
+  }
+
+  toggleCall() {
+    this.inCall = !this.inCall;
   }
 
   isFirstOfGroup(index: number): boolean {
@@ -497,95 +512,13 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     if (!confirm('Leave this room?')) return;
 
     try {
-      if (this.inCall) this.stopCall();
+      this.inCall = false;
       await this.signalR.leaveRoom(this.roomId);
       await this.roomService.leave(this.roomId).toPromise();
       this.isMember = false;
       this.messages = [];
       this.router.navigate(['/rooms']);
     } catch { }
-  }
-
-  toggleCall() {
-    if (this.inCall) {
-      this.stopCall();
-    } else {
-      this.startCall();
-    }
-  }
-
-  private async startCall() {
-    this.inCall = true;
-    try {
-      await this.loadJitsiScript();
-      await new Promise(resolve => setTimeout(resolve, 0));
-
-      const roomName = `studyroom-${this.roomId}`;
-      const user = this.auth.currentUser();
-      const options: any = {
-        roomName,
-        width: '100%',
-        height: '100%',
-        parentNode: this.callContainer?.nativeElement,
-        configOverwrite: {
-          startWithAudioMuted: false,
-          startWithVideoMuted: false,
-          prejoinPageEnabled: false,
-          disableDeepLinking: true,
-          hideLogo: true
-        },
-        interfaceConfigOverwrite: {
-          SHOW_JITSI_WATERMARK: false,
-          SHOW_WATERMARK_FOR_GUESTS: false,
-          DEFAULT_REMOTE_DISPLAY_NAME: 'Study Buddy'
-        }
-      };
-
-      const externalApi = (window as any).JitsiMeetExternalAPI;
-      this.jitsiApi = new externalApi('meet.jit.si', options);
-
-      if (user) {
-        try { this.jitsiApi.executeCommand('displayName', user.username || user.email); } catch { }
-        if (user.avatarUrl) {
-          try { this.jitsiApi.executeCommand('avatarUrl', user.avatarUrl); } catch { }
-        }
-      }
-
-      this.jitsiApi.addListener('videoConferenceLeft', () => {
-        this.inCall = false;
-        this.destroyCall();
-      });
-    } catch (err) {
-      this.inCall = false;
-      this.destroyCall();
-      alert('Could not start the call. Check that you are online and try again.');
-    }
-  }
-
-  private stopCall() {
-    try { this.jitsiApi?.dispose(); } catch { }
-    this.inCall = false;
-    this.destroyCall();
-  }
-
-  private destroyCall() {
-    this.jitsiApi = undefined;
-    const el = this.callContainer?.nativeElement as HTMLElement | undefined;
-    if (el) el.innerHTML = '';
-  }
-
-  private loadJitsiScript(): Promise<void> {
-    if (document.querySelector('script[src*="external_api.js"]')) {
-      return Promise.resolve();
-    }
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://meet.jit.si/external_api.js';
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load Jitsi'));
-      document.head.appendChild(script);
-    });
   }
 
   get invitableFriends(): Friend[] {
@@ -616,7 +549,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.notesSub?.unsubscribe();
-    if (this.inCall) this.stopCall();
+    this.inCall = false;
     if (this.isMember) {
       this.signalR.leaveRoom(this.roomId);
     }
