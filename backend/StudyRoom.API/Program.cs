@@ -84,6 +84,7 @@ builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IRoomInvitationRepository, RoomInvitationRepository>();
 builder.Services.AddScoped<IDirectMessageRepository, DirectMessageRepository>();
+builder.Services.AddScoped<IMeetingRepository, MeetingRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
@@ -93,6 +94,7 @@ builder.Services.AddScoped<IRoomInvitationService, RoomInvitationService>();
 builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>();
+builder.Services.AddScoped<IMeetingService, MeetingService>();
 
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddHttpClient<IAIAcademicService, AIAcademicService>();
@@ -282,6 +284,22 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_PushSubscriptions_Endpoint" ON "PushSubscriptions" ("Endpoint");
         CREATE INDEX IF NOT EXISTS "IX_PushSubscriptions_UserId" ON "PushSubscriptions" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "Meetings" (
+            "Id" uuid NOT NULL,
+            "RoomId" uuid NOT NULL,
+            "CreatedBy" uuid NOT NULL,
+            "Title" text NOT NULL,
+            "Description" text NULL,
+            "ScheduledAt" timestamp with time zone NOT NULL,
+            "DurationMinutes" integer NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_Meetings" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_Meetings_Users_CreatedBy" FOREIGN KEY ("CreatedBy") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_Meetings_Rooms_RoomId" FOREIGN KEY ("RoomId") REFERENCES "Rooms" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_Meetings_RoomId" ON "Meetings" ("RoomId");
+        CREATE INDEX IF NOT EXISTS "IX_Meetings_ScheduledAt" ON "Meetings" ("ScheduledAt");
     """);
 }
 

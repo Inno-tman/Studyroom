@@ -1,10 +1,11 @@
-import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { NgFor, NgIf, DatePipe } from '@angular/common';
+import { NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { RoomService } from '../../core/services/room.service';
+import { MeetingService } from '../../core/services/meeting.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { ChatService } from '../../core/services/chat.service';
 import { NotesService } from '../../core/services/notes.service';
@@ -12,6 +13,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { InvitationService } from '../../core/services/invitation.service';
 import { FriendService } from '../../core/services/friend.service';
 import { Room } from '../../shared/models/room.model';
+import { Meeting } from '../../shared/models/meeting.model';
 import { Message } from '../../shared/models/message.model';
 import { UserDto } from '../../shared/models/room.model';
 import { Friend } from '../../shared/models/social.model';
@@ -20,17 +22,28 @@ import { NotesEditorComponent } from '../../notes/notes-editor/notes-editor.comp
 import { PomodoroTimerComponent } from '../../timer/pomodoro-timer/pomodoro-timer.component';
 import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.component';
 
+interface RoomTab { id: string; label: string; icon: string; }
+
+const TABS: RoomTab[] = [
+  { id: 'chat', label: 'Chat', icon: 'chat' },
+  { id: 'focus', label: 'Focus', icon: 'timer' },
+  { id: 'notes', label: 'Notes', icon: 'edit_note' },
+  { id: 'ai', label: 'AI', icon: 'auto_awesome' },
+  { id: 'meet', label: 'Meet', icon: 'videocam' }
+];
+
 @Component({
   selector: 'app-room-detail',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent],
+  imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent],
   template: `
     <div class="room-detail">
+      <!-- ── Header ─────────────────────────────────────────── -->
       <div class="room-header">
         <div class="room-info">
           <a routerLink="/rooms" class="back-link">
             <span class="material-icons">arrow_back</span>
-            Rooms
+            <span class="back-label">Rooms</span>
           </a>
           <h1>{{ room?.name }}</h1>
           <div class="room-badges">
@@ -38,9 +51,9 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
             <span class="members-badge">{{ room?.memberCount }} members</span>
             <span *ngIf="room?.isPrivate" class="private-badge">Private</span>
           </div>
-          <p class="room-description">{{ room?.description }}</p>
+          <p class="room-description" *ngIf="room?.description">{{ room?.description }}</p>
         </div>
-        <div class="room-actions">
+        <div class="room-actions" *ngIf="!isMobile">
           <button *ngIf="!isMember" class="btn-primary" (click)="joinRoom()" [disabled]="joining">
             {{ joining ? 'Joining...' : 'Join Room' }}
           </button>
@@ -48,116 +61,247 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
             <span class="material-icons">{{ inCall ? 'call_end' : 'videocam' }}</span>
             {{ inCall ? 'End Call' : 'Start Call' }}
           </button>
+          <button *ngIf="isMember" class="btn-primary schedule-btn" (click)="openScheduleDialog()">
+            <span class="material-icons">event_available</span>
+            Schedule
+          </button>
           <button *ngIf="isMember" class="btn-outline-danger" (click)="leaveRoom()">Leave</button>
         </div>
       </div>
 
       <div class="room-content" *ngIf="isMember">
+        <!-- ── Members ───────────────────────────────────────── -->
         <div class="members-bar">
-          <span class="members-title">Members ({{ members.length }})</span>
-          <div class="members-avatars">
+          <span class="members-title" *ngIf="!isMobile">Members ({{ members.length }})</span>
+          <div class="members-avatars" [class.scrollable]="isMobile">
             <div *ngFor="let member of members" class="member-chip" [title]="member.username">
               <div class="member-avatar" [class.has-image]="member.avatarUrl">
                 <img *ngIf="member.avatarUrl; else memberInitial" [src]="member.avatarUrl" alt="" />
                 <ng-template #memberInitial>{{ member.username.charAt(0).toUpperCase() }}</ng-template>
               </div>
-              <span class="member-name">{{ member.username }}</span>
+              <span class="member-name" *ngIf="!isMobile">{{ member.username }}</span>
             </div>
+            <button class="invite-chip" (click)="openInviteDialog()">
+              <span class="material-icons">person_add</span>
+              <span class="invite-chip-label">{{ isMobile ? 'Invite' : '' }}</span>
+            </button>
           </div>
-          <button class="invite-btn" (click)="openInviteDialog()">
-            <span class="material-icons">person_add</span>
-            <span>Invite</span>
+        </div>
+
+        <!-- ── Next meeting hero (always visible) ────────────── -->
+        <div class="next-meeting" *ngIf="nextMeeting" (click)="activeTab = 'meet'">
+          <div class="next-meeting-icon"><span class="material-icons">videocam</span></div>
+          <div class="next-meeting-info">
+            <span class="next-meeting-label">Next meeting {{ nextMeetingIn }}</span>
+            <span class="next-meeting-title">{{ nextMeeting.title }}</span>
+            <span class="next-meeting-meta">
+              {{ nextMeeting.scheduledAt | date:'EEE, MMM d, h:mm a' }} &middot; {{ nextMeeting.durationMinutes }} min
+            </span>
+          </div>
+          <button class="next-meeting-cta" (click)="$event.stopPropagation(); activeTab = 'meet'">
+            <span class="material-icons">play_arrow</span> Join
           </button>
         </div>
 
-        <div class="invite-dialog-backdrop" *ngIf="showInviteDialog" (click)="showInviteDialog = false">
-          <div class="invite-dialog" (click)="$event.stopPropagation()">
-            <div class="invite-dialog-header">
-              <h3>Invite friends to {{ room?.name }}</h3>
-              <button class="dialog-close" (click)="showInviteDialog = false"><span class="material-icons">close</span></button>
-            </div>
-            <div class="invite-dialog-body">
-              <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite — everyone you know is already here!</p>
-              <div *ngFor="let friend of invitableFriends" class="invite-row">
-                <div class="member-avatar" [class.has-image]="friend.avatarUrl">
-                  <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
-                  <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
-                </div>
-                <span class="invite-name">{{ friend.displayName || friend.username }}</span>
-                <button
-                  class="btn-invite"
-                  (click)="inviteFriend(friend)"
-                  [disabled]="friend.userId === invitingId"
-                >{{ friend.userId === invitingId ? 'Inviting...' : 'Invite' }}</button>
-              </div>
-            </div>
-          </div>
+        <!-- ── Desktop top tabs ──────────────────────────────── -->
+        <div class="tab-bar" *ngIf="!isMobile">
+          <button
+            *ngFor="let tab of tabs"
+            class="tab-btn"
+            [class.active]="activeTab === tab.id"
+            (click)="selectTab(tab.id)"
+          >
+            <span class="material-icons">{{ tab.icon }}</span>
+            {{ tab.label }}
+            <span *ngIf="tab.id === 'chat' && unreadCount > 0" class="tab-badge">{{ unreadCount }}</span>
+            <span *ngIf="tab.id === 'meet' && upcomingMeetings.length > 0" class="tab-badge">{{ upcomingMeetings.length }}</span>
+          </button>
         </div>
 
-        <div class="content-grid">
-          <div class="panel chat-panel">
+        <!-- ── Unified tab body (all devices) ────────────────── -->
+        <div class="tab-body" [class.tab-body-bottom-pad]="isMobile">
+          <div *ngIf="activeTab === 'chat'" class="tab-pane chat-pane">
             <div class="panel-header">
               <h2>Chat</h2>
               <span class="online-count">{{ onlineUsers.length }} online</span>
             </div>
-            <div class="messages" #messageContainer>
-              <ng-container *ngFor="let msg of messages; let i = index">
-                <div class="day-divider" *ngIf="showDayDivider(i)">
-                  <span>{{ messages[i].createdAt | date:'mediumDate' }}</span>
-                </div>
-                <div class="message" [class.own]="msg.userId === currentUserId" [class.avatar-gap]="msg.userId === currentUserId || isFirstOfGroup(i)">
-                  <div class="message-avatar" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)" [class.has-image]="msg.avatarUrl">
-                    <img *ngIf="msg.avatarUrl; else messageInitial" [src]="msg.avatarUrl" alt="" />
-                    <ng-template #messageInitial>{{ msg.username.charAt(0).toUpperCase() }}</ng-template>
-                  </div>
-                  <div class="message-body">
-                    <div class="message-header" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)">
-                      <span class="message-user">{{ msg.username }}</span>
-                    </div>
-                    <div class="bubble">
-                      <span class="bubble-content">{{ msg.content }}</span>
-                      <span class="message-time">{{ msg.createdAt | date:'shortTime' }}</span>
-                    </div>
-                  </div>
-                </div>
-              </ng-container>
-            </div>
-            <div class="chat-input">
-              <input
-                type="text"
-                [(ngModel)]="newMessage"
-                (keyup.enter)="sendMessage()"
-                placeholder="Type a message..."
-                [disabled]="!isMember"
-              />
-              <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage.trim()">
-                <span class="material-icons">send</span>
-              </button>
-            </div>
+            <ng-container *ngTemplateOutlet="chatBody" />
           </div>
 
-          <div class="panel notes-panel">
-            <div class="panel-header">
-              <h2>Notes</h2>
+          <div *ngIf="activeTab === 'focus'" class="tab-pane focus-pane">
+            <div class="mobile-panel-title">
+              <span class="material-icons">timer</span> Focus Timer
+            </div>
+            <app-pomodoro-timer [roomId]="roomId" />
+          </div>
+
+          <div *ngIf="activeTab === 'notes'" class="tab-pane notes-pane">
+            <div class="mobile-panel-title">
+              <span class="material-icons">edit_note</span> Notes
             </div>
             <app-notes-editor [roomId]="roomId" />
           </div>
 
-          <div class="panel ai-panel">
+          <div *ngIf="activeTab === 'ai'" class="tab-pane ai-pane">
+            <div class="mobile-panel-title">
+              <span class="material-icons">auto_awesome</span> AI Assistant
+            </div>
             <app-ai-chat-panel [subject]="room?.subject || ''" [notesContext]="notesContext" />
           </div>
-        </div>
 
-        <div class="timer-section">
-          <app-pomodoro-timer [roomId]="roomId" />
+          <div *ngIf="activeTab === 'meet'" class="tab-pane meet-pane">
+            <div class="mobile-panel-title">
+              <span class="material-icons">videocam</span> Meetings
+            </div>
+            <ng-container *ngTemplateOutlet="meetingsBody" />
+          </div>
         </div>
       </div>
 
-      <div class="call-panel" *ngIf="isMember && inCall">
-        <div class="call-header">
-          <h2><span class="live-dot"></span> {{ room?.name }} — Video Call</h2>
-          <span class="call-hint">Everyone in this room joins the same live call</span>
-          <button class="dialog-close" (click)="toggleCall()" title="End call"><span class="material-icons">close</span></button>
+      <!-- Non-member join prompt -->
+      <div class="join-prompt" *ngIf="!isMember && room">
+        <span class="material-icons">groups</span>
+        <p>Join this room to start studying with others!</p>
+        <button class="btn-primary join-big" (click)="joinRoom()" [disabled]="joining">
+          {{ joining ? 'Joining...' : 'Join Room' }}
+        </button>
+      </div>
+
+      <!-- ── Shared templates ────────────────────────────────── -->
+      <ng-template #chatBody>
+        <div class="messages" #messageContainer>
+          <ng-container *ngFor="let msg of messages; let i = index">
+            <div class="day-divider" *ngIf="showDayDivider(i)">
+              <span>{{ messages[i].createdAt | date:'mediumDate' }}</span>
+            </div>
+            <div class="message" [class.own]="msg.userId === currentUserId" [class.avatar-gap]="msg.userId === currentUserId || isFirstOfGroup(i)">
+              <div class="message-avatar" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)" [class.has-image]="msg.avatarUrl">
+                <img *ngIf="msg.avatarUrl; else messageInitial" [src]="msg.avatarUrl" alt="" />
+                <ng-template #messageInitial>{{ msg.username.charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <div class="message-body">
+                <div class="message-header" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)">
+                  <span class="message-user">{{ msg.username }}</span>
+                </div>
+                <div class="bubble">
+                  <span class="bubble-content">{{ msg.content }}</span>
+                  <span class="message-time">{{ msg.createdAt | date:'shortTime' }}</span>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+        <div class="chat-input">
+          <input
+            type="text"
+            [(ngModel)]="newMessage"
+            (keyup.enter)="sendMessage()"
+            placeholder="Type a message..."
+            [disabled]="!isMember"
+          />
+          <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage.trim()">
+            <span class="material-icons">send</span>
+          </button>
+        </div>
+      </ng-template>
+
+      <ng-template #meetingsBody>
+        <div class="meetings-panel" *ngIf="upcomingMeetings.length > 0">
+          <div class="panel-header">
+            <h2><span class="material-icons">event</span> Upcoming Meetings</h2>
+            <button class="schedule-mini" (click)="openScheduleDialog()">
+              <span class="material-icons">add</span> Schedule
+            </button>
+          </div>
+          <div class="meeting-list">
+            <div *ngFor="let meeting of upcomingMeetings" class="meeting-item">
+              <div class="meeting-avatar">
+                <span class="material-icons">videocam</span>
+              </div>
+              <div class="meeting-info">
+                <span class="meeting-title">{{ meeting.title }}</span>
+                <span class="meeting-meta">
+                  <span class="material-icons">schedule</span>
+                  {{ meeting.scheduledAt | date:'EEE, MMM d, h:mm a' }}
+                  &middot; {{ meeting.durationMinutes }} min
+                  &middot; by {{ meeting.createdByUsername }}
+                </span>
+                <span *ngIf="meeting.description" class="meeting-desc">{{ meeting.description }}</span>
+              </div>
+              <button
+                *ngIf="canDeleteMeeting(meeting)"
+                class="meeting-delete"
+                (click)="deleteMeeting(meeting)"
+                title="Delete meeting"
+              ><span class="material-icons">delete</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="meetings-empty" *ngIf="upcomingMeetings.length === 0">
+          <span class="material-icons">event_available</span>
+          <p>No upcoming meetings yet.</p>
+          <button class="btn-primary" (click)="openScheduleDialog()">Schedule a meeting</button>
+        </div>
+      </ng-template>
+
+      <!-- ── Invite dialog ───────────────────────────────────── -->
+      <div class="invite-dialog-backdrop" *ngIf="showInviteDialog" (click)="showInviteDialog = false">
+        <div class="invite-dialog" (click)="$event.stopPropagation()">
+          <div class="invite-dialog-header">
+            <h3>Invite friends to {{ room?.name }}</h3>
+            <button class="dialog-close" (click)="showInviteDialog = false"><span class="material-icons">close</span></button>
+          </div>
+          <div class="invite-dialog-body">
+            <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite — everyone you know is already here!</p>
+            <div *ngFor="let friend of invitableFriends" class="invite-row">
+              <div class="member-avatar" [class.has-image]="friend.avatarUrl">
+                <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
+                <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span class="invite-name">{{ friend.displayName || friend.username }}</span>
+              <button
+                class="btn-invite"
+                (click)="inviteFriend(friend)"
+                [disabled]="friend.userId === invitingId"
+              >{{ friend.userId === invitingId ? 'Inviting...' : 'Invite' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Schedule dialog ─────────────────────────────────── -->
+      <div class="schedule-dialog-backdrop" *ngIf="showScheduleDialog" (click)="showScheduleDialog = false">
+        <div class="schedule-dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Schedule a meeting</h3>
+            <button class="dialog-close" (click)="showScheduleDialog = false"><span class="material-icons">close</span></button>
+          </div>
+          <div class="dialog-body">
+            <label class="field">Title <input type="text" [(ngModel)]="scheduleTitle" placeholder="e.g. Final review" /></label>
+            <label class="field">Description <input type="text" [(ngModel)]="scheduleDescription" placeholder="Optional" /></label>
+            <label class="field">When <input type="datetime-local" [(ngModel)]="scheduleAt" /></label>
+            <label class="field">Duration
+              <select [(ngModel)]="scheduleDuration">
+                <option [ngValue]="15">15 minutes</option>
+                <option [ngValue]="30">30 minutes</option>
+                <option [ngValue]="45">45 minutes</option>
+                <option [ngValue]="60">60 minutes</option>
+                <option [ngValue]="90">90 minutes</option>
+                <option [ngValue]="120">120 minutes</option>
+              </select>
+            </label>
+            <button class="btn-primary dialog-submit" (click)="scheduleMeeting()" [disabled]="scheduling">
+              {{ scheduling ? 'Scheduling...' : 'Schedule Meeting' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Call overlay ────────────────────────────────────── -->
+      <div class="call-overlay" *ngIf="isMember && inCall">
+        <div class="call-overlay-header">
+          <h2><span class="live-dot"></span> {{ room?.name }}</h2>
+          <button class="btn-primary end-call-btn" (click)="toggleCall()" title="End call"><span class="material-icons">call_end</span> <span class="end-call-label">End Call</span></button>
         </div>
         <iframe
           class="call-frame"
@@ -167,14 +311,32 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
         ></iframe>
       </div>
 
-      <div class="join-prompt" *ngIf="!isMember && room">
-        <p>Join this room to start studying with others!</p>
+      <!-- ── Mobile FAB + tab bar ────────────────────────────── -->
+      <div class="call-fab" *ngIf="isMobile && isMember && !inCall" (click)="toggleCall()">
+        <span class="material-icons">videocam</span>
+        <span class="fab-label">Call</span>
       </div>
+
+      <nav class="mobile-tabbar" *ngIf="isMobile && isMember">
+        <button
+          *ngFor="let tab of tabs"
+          class="tab-item"
+          [class.active]="activeTab === tab.id"
+          (click)="selectTab(tab.id)"
+        >
+          <span class="material-icons">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+          <span *ngIf="tab.id === 'chat' && unreadCount > 0" class="tab-item-badge">{{ unreadCount }}</span>
+          <span *ngIf="tab.id === 'meet' && upcomingMeetings.length > 0" class="tab-item-badge">{{ upcomingMeetings.length }}</span>
+        </button>
+      </nav>
     </div>
   `,
   styles: [`
-    .room-detail { max-width: 1200px; }
+    :host { display: block; }
+    .room-detail { max-width: 1200px; margin: 0 auto; }
 
+    /* ── Header ─────────────────────────────────────────────── */
     .room-header { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 
     .back-link { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); text-decoration: none; font-size: var(--font-13); margin-bottom: 12px; }
@@ -190,7 +352,7 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
 
     .room-description { font-size: var(--font-13); color: var(--text-secondary); }
 
-    .room-actions { display: flex; gap: 8px; }
+    .room-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .btn-primary { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: var(--font-14); font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
@@ -210,76 +372,106 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
 
     .room-content { margin-top: 16px; }
 
+    /* ── Members ────────────────────────────────────────────── */
     .members-bar {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px;
     }
 
     .members-title { font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
 
     .members-avatars { display: flex; gap: 8px; flex-wrap: wrap; }
+    .members-avatars.scrollable { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+    .members-avatars.scrollable::-webkit-scrollbar { display: none; }
 
-    .member-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 20px; background: var(--background); border: 1px solid var(--border); }
+    .member-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 20px; background: var(--background); border: 1px solid var(--border); flex-shrink: 0; }
 
     .member-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: var(--font-11); overflow: hidden; flex-shrink: 0; }
     .member-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .member-name { font-size: var(--font-12); color: var(--text-primary); }
 
-    .invite-btn {
-      margin-left: auto; display: flex; align-items: center; gap: 4px;
-      padding: 6px 12px; background: transparent; border: 1px solid var(--primary);
-      border-radius: 8px; color: var(--primary); font-size: var(--font-12); font-weight: 600;
-      cursor: pointer; transition: background 0.15s;
+    .invite-chip {
+      display: flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px;
+      background: transparent; border: 1px dashed var(--primary); color: var(--primary);
+      font-size: var(--font-12); font-weight: 600; cursor: pointer; flex-shrink: 0;
     }
-    .invite-btn:hover { background: rgba(56, 189, 248, 0.1); }
-    .invite-btn .material-icons { font-size: var(--font-16); }
+    .invite-chip:hover { background: rgba(56, 189, 248, 0.1); }
+    .invite-chip .material-icons { font-size: var(--font-16); }
 
-    .invite-dialog-backdrop {
-      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    /* ── Next meeting hero ──────────────────────────────────── */
+    .next-meeting {
+      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(34, 197, 94, 0.12));
+      border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px;
+      padding: 12px 16px; margin-bottom: 12px; cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
     }
+    .next-meeting:hover { border-color: var(--primary); transform: translateY(-1px); }
 
-    .invite-dialog {
-      width: 420px; max-width: 90vw; max-height: 80vh; background: var(--surface);
-      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
-      display: flex; flex-direction: column;
+    .next-meeting-icon {
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      background: rgba(56, 189, 248, 0.15); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
     }
+    .next-meeting-icon .material-icons { font-size: var(--font-22); }
 
-    .invite-dialog-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px; border-bottom: 1px solid var(--border);
+    .next-meeting-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .next-meeting-label { font-size: var(--font-11); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--success); }
+    .next-meeting-title { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .next-meeting-meta { font-size: var(--font-12); color: var(--text-secondary); }
+
+    .next-meeting-cta {
+      display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+      padding: 8px 16px; background: var(--primary); color: white;
+      border: none; border-radius: 8px; font-size: var(--font-13); font-weight: 600; cursor: pointer;
     }
-    .invite-dialog-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .next-meeting-cta:hover { background: var(--primary-hover); }
+    .next-meeting-cta .material-icons { font-size: var(--font-18); }
 
-    .dialog-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
-    .dialog-close:hover { color: var(--text-primary); }
-
-    .invite-dialog-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-    .invite-hint { font-size: var(--font-13); color: var(--text-muted); }
-
-    .invite-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
-    .invite-row:hover { background: var(--background); }
-    .invite-name { flex: 1; font-size: var(--font-13); font-weight: 500; color: var(--text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .btn-invite {
-      padding: 6px 12px; background: var(--primary); border: none; border-radius: 8px;
-      color: white; font-size: var(--font-12); font-weight: 600; cursor: pointer; flex-shrink: 0;
+    /* ── Tab bar (desktop) ──────────────────────────────────── */
+    .tab-bar {
+      display: flex; gap: 4px; margin-bottom: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 6px; overflow-x: auto;
     }
-    .btn-invite:hover:not(:disabled) { background: var(--primary-hover); }
-    .btn-invite:disabled { opacity: 0.5; cursor: not-allowed; }
+    .tab-btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 12px; background: none; border: none; border-radius: 8px;
+      color: var(--text-secondary); font-size: var(--font-13); font-weight: 600;
+      cursor: pointer; white-space: nowrap; position: relative; transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn:hover { background: var(--background); color: var(--text-primary); }
+    .tab-btn.active { background: var(--primary); color: white; }
+    .tab-btn .material-icons { font-size: var(--font-18); }
+    .tab-badge {
+      position: absolute; top: 2px; right: 8px; min-width: 18px; height: 18px;
+      border-radius: 9px; background: var(--error); color: white;
+      font-size: var(--font-10); font-weight: 700;
+      display: flex; align-items: center; justify-content: center; padding: 0 4px;
+    }
+    .tab-btn.active .tab-badge { background: #dc2626; }
 
-    .content-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
-
-    .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
-    .panel-header h2 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    /* ── Tab body ───────────────────────────────────────────── */
+    .tab-body { min-height: 480px; }
+    .tab-pane {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .tab-pane .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
+    .tab-pane .panel-header h2 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
 
     .online-count { font-size: var(--font-12); color: var(--success); }
 
-    .chat-panel { height: 500px; }
+    .chat-pane { height: 600px; }
+    .chat-pane .chat-input { border-top: 1px solid var(--border); }
+    .notes-pane { height: 600px; }
+    .notes-pane ::ng-deep app-notes-editor { flex: 1; display: flex; flex-direction: column; }
+    .ai-pane { height: 600px; }
+    .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; display: flex; flex-direction: column; height: 100%; }
+    .focus-pane { padding: 16px; }
 
+    /* ── Chat ───────────────────────────────────────────────── */
     .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
 
     .day-divider { display: flex; align-items: center; justify-content: center; padding: 12px 0 8px; }
@@ -312,41 +504,177 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
     .chat-input input:focus { border-color: var(--primary); }
     .chat-input input::placeholder { color: var(--text-muted); }
 
-    .send-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--primary); border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
+    .send-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--primary); border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; flex-shrink: 0; }
     .send-btn:hover:not(:disabled) { background: var(--primary-hover); }
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .send-btn .material-icons { font-size: var(--font-18); }
 
-    .notes-panel { height: 500px; }
-    .notes-panel ::ng-deep app-notes-editor { flex: 1; display: flex; flex-direction: column; }
+    /* ── Meetings ───────────────────────────────────────────── */
+    .meetings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+    .upcoming-count { font-size: var(--font-12); color: var(--text-secondary); }
+    .meeting-list { padding: 8px 0; }
+    .meeting-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+    .meeting-item:hover { background: var(--background); }
+    .meeting-avatar { width: 40px; height: 40px; border-radius: 10px; background: rgba(56, 189, 248, 0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .meeting-avatar .material-icons { font-size: var(--font-22); }
+    .meeting-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .meeting-title { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
+    .meeting-meta { display: flex; align-items: center; gap: 4px; font-size: var(--font-12); color: var(--text-secondary); }
+    .meeting-meta .material-icons { font-size: var(--font-14); }
+    .meeting-desc { font-size: var(--font-12); color: var(--text-muted); }
+    .meeting-delete { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
+    .meeting-delete:hover { color: var(--error); }
 
-    .ai-panel { height: 500px; }
-    .ai-panel ::ng-deep app-ai-chat-panel { flex: 1; display: flex; flex-direction: column; height: 100%; }
+    .schedule-mini {
+      display: flex; align-items: center; gap: 4px; padding: 6px 12px;
+      background: transparent; border: 1px solid var(--primary); border-radius: 8px;
+      color: var(--primary); font-size: var(--font-12); font-weight: 600; cursor: pointer;
+    }
+    .schedule-mini:hover { background: rgba(56, 189, 248, 0.1); }
+    .schedule-mini .material-icons { font-size: var(--font-16); }
 
-    .timer-section { margin-top: 0; }
+    .meetings-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px 16px; text-align: center; color: var(--text-muted); }
+    .meetings-empty .material-icons { font-size: 40px; color: var(--text-muted); }
+    .meetings-empty p { font-size: var(--font-13); }
 
-    .call-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-top: 0; margin-bottom: 16px; }
-    .call-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
-    .call-header h2 { display: flex; align-items: center; gap: 8px; font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); animation: pulse 1.5s infinite; }
+    /* ── Dialogs ────────────────────────────────────────────── */
+    .invite-dialog-backdrop, .schedule-dialog-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+
+    .invite-dialog, .schedule-dialog {
+      width: 440px; max-width: 92vw; max-height: 85vh; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    .invite-dialog-header, .dialog-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; border-bottom: 1px solid var(--border);
+    }
+    .invite-dialog-header h3, .dialog-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+
+    .dialog-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
+    .dialog-close:hover { color: var(--text-primary); }
+
+    .invite-dialog-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .invite-hint { font-size: var(--font-13); color: var(--text-muted); }
+
+    .invite-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
+    .invite-row:hover { background: var(--background); }
+    .invite-name { flex: 1; font-size: var(--font-13); font-weight: 500; color: var(--text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .btn-invite {
+      padding: 6px 12px; background: var(--primary); border: none; border-radius: 8px;
+      color: white; font-size: var(--font-12); font-weight: 600; cursor: pointer; flex-shrink: 0;
+    }
+    .btn-invite:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-invite:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .dialog-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); }
+    .field input, .field select { padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none; }
+    .field input:focus, .field select:focus { border-color: var(--primary); }
+    .dialog-submit { width: 100%; padding: 12px; justify-content: center; }
+
+    /* ── Call overlay ───────────────────────────────────────── */
+    .call-overlay {
+      position: fixed; inset: 0; z-index: 1200; background: #0b0f14;
+      display: flex; flex-direction: column;
+    }
+    .call-overlay-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 12px;
+    }
+    .call-overlay-header h2 { display: flex; align-items: center; gap: 8px; font-size: var(--font-15); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .end-call-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--error); flex-shrink: 0; }
+    .end-call-btn:hover:not(:disabled) { background: #dc2626; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); animation: pulse 1.5s infinite; flex-shrink: 0; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .call-hint { flex: 1; font-size: var(--font-12); color: var(--text-muted); }
-    .call-frame { width: 100%; height: 480px; border: 0; display: block; }
+    .call-frame { flex: 1; width: 100%; border: 0; display: block; }
 
-    .join-prompt { text-align: center; padding: 48px; color: var(--text-muted); }
+    /* ── Join prompt ────────────────────────────────────────── */
+    .join-prompt {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      text-align: center; padding: 64px 16px; color: var(--text-muted);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    }
+    .join-prompt .material-icons { font-size: 48px; color: var(--text-muted); }
+    .join-big { padding: 14px 32px; font-size: var(--font-15); }
 
-    @media (max-width: 768px) {
-      .call-frame { height: 320px; }
+    /* ── Mobile ─────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .room-detail { max-width: 100%; }
+
+      .room-header { border-radius: 0; border-left: 0; border-right: 0; border-top: 0; padding: 16px; margin-bottom: 0; }
+      .back-label { display: none; }
+      .back-link { margin-bottom: 8px; }
+      .room-info h1 { font-size: var(--font-18); }
+
+      .room-content { margin-top: 12px; }
+
+      .members-bar { border-radius: 0; border-left: 0; border-right: 0; padding: 10px 16px; margin-bottom: 12px; }
+      .member-chip { padding: 3px; }
+      .member-avatar { width: 34px; height: 34px; font-size: var(--font-13); }
+      .invite-chip { padding: 8px 12px; }
+
+      .next-meeting { margin: 0 12px 12px; border-radius: 14px; }
+
+      .tab-body { min-height: 0; height: calc(100vh - 190px); margin: 0 12px 84px; border-radius: 14px; }
+      .tab-body-bottom-pad { margin-bottom: 84px; }
+      .tab-pane { border-radius: 14px; height: 100%; }
+
+      .mobile-panel-title { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
+      .mobile-panel-title .material-icons { font-size: var(--font-18); color: var(--accent); }
+
+      .notes-pane ::ng-deep app-notes-editor { flex: 1; display: flex; flex-direction: column; height: auto; }
+      .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; display: flex; flex-direction: column; height: auto; }
+      .meetings-panel, .meetings-empty { margin-bottom: 0; border-radius: 14px; }
+
+      /* Floating call button */
+      .call-fab {
+        position: fixed; right: 16px; bottom: 92px; z-index: 1100;
+        display: flex; align-items: center; gap: 6px;
+        padding: 14px 18px; background: var(--success); color: white;
+        border: none; border-radius: 28px; box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+        font-size: var(--font-13); font-weight: 700; cursor: pointer;
+      }
+      .call-fab:active { transform: scale(0.96); }
+      .call-fab .material-icons { font-size: var(--font-20); }
+
+      /* Bottom tab bar */
+      .mobile-tabbar {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1150;
+        display: flex; background: var(--surface);
+        border-top: 1px solid var(--border);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .tab-item {
+        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+        padding: 8px 0 10px; background: none; border: none; cursor: pointer;
+        color: var(--text-muted); transition: color 0.15s; position: relative;
+      }
+      .tab-item .material-icons { font-size: var(--font-22); }
+      .tab-label { font-size: var(--font-10); font-weight: 600; }
+      .tab-item.active { color: var(--accent); }
+      .tab-item-badge {
+        position: absolute; top: 4px; left: 50%; transform: translateX(6px);
+        min-width: 16px; height: 16px; border-radius: 8px;
+        background: var(--error); color: white;
+        font-size: var(--font-9); font-weight: 700;
+        display: flex; align-items: center; justify-content: center; padding: 0 3px;
+      }
+
+      .invite-dialog, .schedule-dialog { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 90vh; }
+      .invite-dialog-backdrop, .schedule-dialog-backdrop { align-items: flex-end; }
+
+      .call-overlay-header { padding: 10px 12px; }
+      .end-call-label { display: none; }
     }
 
-    @media (max-width: 1200px) {
-      .content-grid { grid-template-columns: 1fr 1fr; }
-    }
-
-    @media (max-width: 768px) {
-      .room-header { flex-direction: column; }
-      .content-grid { grid-template-columns: 1fr; }
-      .chat-panel, .notes-panel, .ai-panel { height: 400px; }
+    @media (max-width: 1200px) and (min-width: 901px) {
+      .chat-pane, .notes-pane, .ai-pane { height: 520px; }
     }
   `]
 })
@@ -354,6 +682,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private roomService = inject(RoomService);
+  private meetingService = inject(MeetingService);
   private signalR = inject(SignalRService);
   private chatService = inject(ChatService);
   private notesService = inject(NotesService);
@@ -378,7 +707,57 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   friends: Friend[] = [];
   invitingId = '';
   inCall = false;
+  meetings: Meeting[] = [];
+  showScheduleDialog = false;
+  scheduleTitle = '';
+  scheduleDescription = '';
+  scheduleAt = '';
+  scheduleDuration = 60;
+  scheduling = false;
+
+  isMobile = false;
+  activeTab = 'chat';
+  tabs: RoomTab[] = TABS;
+  unreadCount = 0;
+  now = Date.now();
+  private nowTicker?: any;
+
   private notesSub?: Subscription;
+
+  @HostListener('window:resize')
+  onResize() {
+    this.isMobile = window.innerWidth <= 900;
+  }
+
+  get nextMeeting(): Meeting | undefined {
+    return this.upcomingMeetings[0];
+  }
+
+  get nextMeetingIn(): string {
+    const m = this.nextMeeting;
+    if (!m) return '';
+    const diff = new Date(m.scheduledAt).getTime() - this.now;
+    if (diff <= 0) return 'Starting now';
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `in ${mins} min`;
+    const h = Math.floor(mins / 60);
+    return `in ${h}h ${mins % 60}m`;
+  }
+
+  selectTab(id: string) {
+    this.activeTab = id;
+    if (id === 'chat') {
+      this.unreadCount = 0;
+      this.scrollToBottom();
+    }
+  }
+
+  get upcomingMeetings(): Meeting[] {
+    const now = Date.now();
+    return this.meetings
+      .filter(m => new Date(m.scheduledAt).getTime() >= now)
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  }
 
   get currentUserId(): string | undefined {
     return this.auth.currentUser()?.id;
@@ -421,8 +800,13 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
+    this.isMobile = window.innerWidth <= 900;
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
     if (!this.roomId) return;
+
+    this.nowTicker = setInterval(() => {
+      this.now = Date.now();
+    }, 30000);
 
     try {
       this.room = await this.roomService.getById(this.roomId).toPromise();
@@ -436,11 +820,65 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       if (this.isMember) {
         await this.loadChat();
         await this.loadNotes();
+        await this.loadMeetings();
         await this.setupSignalR();
       }
     } catch { } finally {
       this.loading = false;
     }
+  }
+
+  async loadMeetings() {
+    try {
+      this.meetings = await this.meetingService.getForRoom(this.roomId).toPromise() || [];
+    } catch { }
+  }
+
+  openScheduleDialog() {
+    this.scheduleTitle = '';
+    this.scheduleDescription = '';
+    this.scheduleDuration = 60;
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    d.setMinutes(d.getMinutes() - d.getMinutes() % 5);
+    this.scheduleAt = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    this.showScheduleDialog = true;
+  }
+
+  async scheduleMeeting() {
+    if (!this.scheduleTitle.trim() || !this.scheduleAt) {
+      alert('Please enter a title and time.');
+      return;
+    }
+    this.scheduling = true;
+    try {
+      const utc = new Date(this.scheduleAt).toISOString();
+      await this.meetingService.create(this.roomId, {
+        title: this.scheduleTitle.trim(),
+        description: this.scheduleDescription.trim() || undefined,
+        scheduledAt: utc,
+        durationMinutes: this.scheduleDuration
+      }).toPromise();
+      this.showScheduleDialog = false;
+      await this.loadMeetings();
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to schedule meeting.');
+    } finally {
+      this.scheduling = false;
+    }
+  }
+
+  async deleteMeeting(meeting: Meeting) {
+    if (!confirm(`Delete meeting "${meeting.title}"?`)) return;
+    try {
+      await this.meetingService.delete(this.roomId, meeting.id).toPromise();
+      this.meetings = this.meetings.filter(m => m.id !== meeting.id);
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to delete meeting.');
+    }
+  }
+
+  canDeleteMeeting(meeting: Meeting): boolean {
+    return meeting.createdByUsername === (this.auth.currentUser()?.username || this.auth.currentUser()?.email);
   }
 
   async loadChat() {
@@ -477,7 +915,11 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.signalR.message$.subscribe(msg => {
         if (msg.roomId === this.roomId) {
           this.messages = [...this.messages, msg];
-          this.scrollToBottom();
+          if (this.activeTab === 'chat') {
+            this.scrollToBottom();
+          } else {
+            this.unreadCount++;
+          }
         }
       });
 
@@ -558,6 +1000,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.notesSub?.unsubscribe();
+    if (this.nowTicker) clearInterval(this.nowTicker);
     this.inCall = false;
     if (this.isMember) {
       this.signalR.leaveRoom(this.roomId);
