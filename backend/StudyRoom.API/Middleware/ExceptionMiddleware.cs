@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace StudyRoom.API.Middleware;
 
@@ -31,7 +32,12 @@ public class ExceptionMiddleware
     {
         context.Response.ContentType = "application/json";
 
-        context.Response.StatusCode = exception switch
+        // DbUpdateException wraps the real DB error in InnerException.
+        var effective = exception is DbUpdateException && exception.InnerException != null
+            ? exception.InnerException
+            : exception;
+
+        context.Response.StatusCode = effective switch
         {
             UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
             KeyNotFoundException => (int)HttpStatusCode.NotFound,
@@ -42,7 +48,7 @@ public class ExceptionMiddleware
 
         var response = new
         {
-            error = exception.Message,
+            error = effective.Message,
             statusCode = context.Response.StatusCode
         };
 

@@ -103,7 +103,9 @@ public class AuthService : IAuthService
         user.LastName = string.IsNullOrWhiteSpace(dto.LastName) ? null : dto.LastName.Trim();
         user.SchoolName = string.IsNullOrWhiteSpace(dto.SchoolName) ? null : dto.SchoolName.Trim();
         user.Location = string.IsNullOrWhiteSpace(dto.Location) ? null : dto.Location.Trim();
-        user.BirthDate = dto.BirthDate;
+        user.BirthDate = dto.BirthDate.HasValue
+            ? DateTime.SpecifyKind(dto.BirthDate.Value, DateTimeKind.Utc)
+            : null;
         user.Major = string.IsNullOrWhiteSpace(dto.Major) ? null : dto.Major.Trim();
         user.Interests = string.IsNullOrWhiteSpace(dto.Interests) ? null : dto.Interests.Trim();
         user.Bio = string.IsNullOrWhiteSpace(dto.Bio) ? null : dto.Bio.Trim();
