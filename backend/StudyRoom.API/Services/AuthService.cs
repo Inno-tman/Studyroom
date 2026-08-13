@@ -183,11 +183,16 @@ public class AuthService : IAuthService
             Interests = user.Interests,
             Bio = user.Bio,
             Role = user.Role,
-            ProfileComplete = !string.IsNullOrWhiteSpace(user.AvatarUrl),
+            ProfileComplete = IsProfileComplete(user),
             Token = token,
             ExpiresAt = expiresAt
         };
     }
+
+    private static bool IsProfileComplete(User user) =>
+        !string.IsNullOrWhiteSpace(user.AvatarUrl)
+        && (!string.IsNullOrWhiteSpace(user.FirstName) || !string.IsNullOrWhiteSpace(user.LastName))
+        && !string.IsNullOrWhiteSpace(user.Bio);
 
     private string GenerateJwtToken(User user, DateTime expiresAt)
     {

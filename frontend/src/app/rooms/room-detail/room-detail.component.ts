@@ -443,7 +443,7 @@ const TABS: RoomTab[] = [
     }
     .tab-btn:hover { background: var(--background); color: var(--text-primary); }
     .tab-btn.active { background: var(--primary); color: white; }
-    .tab-btn .material-icons { font-size: var(--font-18); }
+    .tab-btn .material-icons { font-size: var(--font-18); padding-right: 6px; }
     .tab-badge {
       position: absolute; top: 2px; right: 8px; min-width: 18px; height: 18px;
       border-radius: 9px; background: var(--error); color: white;
@@ -655,7 +655,7 @@ const TABS: RoomTab[] = [
         padding: 8px 0 10px; background: none; border: none; cursor: pointer;
         color: var(--text-muted); transition: color 0.15s; position: relative;
       }
-      .tab-item .material-icons { font-size: var(--font-22); }
+      .tab-item .material-icons { font-size: var(--font-22); margin-bottom: 2px; }
       .tab-label { font-size: var(--font-10); font-weight: 600; }
       .tab-item.active { color: var(--accent); }
       .tab-item-badge {

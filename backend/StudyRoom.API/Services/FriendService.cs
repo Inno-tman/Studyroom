@@ -168,7 +168,16 @@ public class FriendService : IFriendService
         var rels = await _friendRepo.GetIncomingAsync(userId);
         return rels
             .Where(r => r.Requester != null)
-            .Select(r => MapFriend(r.Requester!, r.Id))
+            .Select(r => MapFriend(r.Requester!, r.Id, r.CreatedAt))
+            .ToList();
+    }
+
+    public async Task<List<FriendRequestDto>> GetOutgoingRequestsAsync(Guid userId)
+    {
+        var rels = await _friendRepo.GetOutgoingAsync(userId);
+        return rels
+            .Where(r => r.Addressee != null)
+            .Select(r => MapFriend(r.Addressee!, r.Id, r.CreatedAt))
             .ToList();
     }
 
@@ -252,14 +261,18 @@ public class FriendService : IFriendService
         await _friendRepo.DeleteAsync(rel);
     }
 
-    private static FriendRequestDto MapFriend(User u, Guid relId) => new()
+    private static FriendRequestDto MapFriend(User u, Guid relId) =>
+        MapFriend(u, relId, default);
+
+    private static FriendRequestDto MapFriend(User u, Guid relId, DateTime createdAt) => new()
     {
         Id = relId,
         UserId = u.Id,
         Username = u.Username,
         DisplayName = BuildDisplayName(u),
         AvatarUrl = u.AvatarUrl,
-        SchoolName = u.SchoolName
+        SchoolName = u.SchoolName,
+        CreatedAt = createdAt
     };
 
     private static string BuildDisplayName(User u)

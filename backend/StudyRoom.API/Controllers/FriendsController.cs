@@ -31,6 +31,13 @@ public class FriendsController : ControllerBase
         return Ok(requests);
     }
 
+    [HttpGet("requests/outgoing")]
+    public async Task<IActionResult> GetOutgoingRequests()
+    {
+        var requests = await _friendService.GetOutgoingRequestsAsync(UserId);
+        return Ok(requests);
+    }
+
     [HttpPost("request")]
     public async Task<IActionResult> SendRequest([FromBody] SendFriendRequestDto dto)
     {

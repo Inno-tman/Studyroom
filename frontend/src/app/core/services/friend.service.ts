@@ -24,6 +24,10 @@ export class FriendService {
     return this.http.get<Friend[]>(`${environment.apiUrl}/friends/requests`);
   }
 
+  getOutgoingRequests(): Observable<Friend[]> {
+    return this.http.get<Friend[]>(`${environment.apiUrl}/friends/requests/outgoing`);
+  }
+
   sendRequest(userId: string): Observable<void> {
     return this.http.post<void>(`${environment.apiUrl}/friends/request`, { userId });
   }

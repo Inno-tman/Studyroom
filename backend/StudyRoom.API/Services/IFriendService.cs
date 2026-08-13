@@ -8,6 +8,7 @@ public interface IFriendService
     Task<List<UserSearchResultDto>> SuggestUsersAsync(Guid userId, int count = 20);
     Task<List<FriendRequestDto>> GetFriendsAsync(Guid userId);
     Task<List<FriendRequestDto>> GetIncomingRequestsAsync(Guid userId);
+    Task<List<FriendRequestDto>> GetOutgoingRequestsAsync(Guid userId);
     Task SendRequestAsync(Guid fromUserId, Guid toUserId);
     Task AcceptRequestAsync(Guid requestId, Guid userId);
     Task DeleteRequestAsync(Guid requestId, Guid userId);

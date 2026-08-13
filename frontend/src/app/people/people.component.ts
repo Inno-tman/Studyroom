@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { NgFor, NgIf } from '@angular/common';
+import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FriendService } from '../core/services/friend.service';
 import { Friend, UserSearchResult } from '../shared/models/social.model';
@@ -7,7 +7,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
 @Component({
   selector: 'app-people',
   standalone: true,
-  imports: [NgFor, NgIf, FormsModule],
+  imports: [NgFor, NgIf, DatePipe, FormsModule],
   template: `
     <div class="people-page">
       <div class="page-header">
@@ -133,6 +133,31 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           </div>
         </div>
 
+        <!-- Sent Requests -->
+        <div *ngIf="mode === 'friends'" class="card">
+          <div class="card-head">
+            <div class="card-head-icon sent"><span class="material-icons">outgoing_mail</span></div>
+            <div>
+              <h2>Sent Requests</h2>
+              <p class="card-subtitle">Requests you've sent that are still pending.</p>
+            </div>
+          </div>
+          <div *ngIf="sentRequests.length === 0" class="empty">You have no outgoing requests.</div>
+          <div *ngFor="let req of sentRequests" class="person-row">
+            <div class="person-avatar" [class.has-image]="req.avatarUrl">
+              <img *ngIf="req.avatarUrl; else sentInitial" [src]="req.avatarUrl" alt="" />
+              <ng-template #sentInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
+            </div>
+            <div class="person-info">
+              <span class="person-name">{{ req.displayName || req.username }}</span>
+              <span class="person-sub">{{ '@' + req.username }}{{ req.createdAt ? ' · sent ' + (req.createdAt | date:'mediumDate') : '' }}</span>
+            </div>
+            <div class="row-actions">
+              <button class="btn-secondary" (click)="cancelRequest(req)">Cancel</button>
+            </div>
+          </div>
+        </div>
+
         <!-- My Friends -->
         <div *ngIf="mode === 'friends'" class="card">
           <div class="card-head">
@@ -208,6 +233,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
       flex-shrink: 0;
     }
     .card-head-icon .material-icons { font-size: var(--font-22); }
+    .card-head-icon.sent { background: var(--text-secondary); }
     .card-head h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin: 0; }
     .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin: 2px 0 0; }
 
@@ -280,6 +306,7 @@ export class PeopleComponent implements OnInit {
   results: UserSearchResult[] = [];
   suggestions: UserSearchResult[] = [];
   requests: Friend[] = [];
+  sentRequests: Friend[] = [];
   friends: Friend[] = [];
   loading = false;
   mode: 'discover' | 'friends' = 'discover';
@@ -289,7 +316,7 @@ export class PeopleComponent implements OnInit {
   }
 
   async loadAll(): Promise<void> {
-    await Promise.all([this.loadRequests(), this.loadFriends(), this.loadSuggestions()]);
+    await Promise.all([this.loadRequests(), this.loadSentRequests(), this.loadFriends(), this.loadSuggestions()]);
   }
 
   async loadSuggestions(): Promise<void> {
@@ -298,6 +325,10 @@ export class PeopleComponent implements OnInit {
 
   async loadRequests(): Promise<void> {
     this.requests = (await this.friendService.getIncomingRequests().toPromise()) || [];
+  }
+
+  async loadSentRequests(): Promise<void> {
+    this.sentRequests = (await this.friendService.getOutgoingRequests().toPromise()) || [];
   }
 
   async loadFriends(): Promise<void> {
@@ -334,6 +365,11 @@ export class PeopleComponent implements OnInit {
   }
 
   async decline(req: Friend): Promise<void> {
+    await this.friendService.deleteRequest(req.id).toPromise();
+    await this.loadAll();
+  }
+
+  async cancelRequest(req: Friend): Promise<void> {
     await this.friendService.deleteRequest(req.id).toPromise();
     await this.loadAll();
   }
