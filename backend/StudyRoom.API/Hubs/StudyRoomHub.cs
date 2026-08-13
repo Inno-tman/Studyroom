@@ -17,8 +17,16 @@ public class StudyRoomHub : Hub
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IDirectMessageRepository _dmRepo;
     private readonly IUserRepository _userRepo;
+
+    // Room-scoped: connectionId -> roomId
     private static readonly Dictionary<string, string> _onlineUsers = new();
     private static readonly Dictionary<string, string> _userGroups = new();
+
+    // Global presence: userId -> joined room ids (multiple connections per user)
+    private static readonly Dictionary<string, HashSet<string>> _presenceRooms = new();
+    private static readonly Dictionary<string, string> _presenceUsername = new();
+    private static readonly Dictionary<string, string> _presenceAvatar = new();
+    private static readonly Dictionary<string, int> _presenceConnections = new();
 
     public StudyRoomHub(
         IMessageRepository messageRepo,
@@ -45,10 +53,26 @@ public class StudyRoomHub : Hub
         await Groups.AddToGroupAsync(connectionId, groupName);
         _onlineUsers[connectionId] = roomId;
 
+        var uid = UserId.ToString();
+        var username = Username;
+
+        lock (_presenceRooms)
+        {
+            if (!_presenceRooms.TryGetValue(uid, out var rooms))
+            {
+                rooms = new HashSet<string>();
+                _presenceRooms[uid] = rooms;
+                _presenceUsername[uid] = username;
+            }
+            rooms.Add(roomId);
+        }
+
+        await SeedPresenceAvatar();
+
         await Clients.Group(groupName).SendAsync("UserJoined", new
         {
-            userId = UserId.ToString(),
-            username = Username
+            userId = uid,
+            username
         });
 
         await UpdateOnlineUsers(roomId);
@@ -60,13 +84,58 @@ public class StudyRoomHub : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
         _onlineUsers.Remove(Context.ConnectionId);
 
+        var uid = UserId.ToString();
+        lock (_presenceRooms)
+        {
+            if (_presenceRooms.TryGetValue(uid, out var rooms))
+                rooms.Remove(roomId);
+        }
+
         await Clients.Group(groupName).SendAsync("UserLeft", new
         {
-            userId = UserId.ToString(),
+            userId = uid,
             username = Username
         });
 
         await UpdateOnlineUsers(roomId);
+    }
+
+    /// <summary>Returns live online people across ALL rooms the caller is a member of.</summary>
+    public Task<List<object>> GetPresence()
+    {
+        var me = UserId.ToString();
+
+        // Rooms the caller belongs to
+        var myRooms = new HashSet<string>();
+        lock (_presenceRooms)
+        {
+            if (_presenceRooms.TryGetValue(me, out var rooms))
+                foreach (var r in rooms) myRooms.Add(r);
+        }
+
+        var result = new List<object>();
+        if (myRooms.Count == 0) return Task.FromResult(result);
+
+        lock (_presenceRooms)
+        {
+            foreach (var kv in _presenceRooms)
+            {
+                if (kv.Key == me) continue;
+                var sharedRooms = kv.Value.Where(r => myRooms.Contains(r)).ToList();
+                if (sharedRooms.Count == 0) continue;
+
+                _presenceUsername.TryGetValue(kv.Key, out var uname);
+                _presenceAvatar.TryGetValue(kv.Key, out var avatar);
+                result.Add(new
+                {
+                    userId = kv.Key,
+                    username = uname ?? kv.Key,
+                    avatarUrl = avatar,
+                    roomIds = sharedRooms
+                });
+            }
+        }
+        return Task.FromResult(result);
     }
 
     public async Task SendMessage(string roomId, string content)
@@ -222,23 +291,53 @@ public class StudyRoomHub : Hub
             _userGroups[UserId.ToString()] = group;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, group);
+        lock (_presenceConnections)
+            _presenceConnections[UserId.ToString()] = _presenceConnections.GetValueOrDefault(UserId.ToString()) + 1;
+        await SeedPresenceAvatar();
         await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        var uid = UserId.ToString();
         if (_onlineUsers.TryGetValue(Context.ConnectionId, out var roomId))
         {
             _onlineUsers.Remove(Context.ConnectionId);
+            lock (_presenceRooms)
+            {
+                if (_presenceRooms.TryGetValue(uid, out var rooms))
+                    rooms.Remove(roomId);
+            }
             await Clients.Group(GetGroupName(roomId)).SendAsync("UserLeft", new
             {
-                userId = UserId.ToString(),
+                userId = uid,
                 username = Username
             });
             await UpdateOnlineUsers(roomId);
         }
 
+        lock (_presenceConnections)
+        {
+            _presenceConnections[uid] = Math.Max(0, _presenceConnections.GetValueOrDefault(uid) - 1);
+            // No live connections left -> drop this user entirely from presence.
+            if (_presenceConnections[uid] == 0)
+            {
+                _presenceConnections.Remove(uid);
+                _presenceRooms.Remove(uid);
+                _presenceUsername.Remove(uid);
+                _presenceAvatar.Remove(uid);
+            }
+        }
+
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private async Task SeedPresenceAvatar()
+    {
+        var uid = UserId.ToString();
+        var user = await _userRepo.GetByIdAsync(UserId);
+        if (user != null)
+            _presenceAvatar[uid] = user.AvatarUrl ?? "";
     }
 
     private async Task UpdateOnlineUsers(string roomId)

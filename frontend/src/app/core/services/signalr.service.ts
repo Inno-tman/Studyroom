@@ -38,8 +38,12 @@ export class SignalRService {
 
   constructor(private authService: AuthService) {}
 
+  connectionActive(): boolean {
+    return this.hubConnection?.state === signalR.HubConnectionState.Connected;
+  }
+
   async startConnection(): Promise<void> {
-    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) return;
+    if (this.connectionActive()) return;
 
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(environment.signalrUrl, {
@@ -70,6 +74,10 @@ export class SignalRService {
 
   async leaveRoom(roomId: string): Promise<void> {
     await this.hubConnection.invoke('LeaveRoom', roomId);
+  }
+
+  async getPresence(): Promise<any[]> {
+    return await this.hubConnection.invoke('GetPresence');
   }
 
   async sendMessage(roomId: string, content: string): Promise<void> {

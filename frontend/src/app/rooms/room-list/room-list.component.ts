@@ -12,13 +12,30 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
   imports: [RouterLink, NgFor, NgIf, DatePipe, FormsModule, LoadingComponent],
   template: `
     <div class="browse-rooms">
-      <div class="page-header">
-        <h1>Study Rooms</h1>
-        <div class="header-actions">
-          <a routerLink="/rooms/create" class="btn-primary">+ Create Room</a>
+      <!-- ── Hero header card ─────────────────────────────────── -->
+      <div class="hero-card">
+        <div class="hero-top">
+          <div class="hero-greeting">
+            <h1>Study Rooms</h1>
+            <p>Find your crew, pick a subject, and study together.</p>
+          </div>
+          <a routerLink="/rooms/create" class="hero-create">
+            <span class="material-icons">add_box</span> Create Room
+          </a>
+        </div>
+        <div class="hero-badges">
+          <span class="hero-badge">
+            <span class="material-icons">meeting_room</span>
+            {{ rooms.length }} rooms
+          </span>
+          <span class="hero-badge">
+            <span class="material-icons">apps</span>
+            {{ activeSubject || 'All subjects' }}
+          </span>
         </div>
       </div>
 
+      <!-- ── Filters ──────────────────────────────────────────── -->
       <div class="filters">
         <div class="search-box">
           <span class="material-icons">search</span>
@@ -62,8 +79,31 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
   styles: [`
     .browse-rooms { max-width: 1200px; }
 
-    .header-actions { display: flex; gap: 8px; }
+    /* Hero header card */
+    .hero-card {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 16px; padding: 28px; margin-bottom: 20px;
+      color: white; display: flex; flex-direction: column; gap: 20px;
+    }
+    .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .hero-greeting h1 { font-size: var(--font-24); font-weight: 700; margin-bottom: 6px; }
+    .hero-greeting p { color: rgba(255,255,255,0.82); font-size: var(--font-14); }
+    .hero-create {
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+      color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600;
+      font-size: var(--font-13); text-decoration: none; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s;
+    }
+    .hero-create:hover { background: rgba(255,255,255,0.28); }
+    .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.16); border-radius: 8px;
+      padding: 6px 10px; font-size: var(--font-12); font-weight: 600;
+    }
+    .hero-badge .material-icons { font-size: var(--font-16); }
 
+    /* Filters */
     .filters { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
 
     .search-box { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; flex: 1; min-width: 200px; }
@@ -84,6 +124,10 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
     .room-card-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); flex: 1; }
     .room-desc { font-size: var(--font-13); color: var(--text-secondary); margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .room-meta { display: flex; justify-content: space-between; font-size: var(--font-12); color: var(--text-muted); }
+
+    @media (max-width: 768px) {
+      .hero-top { flex-direction: column; }
+    }
   `]
 })
 export class RoomListComponent implements OnInit {
@@ -93,6 +137,10 @@ export class RoomListComponent implements OnInit {
   search = '';
   subject = '';
   loading = true;
+
+  get activeSubject(): string {
+    return this.subject || 'All subjects';
+  }
 
   async ngOnInit() {
     await this.loadRooms();

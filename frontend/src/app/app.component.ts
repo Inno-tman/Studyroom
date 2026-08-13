@@ -3,12 +3,14 @@ import { RouterOutlet } from '@angular/router';
 import { NgIf } from '@angular/common';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { ProfileReminderComponent } from './shared/components/profile-reminder/profile-reminder.component';
+import { CommandPaletteComponent } from './shared/components/command-palette/command-palette.component';
+import { PresenceDockComponent } from './shared/components/presence-dock/presence-dock.component';
 import { NotificationService } from './core/services/notification.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, ProfileReminderComponent, NgIf],
+  imports: [RouterOutlet, SidebarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, NgIf],
   template: `
     <div class="app-container">
       <app-sidebar [hidden]="sidebarHidden()" (toggle)="toggleSidebar()" />
@@ -21,6 +23,8 @@ import { NotificationService } from './core/services/notification.service';
           <router-outlet />
         </main>
       </div>
+      <app-command-palette />
+      <app-presence-dock />
     </div>
   `,
   styles: [`
