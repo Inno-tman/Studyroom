@@ -156,7 +156,7 @@ import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.compo
       <div class="call-panel" *ngIf="isMember && inCall">
         <div class="call-header">
           <h2><span class="live-dot"></span> {{ room?.name }} — Video Call</h2>
-          <span class="call-hint">Share this room with a friend to connect</span>
+          <span class="call-hint">Everyone in this room joins the same live call</span>
           <button class="dialog-close" (click)="toggleCall()" title="End call"><span class="material-icons">close</span></button>
         </div>
         <iframe
@@ -389,7 +389,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     const name = encodeURIComponent(user?.username || user?.email || 'Student');
     const room = encodeURIComponent(`studyroom-${this.roomId}`);
     return this.sanitizer.bypassSecurityTrustResourceUrl(
-      `https://c2c.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1`
+      `https://sfu.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1&screen=1&duration=unlimited`
     );
   }
 
