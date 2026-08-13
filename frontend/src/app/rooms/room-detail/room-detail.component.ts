@@ -384,13 +384,18 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     return this.auth.currentUser()?.id;
   }
 
+  private cachedCallUrl?: SafeResourceUrl;
+
   get callUrl(): SafeResourceUrl {
-    const user = this.auth.currentUser();
-    const name = encodeURIComponent(user?.username || user?.email || 'Student');
-    const room = encodeURIComponent(`studyroom-${this.roomId}`);
-    return this.sanitizer.bypassSecurityTrustResourceUrl(
-      `https://sfu.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1&screen=1&duration=unlimited`
-    );
+    if (!this.cachedCallUrl) {
+      const user = this.auth.currentUser();
+      const name = encodeURIComponent(user?.username || user?.email || 'Student');
+      const room = encodeURIComponent(`studyroom-${this.roomId}`);
+      this.cachedCallUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+        `https://sfu.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1&screen=1&duration=unlimited`
+      );
+    }
+    return this.cachedCallUrl;
   }
 
   toggleCall() {
