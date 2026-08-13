@@ -94,7 +94,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .messages-page { max-width: 1100px; }
 
     .messages-layout {
-      display: flex; height: calc(100vh - 140px); min-height: 480px;
+      display: flex; height: calc(100vh - 96px); min-height: 420px;
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
     }
 
@@ -122,7 +122,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     }
     .convo-last { font-size: var(--font-12); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; height: 100%; overflow: hidden; }
 
     .back-btn {
       display: none; align-items: center; justify-content: center;
@@ -143,7 +143,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .chat-title-wrap { display: flex; align-items: center; min-width: 0; flex: 1; }
     .chat-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .messages { flex: 1 1 auto; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 
     .bubble-wrap { display: flex; align-items: flex-end; gap: 6px; max-width: 70%; align-self: flex-start; }
     .bubble-wrap.mine { align-self: flex-end; flex-direction: row-reverse; }
@@ -185,17 +185,16 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       .messages-page { max-width: none; }
       .page-header { display: none; }
       .messages-layout {
-        flex-direction: column; height: calc(100dvh - 120px);
+        flex-direction: column;
+        height: calc(100vh - 176px);
         border: none; border-radius: 0; min-height: 0;
       }
-      .conversations {
-        width: 100%; border-right: none; height: auto; flex: 1;
-      }
+      .conversations { width: 100%; border-right: none; height: 100%; flex: 1 1 auto; overflow-y: auto; }
       .conversations.mobile-hidden { display: none; }
-      .chat-area { display: none; border: none; }
-      .chat-area.mobile-open { display: flex; flex: 1; }
+      .chat-area { display: none; border: none; height: 100%; flex: 1 1 auto; }
+      .chat-area.mobile-open { display: flex; }
       .back-btn { display: inline-flex; }
-      .messages { padding-top: 12px; }
+      .messages { padding-top: 12px; min-height: 0; }
     }
   `]
 })
