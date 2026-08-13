@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/services/auth.service';
 import { PostService } from '../core/services/post.service';
 import { Post } from '../shared/models/social.model';
+import { LoadingComponent } from '../shared/components/loading/loading.component';
 
 @Component({
   selector: 'app-timeline',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule],
+  imports: [NgFor, NgIf, DatePipe, FormsModule, LoadingComponent],
   template: `
     <div class="timeline">
       <div class="page-header">
@@ -17,7 +18,7 @@ import { Post } from '../shared/models/social.model';
 
       <div class="composer">
         <div class="composer-header">
-          <div class="composer-avatar" [class.has-image]="auth.currentUser()?.avatarUrl">
+          <div class="avatar" [class.has-image]="auth.currentUser()?.avatarUrl">
             <img *ngIf="auth.currentUser()?.avatarUrl; else composerInitial" [src]="auth.currentUser()?.avatarUrl" alt="" />
             <ng-template #composerInitial>{{ auth.currentUser()?.username?.charAt(0)?.toUpperCase() }}</ng-template>
           </div>
@@ -35,15 +36,16 @@ import { Post } from '../shared/models/social.model';
         </div>
       </div>
 
-      <div *ngIf="loading" class="empty-state">Loading…</div>
-      <div *ngIf="!loading && posts.length === 0" class="empty-state">
+      <app-loading [loading]="loading" />
+      <div *ngIf="!loading && posts.length === 0" class="empty">
+        <span class="material-icons">article</span>
         No posts yet. Share something with your friends!
       </div>
 
       <div class="posts">
         <div *ngFor="let post of posts" class="post">
           <div class="post-header">
-            <div class="post-avatar" [class.has-image]="post.authorAvatar">
+            <div class="avatar" [class.has-image]="post.authorAvatar">
               <img *ngIf="post.authorAvatar; else initial" [src]="post.authorAvatar" alt="" />
               <ng-template #initial>{{ post.authorName?.charAt(0)?.toUpperCase() }}</ng-template>
             </div>
@@ -65,7 +67,7 @@ import { Post } from '../shared/models/social.model';
 
           <div *ngIf="post.sharedFrom" class="shared-card">
             <div class="post-header">
-              <div class="post-avatar small" [class.has-image]="post.sharedFrom.authorAvatar">
+              <div class="avatar sm" [class.has-image]="post.sharedFrom.authorAvatar">
                 <img *ngIf="post.sharedFrom.authorAvatar; else sharedInitial" [src]="post.sharedFrom.authorAvatar" alt="" />
                 <ng-template #sharedInitial>{{ post.sharedFrom.authorName?.charAt(0)?.toUpperCase() }}</ng-template>
               </div>
@@ -99,7 +101,7 @@ import { Post } from '../shared/models/social.model';
 
           <div *ngIf="post.showComments" class="comments-section">
             <div *ngFor="let comment of post.comments" class="comment">
-              <div class="comment-avatar" [class.has-image]="comment.authorAvatar">
+              <div class="avatar sm" [class.has-image]="comment.authorAvatar">
                 <img *ngIf="comment.authorAvatar; else commentInitial" [src]="comment.authorAvatar" alt="" />
                 <ng-template #commentInitial>{{ comment.authorName?.charAt(0)?.toUpperCase() }}</ng-template>
               </div>
@@ -114,7 +116,7 @@ import { Post } from '../shared/models/social.model';
 
                 <div *ngIf="comment.replies?.length" class="replies">
                   <div *ngFor="let reply of comment.replies" class="comment reply">
-                    <div class="comment-avatar" [class.has-image]="reply.authorAvatar">
+                    <div class="avatar sm" [class.has-image]="reply.authorAvatar">
                       <img *ngIf="reply.authorAvatar; else replyInitial" [src]="reply.authorAvatar" alt="" />
                       <ng-template #replyInitial>{{ reply.authorName?.charAt(0)?.toUpperCase() }}</ng-template>
                     </div>
@@ -170,14 +172,6 @@ import { Post } from '../shared/models/social.model';
 
     .composer-header { display: flex; gap: 12px; }
 
-    .composer-avatar {
-      width: 44px; height: 44px; border-radius: 50%; background: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: white; flex-shrink: 0; overflow: hidden;
-    }
-
-    .composer-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
-
     textarea {
       flex: 1; width: 100%; background: var(--background); border: 1px solid var(--border);
       border-radius: 8px; padding: 12px; color: var(--text-primary); font-size: var(--font-14);
@@ -185,14 +179,9 @@ import { Post } from '../shared/models/social.model';
     }
     textarea:focus { outline: none; border-color: var(--primary); }
 
-    .composer-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .composer-actions { display: flex; justify-content: flex-end; margin-top: 12px; align-items: center; gap: 8px; }
 
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 8px; font-size: var(--font-14); font-weight: 600; cursor: pointer; }
-    .btn-primary:hover { opacity: 0.85; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary.small { padding: 6px 14px; }
-
-    .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; }
 
     .posts { display: flex; flex-direction: column; gap: 16px; }
 
@@ -201,14 +190,6 @@ import { Post } from '../shared/models/social.model';
     }
 
     .post-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-
-    .post-avatar {
-      width: 40px; height: 40px; border-radius: 50%; background: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: white; overflow: hidden; flex-shrink: 0;
-    }
-    .post-avatar.small { width: 32px; height: 32px; font-size: var(--font-12); }
-    .post-avatar.has-image img, .comment-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
 
     .post-meta { display: flex; flex-direction: column; flex: 1; }
     .post-author { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
@@ -240,12 +221,6 @@ import { Post } from '../shared/models/social.model';
 
     .comments-section { border-top: 1px solid var(--border); padding-top: 12px; }
     .comment { display: flex; gap: 10px; margin-bottom: 10px; }
-
-    .comment-avatar {
-      width: 30px; height: 30px; border-radius: 50%; background: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: white; font-size: var(--font-12); overflow: hidden; flex-shrink: 0;
-    }
 
     .comment-body { flex: 1; min-width: 0; }
 

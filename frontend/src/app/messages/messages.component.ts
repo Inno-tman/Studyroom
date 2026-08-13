@@ -27,7 +27,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
             [class.active]="convo.userId === activeUserId"
             (click)="openConversation(convo.userId)"
           >
-            <div class="convo-avatar" [class.has-image]="convo.avatarUrl">
+            <div class="avatar" [class.has-image]="convo.avatarUrl">
               <img *ngIf="convo.avatarUrl; else convoInitial" [src]="convo.avatarUrl" alt="" />
               <ng-template #convoInitial>{{ (convo.displayName || convo.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
@@ -48,7 +48,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
 
           <ng-container *ngIf="activeUser">
             <div class="chat-header">
-              <div class="convo-avatar" [class.has-image]="activeUser.avatarUrl">
+              <div class="avatar" [class.has-image]="activeUser.avatarUrl">
                 <img *ngIf="activeUser.avatarUrl; else activeInitial" [src]="activeUser.avatarUrl" alt="" />
                 <ng-template #activeInitial>{{ (activeUser.displayName || activeUser.username).charAt(0).toUpperCase() }}</ng-template>
               </div>
@@ -105,12 +105,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .convo-item:hover { background: var(--surface-hover); }
     .convo-item.active { background: var(--surface-hover); border-left: 3px solid var(--primary); }
 
-    .convo-avatar {
-      width: 42px; height: 42px; border-radius: 50%; background: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: white; overflow: hidden; flex-shrink: 0;
-    }
-    .convo-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
+    .convo-item .avatar, .chat-header .avatar { width: 42px; height: 42px; }
 
     .convo-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .convo-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -130,7 +125,6 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       display: flex; align-items: center; gap: 12px; padding: 14px 16px;
       border-bottom: 1px solid var(--border);
     }
-    .chat-header .convo-avatar { width: 36px; height: 36px; }
     .chat-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
 
     .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }

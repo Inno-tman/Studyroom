@@ -1,24 +1,25 @@
 import { Component, inject } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { NotificationService } from '../core/services/notification.service';
+import { LoadingComponent } from '../shared/components/loading/loading.component';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe],
+  imports: [NgFor, NgIf, DatePipe, LoadingComponent],
   template: `
     <div class="notifications-page">
       <div class="page-header page-header-row">
-        <div>
-          <h1>Notifications</h1>
+        <div class="page-header-left">
+          <h1 class="page-title">Notifications</h1>
           <p class="page-subtitle">Friend requests, invites, comments and messages.</p>
         </div>
-        <button class="mark-all" *ngIf="service.items().length > 0" (click)="service.markAllRead()">
+        <button class="btn-secondary btn-sm" *ngIf="service.items().length > 0" (click)="service.markAllRead()">
           Mark all as read
         </button>
       </div>
 
-      <div *ngIf="service.loading()" class="loading">Loading…</div>
+      <app-loading [loading]="service.loading()" />
 
       <div *ngIf="!service.loading() && service.items().length === 0" class="empty">
         <span class="material-icons">notifications_off</span>
@@ -32,10 +33,10 @@ import { NotificationService } from '../core/services/notification.service';
           *ngFor="let n of service.items()"
           (click)="service.open(n)"
         >
-          <div class="notif-avatar" [class.has-image]="n.actorAvatarUrl">
+          <div class="notif-avatar" [class.has-image]="n.actorAvatarUrl && !n.icon">
             <img *ngIf="n.actorAvatarUrl; else actorInitial" [src]="n.actorAvatarUrl" alt="" />
             <ng-template #actorInitial>
-              <span class="material-icons">{{ n.icon }}</span>
+              <span class="material-icons">{{ n.icon || 'notifications' }}</span>
             </ng-template>
           </div>
           <div class="notif-body">
@@ -55,29 +56,15 @@ import { NotificationService } from '../core/services/notification.service';
       display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
       margin-bottom: 20px;
     }
-    .page-subtitle { font-size: var(--font-14); color: var(--text-secondary); margin-top: 4px; }
 
-    .mark-all {
-      background: none; border: 1px solid var(--border); color: var(--text-secondary);
-      padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: var(--font-13); font-weight: 600;
-      transition: all 0.15s ease;
-    }
-    .mark-all:hover { border-color: var(--primary); color: var(--primary); }
-
-    .empty {
-      text-align: center; padding: 48px; color: var(--text-muted);
-      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-    }
     .empty .material-icons { font-size: var(--font-40); }
-    .loading { text-align: center; padding: 48px; color: var(--text-muted); }
 
     .notif-list { display: flex; flex-direction: column; gap: 8px; }
 
     .notif-row {
       display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px;
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      width: 100%; text-align: left; cursor: pointer; color: inherit;
+      width: 100%; text-align: left; cursor: pointer; color: inherit; font-family: inherit;
       transition: border-color 0.15s ease, background 0.15s ease;
     }
     .notif-row:hover { border-color: var(--primary); background: var(--surface-hover); }

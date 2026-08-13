@@ -93,13 +93,6 @@ import { AuthService } from '../../core/services/auth.service';
     input:focus { outline: none; border-color: var(--primary); }
 
     .form-actions { margin-top: 4px; }
-
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: var(--font-14); font-weight: 600; cursor: pointer; }
-    .btn-primary:hover { opacity: 0.85; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .form-error { color: var(--error); font-size: var(--font-13); margin-top: 8px; }
-    .form-success { color: var(--success); font-size: var(--font-13); margin-top: 8px; }
   `]
 })
 export class AccountSettingsComponent {

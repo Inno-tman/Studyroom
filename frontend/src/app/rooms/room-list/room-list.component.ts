@@ -43,7 +43,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
         <div class="room-card" *ngFor="let room of rooms" (click)="navigateToRoom(room.id)">
           <div class="room-card-header">
             <h3>{{ room.name }}</h3>
-            <span class="subject-badge">{{ room.subject || 'General' }}</span>
+            <span class="badge badge-accent">{{ room.subject || 'General' }}</span>
           </div>
           <p class="room-desc">{{ room.description || 'No description' }}</p>
           <div class="room-meta">
@@ -82,15 +82,8 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
 
     .room-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .room-card-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); flex: 1; }
-    .subject-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; white-space: nowrap; }
     .room-desc { font-size: var(--font-13); color: var(--text-secondary); margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .room-meta { display: flex; justify-content: space-between; font-size: var(--font-12); color: var(--text-muted); }
-
-    .btn-primary { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: var(--font-14); font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.15s; }
-    .btn-primary:hover { background: var(--primary-hover); }
-
-    .btn-outline { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); font-weight: 500; text-decoration: none; cursor: pointer; transition: all 0.15s; }
-    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
   `]
 })
 export class RoomListComponent implements OnInit {

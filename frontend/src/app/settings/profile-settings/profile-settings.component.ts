@@ -230,29 +230,6 @@ import { User } from '../../shared/models/user.model';
 
     .form-actions { display: flex; gap: 12px; margin-top: 4px; }
 
-    .btn-primary {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--primary); color: white; border: none;
-      padding: 11px 22px; border-radius: 10px;
-      font-size: var(--font-14); font-weight: 600; cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .btn-secondary {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--surface-hover); color: var(--text-primary);
-      border: 1px solid var(--border);
-      padding: 10px 20px; border-radius: 10px;
-      font-size: var(--font-14); font-weight: 500; cursor: pointer;
-      transition: opacity 0.15s ease;
-    }
-    .btn-secondary:hover { opacity: 0.85; }
-
-    .form-error { display: flex; align-items: center; gap: 6px; color: var(--error); font-size: var(--font-13); margin-top: 16px; }
-    .form-success { display: flex; align-items: center; gap: 6px; color: var(--success); font-size: var(--font-13); margin-top: 16px; }
-
     @media (max-width: 768px) {
       .form-grid { grid-template-columns: 1fr; }
       .card { padding: 20px; }

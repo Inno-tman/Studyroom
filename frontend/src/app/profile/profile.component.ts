@@ -13,14 +13,14 @@ import { UserStats } from '../shared/models/stats.model';
     <div class="profile">
       <div class="page-header">
         <h1>Profile</h1>
-        <a routerLink="/settings/profile" class="edit-btn">
+        <a routerLink="/settings/profile" class="btn-outline">
           <span class="material-icons">settings</span>
           Edit Profile
         </a>
       </div>
 
       <div class="profile-card">
-        <div class="profile-avatar" [class.has-image]="auth.currentUser()?.avatarUrl">
+        <div class="avatar lg" [class.has-image]="auth.currentUser()?.avatarUrl">
           <img *ngIf="auth.currentUser()?.avatarUrl; else initial" [src]="auth.currentUser()?.avatarUrl" alt="avatar" />
           <ng-template #initial>{{ displayName()?.charAt(0)?.toUpperCase() }}</ng-template>
         </div>
@@ -33,7 +33,7 @@ import { UserStats } from '../shared/models/stats.model';
           <p *ngIf="auth.currentUser()?.birthDate" class="detail"><span class="material-icons">cake</span> {{ age() }} years old</p>
           <p *ngIf="auth.currentUser()?.interests" class="interests">{{ interestsTags() }}</p>
           <p *ngIf="auth.currentUser()?.bio" class="bio">{{ auth.currentUser()?.bio }}</p>
-          <span class="role-badge">{{ auth.currentUser()?.role }}</span>
+          <span class="badge badge-accent">{{ auth.currentUser()?.role }}</span>
         </div>
       </div>
 
@@ -65,9 +65,6 @@ import { UserStats } from '../shared/models/stats.model';
 
     .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; display: flex; align-items: center; gap: 24px; margin-bottom: 32px; }
 
-    .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: var(--font-28); font-weight: 700; color: white; overflow: hidden; flex-shrink: 0; }
-    .profile-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
-
     .profile-info h2 { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
     .profile-info p { font-size: var(--font-14); color: var(--text-secondary); margin-bottom: 8px; }
 
@@ -80,25 +77,6 @@ import { UserStats } from '../shared/models/stats.model';
     .interests { font-size: var(--font-14); color: var(--text-primary); font-weight: 500; }
 
     .profile-info .bio { font-size: var(--font-14); color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
-
-    .role-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: var(--font-12); font-weight: 600; }
-
-    .edit-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--primary);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: var(--font-14);
-      font-weight: 600;
-      text-decoration: none;
-      transition: opacity 0.15s;
-    }
-
-    .edit-btn:hover { opacity: 0.85; }
-    .edit-btn .material-icons { font-size: var(--font-18); }
 
     .stats-section { margin-top: 32px; }
     .stats-section h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
