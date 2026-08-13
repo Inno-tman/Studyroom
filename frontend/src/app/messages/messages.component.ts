@@ -51,7 +51,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               <button class="back-btn" (click)="closeConversation()" aria-label="Back to conversations">
                 <span class="material-icons">arrow_back</span>
               </button>
-              <div class="chat-avatar" [class.has-image]="activeUser.avatarUrl">
+              <div class="avatar" [class.has-image]="activeUser.avatarUrl">
                 <img *ngIf="activeUser.avatarUrl; else activeInitial" [src]="activeUser.avatarUrl" alt="" />
                 <ng-template #activeInitial>{{ (activeUser.displayName || activeUser.username).charAt(0).toUpperCase() }}</ng-template>
               </div>
@@ -114,7 +114,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     }
     .convo-item:hover { background: var(--surface-hover); }
     .convo-item.active { background: var(--surface-hover); border-left: 3px solid var(--primary); }
-    .convo-item .avatar { width: 42px; height: 42px; }
+    .convo-item .avatar, .chat-header .avatar { width: 42px; height: 42px; }
 
     .convo-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .convo-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -148,7 +148,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       display: flex; align-items: center; gap: 12px; padding: 10px 16px;
       border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-    .chat-avatar { width: 38px; height: 38px; flex-shrink: 0; }
+    .chat-header .avatar { flex-shrink: 0; }
     .chat-title-wrap { display: flex; align-items: center; min-width: 0; flex: 1; }
     .chat-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
