@@ -45,7 +45,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
 
         <div *ngIf="results.length > 0" class="results-wrap">
           <div *ngFor="let user of results" class="person-row">
-            <div class="person-avatar" [class.has-image]="user.avatarUrl">
+            <div class="avatar" [class.has-image]="user.avatarUrl">
               <img *ngIf="user.avatarUrl; else initial" [src]="user.avatarUrl" alt="" />
               <ng-template #initial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
@@ -87,7 +87,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           <span class="discover-count">{{ suggestions.length }} people</span>
         </div>
         <div *ngFor="let user of suggestions" class="person-row">
-          <div class="person-avatar" [class.has-image]="user.avatarUrl">
+          <div class="avatar" [class.has-image]="user.avatarUrl">
             <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
             <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
           </div>
@@ -119,7 +119,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           </div>
           <div *ngIf="requests.length === 0" class="empty">No pending requests.</div>
           <div *ngFor="let req of requests" class="person-row">
-            <div class="person-avatar" [class.has-image]="req.avatarUrl">
+            <div class="avatar" [class.has-image]="req.avatarUrl">
               <img *ngIf="req.avatarUrl; else reqInitial" [src]="req.avatarUrl" alt="" />
               <ng-template #reqInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
@@ -137,7 +137,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
         <!-- Sent Requests -->
         <div *ngIf="mode === 'friends'" class="card">
           <div class="card-head">
-            <div class="card-head-icon sent"><span class="material-icons">outgoing_mail</span></div>
+            <div class="card-head-icon muted"><span class="material-icons">outgoing_mail</span></div>
             <div>
               <h2>Sent Requests</h2>
               <p class="card-subtitle">Requests you've sent that are still pending.</p>
@@ -145,7 +145,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           </div>
           <div *ngIf="sentRequests.length === 0" class="empty">You have no outgoing requests.</div>
           <div *ngFor="let req of sentRequests" class="person-row">
-            <div class="person-avatar" [class.has-image]="req.avatarUrl">
+            <div class="avatar" [class.has-image]="req.avatarUrl">
               <img *ngIf="req.avatarUrl; else sentInitial" [src]="req.avatarUrl" alt="" />
               <ng-template #sentInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
@@ -170,7 +170,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           </div>
           <div *ngIf="friends.length === 0" class="empty">No friends yet. Add some people above!</div>
           <div *ngFor="let friend of friends" class="person-row">
-            <div class="person-avatar" [class.has-image]="friend.avatarUrl">
+            <div class="avatar" [class.has-image]="friend.avatarUrl">
               <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
               <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
@@ -257,7 +257,6 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     }
 
     .results-wrap { margin-top: 8px; }
-    .empty { color: var(--text-muted); font-size: var(--font-14); padding: 8px 0; }
 
     .person-row {
       display: flex; align-items: center; gap: 14px;
@@ -265,34 +264,12 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     }
     .person-row:last-child { border-bottom: none; }
 
-    .person-avatar {
-      width: 44px; height: 44px; border-radius: 50%; background: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: var(--font-16); color: white;
-      overflow: hidden; flex-shrink: 0;
-    }
-    .person-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
-
     .person-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
     .person-name { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
     .person-sub { font-size: var(--font-13); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .person-reason { font-size: var(--font-12); color: var(--primary); font-weight: 500; margin-top: 2px; }
 
     .row-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
-
-    .btn-primary, .btn-accent, .btn-secondary {
-      border: none; padding: 9px 16px; border-radius: 9px;
-      font-size: var(--font-13); font-weight: 600; cursor: pointer;
-      transition: opacity 0.15s ease, background 0.15s ease;
-      white-space: nowrap;
-    }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-accent { background: var(--success); color: white; }
-    .btn-accent:hover { opacity: 0.85; }
-    .btn-secondary { background: var(--surface-hover); color: var(--text-primary); border: 1px solid var(--border); }
-    .btn-secondary:hover { background: var(--border); }
-    .btn-secondary.danger:hover { background: var(--error); border-color: var(--error); color: white; }
 
     .status-label { font-size: var(--font-13); color: var(--text-muted); font-weight: 500; }
     .status-label.friends { color: var(--success); }
