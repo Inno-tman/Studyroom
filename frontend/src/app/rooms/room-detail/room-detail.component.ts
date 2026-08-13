@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -359,6 +360,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private invitationService = inject(InvitationService);
   private friendService = inject(FriendService);
+  private sanitizer = inject(DomSanitizer);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
 
@@ -382,11 +384,13 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     return this.auth.currentUser()?.id;
   }
 
-  get callUrl(): any {
+  get callUrl(): SafeResourceUrl {
     const user = this.auth.currentUser();
     const name = encodeURIComponent(user?.username || user?.email || 'Student');
     const room = encodeURIComponent(`studyroom-${this.roomId}`);
-    return `https://c2c.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(
+      `https://c2c.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1`
+    );
   }
 
   toggleCall() {
