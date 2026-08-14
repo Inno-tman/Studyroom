@@ -176,7 +176,14 @@ export class CallService implements OnDestroy {
   }
 
   private async setupPeerConnection(): Promise<void> {
-    this.closePeerConnection();
+    // Close any existing pc but preserve the buffered offer/ICE —
+    // closePeerConnection() would wipe pendingOffer that was received while ringing.
+    try { this.pc?.close(); } catch { }
+    this.pc = undefined;
+    this.remoteAudioEl?.remove();
+    this.remoteAudioEl = undefined;
+    this.remoteConnected.set(false);
+
     await this.ensureLocalStream();
     if (!this.localStream) return;
 
@@ -206,6 +213,7 @@ export class CallService implements OnDestroy {
 
     this.pc.onconnectionstatechange = () => {
       const state = this.pc?.connectionState;
+      if (this.call() === null) return; // already cleaned up
       if (state === 'failed' || state === 'closed') {
         // The peer is gone or unreachable — tell the other side and clean up.
         this.notifyPeerEnd();
