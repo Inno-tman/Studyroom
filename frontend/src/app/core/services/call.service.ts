@@ -76,6 +76,18 @@ export class CallService implements OnDestroy {
     this.startTimer();
     this.setupProximity();
     await this.signalR.ring(peerId, callId);
+
+    // Request the mic inside this user gesture, then send the offer immediately.
+    // The callee buffers the offer until they answer, so this decouples the offer
+    // from the async CallAccepted callback (which is NOT a user gesture).
+    try {
+      await this.ensureLocalStream();
+      await this.setupPeerConnection();
+      await this.createOfferAndSend();
+    } catch {
+      await this.signalR.cancelCall(callId).catch(() => { });
+      this.reset();
+    }
   }
 
   async answer(): Promise<void> {
@@ -87,8 +99,14 @@ export class CallService implements OnDestroy {
     this.phase.set('active');
     this.startTimer();
     this.setupProximity();
-    await this.setupPeerConnection();
-    await this.processOffer();
+    try {
+      await this.ensureLocalStream();
+      await this.setupPeerConnection();
+      await this.processOffer();
+    } catch {
+      await this.notifyPeerEnd();
+      this.reset();
+    }
   }
 
   async decline(): Promise<void> {
@@ -150,11 +168,17 @@ export class CallService implements OnDestroy {
 
   // ── WebRTC ──────────────────────────────────────────────
 
-  private async setupPeerConnection(): Promise<void> {
-    this.teardownMedia();
+  private async ensureLocalStream(): Promise<void> {
+    if (this.localStream) return;
     this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     this.localTrack = this.localStream.getAudioTracks()[0];
     this.localTrack.enabled = !this.muted();
+  }
+
+  private async setupPeerConnection(): Promise<void> {
+    this.closePeerConnection();
+    await this.ensureLocalStream();
+    if (!this.localStream) return;
 
     this.pc = new RTCPeerConnection({ iceServers: environment.webrtc?.iceServers ?? [] });
     this.localStream.getTracks().forEach(t => this.pc!.addTrack(t, this.localStream!));
@@ -181,7 +205,10 @@ export class CallService implements OnDestroy {
     };
 
     this.pc.onconnectionstatechange = () => {
-      if (this.pc?.connectionState === 'failed') {
+      const state = this.pc?.connectionState;
+      if (state === 'failed' || state === 'closed') {
+        // The peer is gone or unreachable — tell the other side and clean up.
+        this.notifyPeerEnd();
         this.reset();
       }
     };
@@ -222,17 +249,32 @@ export class CallService implements OnDestroy {
     } catch { }
   }
 
-  private teardownMedia(): void {
+  private closePeerConnection(): void {
     try { this.pc?.close(); } catch { }
     this.pc = undefined;
-    this.localStream?.getTracks().forEach(t => t.stop());
-    this.localStream = undefined;
-    this.localTrack = undefined;
     this.remoteAudioEl?.remove();
     this.remoteAudioEl = undefined;
     this.pendingOffer = undefined;
     this.pendingIce = [];
     this.remoteConnected.set(false);
+  }
+
+  private teardownMedia(): void {
+    this.closePeerConnection();
+    this.localStream?.getTracks().forEach(t => t.stop());
+    this.localStream = undefined;
+    this.localTrack = undefined;
+  }
+
+  /** Tells the peer this call is over (hang up / failure / connection lost). */
+  private async notifyPeerEnd(): Promise<void> {
+    const info = this.call();
+    if (!info) return;
+    if (this.waitingAnswer()) {
+      await this.signalR.cancelCall(info.callId).catch(() => { });
+    } else {
+      await this.signalR.endCall(info.callId).catch(() => { });
+    }
   }
 
   // ── Handlers ────────────────────────────────────────────
@@ -265,7 +307,7 @@ export class CallService implements OnDestroy {
     this.startRing();
   }
 
-  private async handleAccepted(data: any): Promise<void> {
+  private handleAccepted(data: any): void {
     const info = this.call();
     if (!info || info.callId !== data.callId) return;
     this.stopRing();
@@ -273,8 +315,6 @@ export class CallService implements OnDestroy {
     this.phase.set('active');
     this.startTimer();
     this.setupProximity();
-    await this.setupPeerConnection();
-    await this.createOfferAndSend();
   }
 
   private handleDeclined(data: any): void {
