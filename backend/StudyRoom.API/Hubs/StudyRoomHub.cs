@@ -141,17 +141,17 @@ public class StudyRoomHub : Hub
     // ── Call lifecycle ────────────────────────────────────────
     private static readonly Dictionary<string, CallState> _calls = new();
 
-    public Task Ring(string calleeId, string callId)
+    public async Task Ring(string calleeId, string callId)
     {
         var callerId = UserId.ToString();
-        if (callerId == calleeId) return Task.CompletedTask;
+        if (callerId == calleeId) return;
 
         var user = _userRepo.GetByIdAsync(UserId).GetAwaiter().GetResult();
 
         lock (_calls)
         {
             if (_calls.Values.Any(c => c.CalleeId == calleeId && c.Status == "Ringing"))
-                return Task.CompletedTask; // already ringing someone
+                return; // already ringing someone
 
             _calls[callId] = new CallState
             {
@@ -164,13 +164,24 @@ public class StudyRoomHub : Hub
             };
         }
 
-        return Clients.Group(GetUserGroup(calleeId)).SendAsync("IncomingCall", new
+        await Clients.Group(GetUserGroup(calleeId)).SendAsync("IncomingCall", new
         {
             callId,
             callerId,
             callerName = Username,
             callerAvatar = user?.AvatarUrl
         });
+
+        // Alert the callee even if their app is closed/backgrounded.
+        await SendCallPushAsync(calleeId, callId, "Incoming call",
+            $"{Username} is calling you.", new Dictionary<string, object?>
+            {
+                ["type"] = "incoming_call",
+                ["callId"] = callId,
+                ["callerId"] = callerId,
+                ["callerName"] = Username,
+                ["callerAvatar"] = user?.AvatarUrl
+            });
     }
 
     public async Task AnswerCall(string callId)
@@ -208,22 +219,32 @@ public class StudyRoomHub : Hub
         {
             callId
         });
+        await SendCallPushAsync(call.CallerId, callId, "Call declined", $"{call.CallerName}'s call was declined.", new Dictionary<string, object?>
+        {
+            ["type"] = "call_closed",
+            ["callId"] = callId
+        });
     }
 
-    public Task CancelCall(string callId)
+    public async Task CancelCall(string callId)
     {
         var me = UserId.ToString();
         CallState call;
         lock (_calls)
         {
-            if (!_calls.TryGetValue(callId, out call)) return Task.CompletedTask;
-            if (call.CallerId != me) return Task.CompletedTask;
+            if (!_calls.TryGetValue(callId, out call)) return;
+            if (call.CallerId != me) return;
             _calls.Remove(callId);
         }
 
-        return Clients.Group(GetUserGroup(call.CalleeId)).SendAsync("CallCancelled", new
+        await Clients.Group(GetUserGroup(call.CalleeId)).SendAsync("CallCancelled", new
         {
             callId
+        });
+        await SendCallPushAsync(call.CalleeId, callId, "Call cancelled", $"{call.CallerName} cancelled the call.", new Dictionary<string, object?>
+        {
+            ["type"] = "call_closed",
+            ["callId"] = callId
         });
     }
 
@@ -238,6 +259,28 @@ public class StudyRoomHub : Hub
 
         await Clients.Group(GetUserGroup(call.CallerId)).SendAsync("CallEnded", new { callId });
         await Clients.Group(GetUserGroup(call.CalleeId)).SendAsync("CallEnded", new { callId });
+        await SendCallPushAsync(call.CallerId, callId, "Call ended", $"Your call with {call.CallerName} ended.", new Dictionary<string, object?>
+        {
+            ["type"] = "call_closed",
+            ["callId"] = callId
+        });
+        await SendCallPushAsync(call.CalleeId, callId, "Call ended", $"Your call with {call.CallerName} ended.", new Dictionary<string, object?>
+        {
+            ["type"] = "call_closed",
+            ["callId"] = callId
+        });
+    }
+
+    /// <summary>Sends a web push notification to a user via a scoped PushService.</summary>
+    private async Task SendCallPushAsync(string userId, string callId, string title, string body, Dictionary<string, object?> extra)
+    {
+        try
+        {
+            using var pushScope = Context.GetHttpContext()!.RequestServices.CreateScope();
+            var pushService = pushScope.ServiceProvider.GetRequiredService<IPushService>();
+            await pushService.SendToUserAsync(Guid.Parse(userId), title, body, link: "/", extra: extra);
+        }
+        catch { }
     }
 
     // ── WebRTC signaling relay ──────────────────────────────
@@ -249,6 +292,7 @@ public class StudyRoomHub : Hub
         lock (_calls)
         {
             if (!_calls.TryGetValue(callId, out call)) return;
+            call.Offer = sdp; // store so the callee can fetch it after opening from a push
         }
         var peer = call.CallerId == me ? call.CalleeId : call.CallerId;
         if (peer == me) return;
@@ -258,6 +302,40 @@ public class StudyRoomHub : Hub
             callId,
             sdp
         });
+    }
+
+    /// <summary>Lets the callee fetch the stored offer when they open the app from a push.</summary>
+    public Task<object?> GetCallOffer(string callId)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return Task.FromResult<object?>(null);
+        }
+        if (call.CalleeId != me && call.CallerId != me) return Task.FromResult<object?>(null);
+        if (string.IsNullOrEmpty(call.Offer)) return Task.FromResult<object?>(null);
+
+        return Task.FromResult<object?>(new { callId, sdp = call.Offer });
+    }
+
+    /// <summary>Returns any ringing call for the current user (callee side).</summary>
+    public Task<object?> GetActiveCall()
+    {
+        var me = UserId.ToString();
+        lock (_calls)
+        {
+            var call = _calls.Values.FirstOrDefault(c => c.CalleeId == me && c.Status == "Ringing");
+            if (call == null) return Task.FromResult<object?>(null);
+
+            return Task.FromResult<object?>(new
+            {
+                callId = call.CallId,
+                callerId = call.CallerId,
+                callerName = call.CallerName,
+                callerAvatar = call.CallerAvatar
+            });
+        }
     }
 
     /// <summary>Relays an SDP answer from the callee to the caller.</summary>
@@ -287,6 +365,7 @@ public class StudyRoomHub : Hub
         lock (_calls)
         {
             if (!_calls.TryGetValue(callId, out call)) return;
+            if (call.IceCandidates.Count < 50) call.IceCandidates.Add(candidate); // store for resume-after-push
         }
         var peer = call.CallerId == me ? call.CalleeId : call.CallerId;
         if (peer == me) return;
@@ -296,6 +375,20 @@ public class StudyRoomHub : Hub
             callId,
             candidate
         });
+    }
+
+    /// <summary>Lets the callee fetch ICE candidates buffered while they were offline.</summary>
+    public Task<object?> GetCallIceCandidates(string callId)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return Task.FromResult<object?>(null);
+        }
+        if (call.CalleeId != me && call.CallerId != me) return Task.FromResult<object?>(null);
+
+        return Task.FromResult<object?>(new { callId, candidates = call.IceCandidates.ToArray() });
     }
 
     public async Task SendMessage(string roomId, string content)
@@ -462,8 +555,7 @@ public class StudyRoomHub : Hub
         var uid = UserId.ToString();
 
         // Clean up any calls this user is part of.
-        List<string> callersToNotify = new();
-        List<string> calleesToNotify = new();
+        var callsToClose = new List<(string PeerId, string CallId)>();
         lock (_calls)
         {
             foreach (var kv in _calls.ToList())
@@ -471,15 +563,20 @@ public class StudyRoomHub : Hub
                 if (kv.Value.CallerId == uid || kv.Value.CalleeId == uid)
                 {
                     _calls.Remove(kv.Key);
-                    if (kv.Value.CallerId != uid) callersToNotify.Add(kv.Value.CallerId);
-                    if (kv.Value.CalleeId != uid) calleesToNotify.Add(kv.Value.CalleeId);
+                    if (kv.Value.CallerId != uid) callsToClose.Add((kv.Value.CallerId, kv.Key));
+                    if (kv.Value.CalleeId != uid) callsToClose.Add((kv.Value.CalleeId, kv.Key));
                 }
             }
         }
-        foreach (var userId in callersToNotify)
-            await Clients.Group(GetUserGroup(userId)).SendAsync("CallEnded", new { callId = "" });
-        foreach (var userId in calleesToNotify)
-            await Clients.Group(GetUserGroup(userId)).SendAsync("CallEnded", new { callId = "" });
+        foreach (var (peerId, callId) in callsToClose)
+        {
+            await Clients.Group(GetUserGroup(peerId)).SendAsync("CallEnded", new { callId });
+            await SendCallPushAsync(peerId, callId, "Call ended", "The call ended.", new Dictionary<string, object?>
+            {
+                ["type"] = "call_closed",
+                ["callId"] = callId
+            });
+        }
 
         if (_onlineUsers.TryGetValue(Context.ConnectionId, out var roomId))
         {
@@ -551,4 +648,6 @@ public class CallState
     public string? CallerAvatar { get; set; }
     public string CalleeId { get; set; } = "";
     public string Status { get; set; } = "Ringing";
+    public string? Offer { get; set; }
+    public List<string> IceCandidates { get; set; } = new();
 }

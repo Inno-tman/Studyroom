@@ -58,6 +58,41 @@ export class CallService implements OnDestroy {
       this.signalR.webRtcAnswer$.subscribe(data => this.handleAnswer(data)),
       this.signalR.webRtcIce$.subscribe(data => this.handleIce(data))
     );
+
+    // Leaving the page must immediately tell the peer the call is over.
+    const onUnload = () => { this.notifyPeerEnd(); };
+    window.addEventListener('pagehide', onUnload);
+    window.addEventListener('beforeunload', onUnload);
+
+    // If the app was opened (e.g. from a push notification) while a call was
+    // ringing, pick it back up once the SignalR connection is live.
+    this.resumeRingingCall();
+
+    // Service worker notification clicks tell us to resume a ringing call.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e: MessageEvent) => {
+        if (e.data?.type === 'call-resume') this.resumeRingingCall();
+      });
+    }
+  }
+
+  /** Re-attaches to a ringing call for this user, if any (used after app load / push click). */
+  async resumeRingingCall(): Promise<void> {
+    if (this.phase() !== 'idle' || !this.auth.isAuthenticated()) return;
+    try {
+      await this.signalR.startConnection();
+      const active = await this.signalR.getActiveCall();
+      if (active?.callId && this.phase() === 'idle') {
+        this.handleIncoming({
+          callId: active.callId,
+          callerId: active.callerId,
+          callerName: active.callerName || 'Caller',
+          callerAvatar: active.callerAvatar
+        });
+      }
+    } catch {
+      // ignore — the connection may come up later
+    }
   }
 
   ngOnDestroy(): void {
@@ -104,7 +139,21 @@ export class CallService implements OnDestroy {
     try {
       await this.ensureLocalStream();
       await this.setupPeerConnection();
+      // If we resumed a ringing call from a push, the offer may not have arrived
+      // live — fetch it (and any buffered ICE) from the server.
+      if (!this.pendingOffer) {
+        const storedOffer = await this.signalR.getCallOffer(info.callId);
+        if (storedOffer?.sdp) {
+          try { this.pendingOffer = JSON.parse(storedOffer.sdp); } catch { }
+        }
+      }
       await this.processOffer();
+      const storedIce = await this.signalR.getCallIceCandidates(info.callId);
+      if (storedIce?.candidates?.length) {
+        for (const raw of storedIce.candidates) {
+          try { await this.pc!.addIceCandidate(JSON.parse(raw)); } catch { }
+        }
+      }
     } catch {
       await this.notifyPeerEnd();
       this.reset();

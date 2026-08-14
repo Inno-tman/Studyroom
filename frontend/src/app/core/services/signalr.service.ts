@@ -58,9 +58,21 @@ export class SignalRService {
     return this.hubConnection?.state === signalR.HubConnectionState.Connected;
   }
 
+  private connectionPromise: Promise<void> | null = null;
+
   async startConnection(): Promise<void> {
     if (this.connectionActive()) return;
+    if (this.connectionPromise) return this.connectionPromise;
 
+    this.connectionPromise = this.doStart();
+    try {
+      await this.connectionPromise;
+    } finally {
+      this.connectionPromise = null;
+    }
+  }
+
+  private async doStart(): Promise<void> {
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(environment.signalrUrl, {
         accessTokenFactory: () => this.authService.getToken() || ''
@@ -134,6 +146,18 @@ export class SignalRService {
 
   async sendIceCandidate(callId: string, candidate: string): Promise<void> {
     await this.hubConnection.invoke('SendIceCandidate', callId, candidate);
+  }
+
+  async getActiveCall(): Promise<any> {
+    return await this.hubConnection.invoke('GetActiveCall');
+  }
+
+  async getCallOffer(callId: string): Promise<any> {
+    return await this.hubConnection.invoke('GetCallOffer', callId);
+  }
+
+  async getCallIceCandidates(callId: string): Promise<any> {
+    return await this.hubConnection.invoke('GetCallIceCandidates', callId);
   }
 
   async sendMessage(roomId: string, content: string): Promise<void> {

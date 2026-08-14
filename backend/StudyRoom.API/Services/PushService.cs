@@ -58,7 +58,7 @@ public class PushService : IPushService
         }
     }
 
-    public async Task SendToUserAsync(Guid userId, string title, string body, string? icon = null, string? link = null)
+    public async Task SendToUserAsync(Guid userId, string title, string body, string? icon = null, string? link = null, Dictionary<string, object?>? extra = null)
     {
         if (string.IsNullOrWhiteSpace(_vapid.PublicKey) || string.IsNullOrWhiteSpace(_vapid.PrivateKey))
             return;
@@ -72,13 +72,18 @@ public class PushService : IPushService
             try
             {
                 var client = new WebPushClient();
-                var payload = System.Text.Json.JsonSerializer.Serialize(new
+                var payloadData = new Dictionary<string, object?>
                 {
-                    title,
-                    body,
-                    icon = icon ?? "/icons/icon-192x192.png",
-                    link
-                });
+                    ["title"] = title,
+                    ["body"] = body,
+                    ["icon"] = icon ?? "/icons/icon-192x192.png",
+                    ["link"] = link
+                };
+                if (extra != null)
+                    foreach (var kv in extra)
+                        payloadData[kv.Key] = kv.Value;
+
+                var payload = System.Text.Json.JsonSerializer.Serialize(payloadData);
 
                 await client.SendNotificationAsync(
                     new WebPush.PushSubscription(sub.Endpoint, sub.P256dh, sub.Auth),
