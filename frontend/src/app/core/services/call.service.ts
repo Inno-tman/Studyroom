@@ -26,6 +26,7 @@ export class CallService implements OnDestroy {
   readonly phase = signal<CallPhase>('idle');
   readonly call = signal<CallInfo | null>(null);
   readonly declined = signal(false);
+  readonly waitingAnswer = signal(false);
 
   private cachedCallUrl?: SafeResourceUrl;
   private subs: Subscription[] = [];
@@ -65,7 +66,8 @@ export class CallService implements OnDestroy {
     const callId = crypto.randomUUID();
     this.call.set({ callId, peerId, peerName, peerAvatar });
     this.declined.set(false);
-    this.phase.set('outgoing');
+    this.waitingAnswer.set(true);
+    this.phase.set('active');
     await this.signalR.ring(peerId, callId);
   }
 
@@ -74,6 +76,7 @@ export class CallService implements OnDestroy {
     if (!info) return;
     await this.signalR.answerCall(info.callId);
     this.stopRing();
+    this.waitingAnswer.set(false);
     this.phase.set('active');
   }
 
@@ -96,7 +99,10 @@ export class CallService implements OnDestroy {
   async hangUp(): Promise<void> {
     const info = this.call();
     if (!info) return;
-    if (this.phase() === 'active') await this.signalR.endCall(info.callId);
+    if (this.phase() === 'active') {
+      if (this.waitingAnswer()) await this.signalR.cancelCall(info.callId);
+      else await this.signalR.endCall(info.callId);
+    }
     this.stopRing();
     this.reset();
   }
@@ -110,6 +116,7 @@ export class CallService implements OnDestroy {
     this.call.set(null);
     this.cachedCallUrl = undefined;
     this.declined.set(false);
+    this.waitingAnswer.set(false);
   }
 
   private handleIncoming(data: any): void {
@@ -122,6 +129,7 @@ export class CallService implements OnDestroy {
       peerAvatar: data.callerAvatar
     });
     this.declined.set(false);
+    this.waitingAnswer.set(false);
     this.phase.set('incoming');
     this.startRing();
   }
@@ -130,6 +138,7 @@ export class CallService implements OnDestroy {
     const info = this.call();
     if (!info || info.callId !== data.callId) return;
     this.stopRing();
+    this.waitingAnswer.set(false);
     this.phase.set('active');
   }
 
@@ -148,6 +157,7 @@ export class CallService implements OnDestroy {
     const info = this.call();
     if (!info || info.callId !== data.callId) return;
     this.stopRing();
+    this.waitingAnswer.set(false);
     this.phase.set('idle');
     this.call.set(null);
   }
@@ -156,6 +166,7 @@ export class CallService implements OnDestroy {
     const info = this.call();
     if (!info || info.callId !== data.callId) return;
     this.stopRing();
+    this.waitingAnswer.set(false);
     this.phase.set('idle');
     this.call.set(null);
   }

@@ -23,7 +23,7 @@ import { CallService } from '../../../core/services/call.service';
       </div>
     </div>
 
-    <!-- Outgoing call -->
+    <!-- Outgoing call (brief, while room is being set up) -->
     <div class="call-screen" *ngIf="callService.phase() === 'outgoing' && callService.call()">
       <div class="call-card">
         <div class="caller-avatar" [class.has-image]="callService.call()!.peerAvatar">
@@ -48,7 +48,7 @@ import { CallService } from '../../../core/services/call.service';
       </div>
     </div>
 
-    <!-- Active call -->
+    <!-- Active call (audio only) -->
     <div class="call-screen active" *ngIf="callService.phase() === 'active'">
       <div class="call-top">
         <div class="call-top-info">
@@ -56,15 +56,18 @@ import { CallService } from '../../../core/services/call.service';
             <img *ngIf="callService.call()?.peerAvatar; else actInitial" [src]="callService.call()?.peerAvatar" alt="" />
             <ng-template #actInitial>{{ callService.call()?.peerName?.charAt(0)?.toUpperCase() }}</ng-template>
           </div>
-          <span class="call-title">{{ callService.call()?.peerName }}</span>
-          <span class="call-timer"><span class="live-dot"></span> On call</span>
+          <div class="call-top-text">
+            <span class="call-title">{{ callService.call()?.peerName }}</span>
+            <span class="call-timer" *ngIf="!callService.waitingAnswer()"><span class="live-dot"></span> On call</span>
+            <span class="call-timer" *ngIf="callService.waitingAnswer()"><span class="ring-pulse"></span> Calling…</span>
+          </div>
         </div>
         <button class="hangup-btn" (click)="callService.hangUp()"><span class="material-icons">call_end</span></button>
       </div>
       <iframe
         class="call-frame"
         [src]="callService.callUrl"
-        allow="camera; microphone; speaker-selection; display-capture; fullscreen; clipboard-read; clipboard-write; web-share; autoplay; picture-in-picture"
+        allow="microphone; speaker-selection; autoplay; clipboard-read; clipboard-write; web-share; picture-in-picture"
         allowfullscreen
       ></iframe>
     </div>
@@ -111,6 +114,7 @@ import { CallService } from '../../../core/services/call.service';
       padding: 12px 16px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     .call-top-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .call-top-text { display: flex; flex-direction: column; min-width: 0; }
     .call-title { font-size: var(--font-15); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .call-timer { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-12); color: rgba(255,255,255,0.7); }
     .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); animation: rp 1.5s infinite; }
