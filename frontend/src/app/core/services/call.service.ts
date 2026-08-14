@@ -27,11 +27,18 @@ export class CallService implements OnDestroy {
   readonly call = signal<CallInfo | null>(null);
   readonly declined = signal(false);
   readonly waitingAnswer = signal(false);
+  readonly muted = signal(false);
+  readonly speakerOn = signal(false);
+  readonly screenOff = signal(false);
+  readonly elapsed = signal(0);
 
   private cachedCallUrl?: SafeResourceUrl;
   private subs: Subscription[] = [];
   private ringTimer: any;
   private audioCtx?: AudioContext;
+  private timerHandle?: any;
+  private proxCleanups: Array<() => void> = [];
+  private proxSensor?: any;
 
   constructor() {
     this.subs.push(
@@ -46,6 +53,8 @@ export class CallService implements OnDestroy {
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
     this.stopRing();
+    this.stopTimer();
+    this.cleanupProximity();
   }
 
   get callUrl(): SafeResourceUrl {
@@ -68,6 +77,8 @@ export class CallService implements OnDestroy {
     this.declined.set(false);
     this.waitingAnswer.set(true);
     this.phase.set('active');
+    this.startTimer();
+    this.setupProximity();
     await this.signalR.ring(peerId, callId);
   }
 
@@ -78,6 +89,8 @@ export class CallService implements OnDestroy {
     this.stopRing();
     this.waitingAnswer.set(false);
     this.phase.set('active');
+    this.startTimer();
+    this.setupProximity();
   }
 
   async decline(): Promise<void> {
@@ -111,12 +124,84 @@ export class CallService implements OnDestroy {
     return this.call()?.peerId === userId;
   }
 
+  toggleMute(): void {
+    this.muted.update(v => !v);
+  }
+
+  toggleSpeaker(): void {
+    this.speakerOn.update(v => !v);
+    if (this.speakerOn()) this.screenOff.set(false);
+  }
+
+  toggleScreenOff(): void {
+    this.screenOff.update(v => !v);
+  }
+
+  wakeScreen(): void {
+    this.screenOff.set(false);
+  }
+
+  get elapsedLabel(): string {
+    const s = this.elapsed();
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+  }
+
   private reset(): void {
     this.phase.set('idle');
     this.call.set(null);
     this.cachedCallUrl = undefined;
     this.declined.set(false);
     this.waitingAnswer.set(false);
+    this.muted.set(false);
+    this.speakerOn.set(false);
+    this.screenOff.set(false);
+    this.stopTimer();
+    this.cleanupProximity();
+  }
+
+  private startTimer(): void {
+    this.stopTimer();
+    this.elapsed.set(0);
+    this.timerHandle = setInterval(() => this.elapsed.update(v => v + 1), 1000);
+  }
+
+  private stopTimer(): void {
+    if (this.timerHandle) { clearInterval(this.timerHandle); this.timerHandle = undefined; }
+  }
+
+  private setupProximity(): void {
+    this.cleanupProximity();
+    const w: any = window;
+    const nearHandler = (e: any) => this.onProximity(!!(e.near ?? e.value === 0));
+    if ('ondeviceproximity' in w) {
+      w.addEventListener?.('deviceproximity', nearHandler);
+      this.proxCleanups.push(() => w.removeEventListener?.('deviceproximity', nearHandler));
+    }
+    if ('onuserproximity' in w) {
+      w.addEventListener?.('userproximity', nearHandler);
+      this.proxCleanups.push(() => w.removeEventListener?.('userproximity', nearHandler));
+    }
+    if (w.ProximitySensor) {
+      try {
+        this.proxSensor = new w.ProximitySensor();
+        this.proxSensor.onreading = () => this.onProximity(!!this.proxSensor?.near);
+        this.proxSensor.start();
+        this.proxCleanups.push(() => { try { this.proxSensor?.stop(); } catch { } });
+      } catch { }
+    }
+  }
+
+  private cleanupProximity(): void {
+    this.proxCleanups.forEach(c => c());
+    this.proxCleanups = [];
+    this.proxSensor = undefined;
+  }
+
+  private onProximity(near: boolean): void {
+    if (this.speakerOn()) return;
+    this.screenOff.set(near);
   }
 
   private handleIncoming(data: any): void {
@@ -140,6 +225,8 @@ export class CallService implements OnDestroy {
     this.stopRing();
     this.waitingAnswer.set(false);
     this.phase.set('active');
+    this.startTimer();
+    this.setupProximity();
   }
 
   private handleDeclined(data: any): void {
