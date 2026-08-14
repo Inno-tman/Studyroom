@@ -540,7 +540,7 @@ const TABS: RoomTab[] = [
     /* ── Dialogs ────────────────────────────────────────────── */
     .invite-dialog-backdrop, .schedule-dialog-backdrop {
       position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
+      display: flex; align-items: center; justify-content: center; z-index: 1300;
     }
 
     .invite-dialog, .schedule-dialog {
@@ -572,7 +572,7 @@ const TABS: RoomTab[] = [
     .btn-invite:hover:not(:disabled) { background: var(--primary-hover); }
     .btn-invite:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .dialog-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .dialog-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
     .field { display: flex; flex-direction: column; gap: 6px; font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); }
     .field input, .field select { padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none; }
     .field input:focus, .field select:focus { border-color: var(--primary); }
