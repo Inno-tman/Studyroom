@@ -240,6 +240,64 @@ public class StudyRoomHub : Hub
         await Clients.Group(GetUserGroup(call.CalleeId)).SendAsync("CallEnded", new { callId });
     }
 
+    // ── WebRTC signaling relay ──────────────────────────────
+    /// <summary>Relays an SDP offer from the caller to the callee.</summary>
+    public async Task SendOffer(string callId, string sdp)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return;
+        }
+        var peer = call.CallerId == me ? call.CalleeId : call.CallerId;
+        if (peer == me) return;
+
+        await Clients.Group(GetUserGroup(peer)).SendAsync("WebRtcOffer", new
+        {
+            callId,
+            sdp
+        });
+    }
+
+    /// <summary>Relays an SDP answer from the callee to the caller.</summary>
+    public async Task SendAnswer(string callId, string sdp)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return;
+        }
+        var peer = call.CallerId == me ? call.CalleeId : call.CallerId;
+        if (peer == me) return;
+
+        await Clients.Group(GetUserGroup(peer)).SendAsync("WebRtcAnswer", new
+        {
+            callId,
+            sdp
+        });
+    }
+
+    /// <summary>Relays an ICE candidate to the peer.</summary>
+    public async Task SendIceCandidate(string callId, string candidate)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return;
+        }
+        var peer = call.CallerId == me ? call.CalleeId : call.CallerId;
+        if (peer == me) return;
+
+        await Clients.Group(GetUserGroup(peer)).SendAsync("WebRtcIceCandidate", new
+        {
+            callId,
+            candidate
+        });
+    }
+
     public async Task SendMessage(string roomId, string content)
     {
         var message = new Message

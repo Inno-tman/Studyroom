@@ -27,6 +27,9 @@ export class SignalRService {
   private callDeclinedSubject = new Subject<any>();
   private callCancelledSubject = new Subject<any>();
   private callEndedSubject = new Subject<any>();
+  private webRtcOfferSubject = new Subject<any>();
+  private webRtcAnswerSubject = new Subject<any>();
+  private webRtcIceSubject = new Subject<any>();
 
   message$ = this.messageSubject.asObservable();
   userJoined$ = this.userJoinedSubject.asObservable();
@@ -45,6 +48,9 @@ export class SignalRService {
   callDeclined$ = this.callDeclinedSubject.asObservable();
   callCancelled$ = this.callCancelledSubject.asObservable();
   callEnded$ = this.callEndedSubject.asObservable();
+  webRtcOffer$ = this.webRtcOfferSubject.asObservable();
+  webRtcAnswer$ = this.webRtcAnswerSubject.asObservable();
+  webRtcIce$ = this.webRtcIceSubject.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -79,6 +85,9 @@ export class SignalRService {
     this.hubConnection.on('CallDeclined', (data: any) => this.callDeclinedSubject.next(data));
     this.hubConnection.on('CallCancelled', (data: any) => this.callCancelledSubject.next(data));
     this.hubConnection.on('CallEnded', (data: any) => this.callEndedSubject.next(data));
+    this.hubConnection.on('WebRtcOffer', (data: any) => this.webRtcOfferSubject.next(data));
+    this.hubConnection.on('WebRtcAnswer', (data: any) => this.webRtcAnswerSubject.next(data));
+    this.hubConnection.on('WebRtcIceCandidate', (data: any) => this.webRtcIceSubject.next(data));
 
     await this.hubConnection.start();
   }
@@ -113,6 +122,18 @@ export class SignalRService {
 
   async endCall(callId: string): Promise<void> {
     await this.hubConnection.invoke('EndCall', callId);
+  }
+
+  async sendOffer(callId: string, sdp: string): Promise<void> {
+    await this.hubConnection.invoke('SendOffer', callId, sdp);
+  }
+
+  async sendAnswer(callId: string, sdp: string): Promise<void> {
+    await this.hubConnection.invoke('SendAnswer', callId, sdp);
+  }
+
+  async sendIceCandidate(callId: string, candidate: string): Promise<void> {
+    await this.hubConnection.invoke('SendIceCandidate', callId, candidate);
   }
 
   async sendMessage(roomId: string, content: string): Promise<void> {

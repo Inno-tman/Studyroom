@@ -48,22 +48,15 @@ import { CallService } from '../../../core/services/call.service';
       </div>
     </div>
 
-    <!-- Active call (audio only, native phone UI covering the transport iframe) -->
+    <!-- Active call (native WebRTC audio) -->
     <div class="call-screen active" *ngIf="callService.phase() === 'active'">
-      <iframe
-        class="call-frame"
-        [src]="callService.callUrl"
-        allow="microphone; speaker-selection; autoplay; clipboard-read; clipboard-write; web-share; picture-in-picture"
-        allowfullscreen
-      ></iframe>
-
-      <!-- Native phone UI -->
       <div class="phone-ui">
         <div class="phone-top">
           <span class="phone-status">
-            <span class="live-dot" *ngIf="!callService.waitingAnswer()"></span>
+            <span class="live-dot" *ngIf="callService.remoteConnected()"></span>
             <span class="ring-pulse" *ngIf="callService.waitingAnswer()"></span>
-            {{ callService.waitingAnswer() ? 'Calling…' : 'On call · ' + callService.elapsedLabel }}
+            <span class="connecting" *ngIf="!callService.remoteConnected() && !callService.waitingAnswer()"></span>
+            {{ callService.waitingAnswer() ? 'Calling…' : (callService.remoteConnected() ? 'On call · ' + callService.elapsedLabel : 'Connecting…') }}
           </span>
         </div>
 
@@ -136,7 +129,6 @@ import { CallService } from '../../../core/services/call.service';
 
     /* Active call: native phone UI */
     .call-screen.active { flex-direction: column; }
-    .call-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
     .phone-ui {
       position: relative; z-index: 2; flex: 1; width: 100%; display: flex; flex-direction: column;
       background: linear-gradient(170deg, #0b1220 0%, #0f172a 55%, #0a0f1c 100%);
@@ -144,6 +136,8 @@ import { CallService } from '../../../core/services/call.service';
     .phone-top { padding: 18px 0 0; text-align: center; }
     .phone-status { display: inline-flex; align-items: center; gap: 8px; font-size: var(--font-13); color: rgba(255,255,255,0.75); letter-spacing: 0.3px; }
     .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); animation: rp 1.5s infinite; }
+    .connecting { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); border-top-color: var(--primary); animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .phone-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 0 24px; }
     .phone-subtitle { font-size: var(--font-13); color: rgba(255,255,255,0.5); }
     .phone-controls { display: flex; align-items: center; justify-content: center; gap: 26px; padding: 26px 0 calc(26px + env(safe-area-inset-bottom)); }
