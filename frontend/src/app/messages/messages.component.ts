@@ -1,12 +1,12 @@
 import { Component, inject, OnDestroy, OnInit, AfterViewChecked, ViewChild, ElementRef } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../core/services/auth.service';
 import { SignalRService } from '../core/services/signalr.service';
 import { DirectMessageService } from '../core/services/direct-message.service';
 import { NotificationService } from '../core/services/notification.service';
+import { CallService } from '../core/services/call.service';
 import { Conversation, DirectMessage } from '../shared/models/social.model';
 
 @Component({
@@ -59,8 +59,8 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               <div class="chat-title-wrap">
                 <span class="chat-title">{{ activeUser.displayName || activeUser.username }}</span>
               </div>
-              <button class="call-friend-btn" (click)="toggleCall()" [attr.aria-label]="inCall ? 'End call' : 'Start video call'">
-                <span class="material-icons">{{ inCall ? 'call_end' : 'videocam' }}</span>
+              <button class="call-friend-btn" (click)="startCall()" aria-label="Start audio call">
+                <span class="material-icons">call</span>
               </button>
             </div>
 
@@ -90,25 +90,6 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               </button>
             </div>
           </ng-container>
-        </div>
-
-        <!-- ── 1:1 call overlay ───────────────────────────────── -->
-        <div class="call-overlay" *ngIf="inCall && activeUser">
-          <div class="call-overlay-header">
-            <span class="call-avatar avatar" [class.has-image]="activeUser.avatarUrl">
-              <img *ngIf="activeUser.avatarUrl; else callInitial" [src]="activeUser.avatarUrl" alt="" />
-              <ng-template #callInitial>{{ (activeUser.displayName || activeUser.username).charAt(0).toUpperCase() }}</ng-template>
-            </span>
-            <span class="call-title">{{ activeUser.displayName || activeUser.username }}</span>
-            <span class="call-status"><span class="live-dot"></span> In call</span>
-            <button class="end-call-btn" (click)="toggleCall()"><span class="material-icons">call_end</span> End</button>
-          </div>
-          <iframe
-            class="call-frame"
-            [src]="callUrl"
-            allow="camera; microphone; speaker-selection; display-capture; fullscreen; clipboard-read; clipboard-write; web-share; autoplay; picture-in-picture"
-            allowfullscreen
-          ></iframe>
         </div>
       </div>
     </div>
@@ -177,34 +158,11 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
 
     .call-friend-btn {
       width: 38px; height: 38px; border-radius: 50%; border: none; background: none;
-      color: var(--accent); cursor: pointer; display: flex; align-items: center;
+      color: var(--success); cursor: pointer; display: flex; align-items: center;
       justify-content: center; flex-shrink: 0; transition: background 0.15s;
     }
     .call-friend-btn:hover { background: var(--surface-hover); }
     .call-friend-btn .material-icons { font-size: var(--font-20); }
-
-    /* 1:1 call overlay */
-    .call-overlay {
-      position: fixed; inset: 0; z-index: 1200; background: #0b0f14;
-      display: flex; flex-direction: column;
-    }
-    .call-overlay-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
-    }
-    .call-avatar { width: 38px; height: 38px; }
-    .call-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .call-status { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-12); color: var(--text-muted); flex-shrink: 0; }
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--error); animation: callpulse 1.5s infinite; }
-    @keyframes callpulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .end-call-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--error); color: white; border: none; border-radius: 8px;
-      padding: 8px 14px; font-size: var(--font-13); font-weight: 600; cursor: pointer; flex-shrink: 0;
-    }
-    .end-call-btn:hover { background: #dc2626; }
-    .end-call-btn .material-icons { font-size: var(--font-18); }
-    .call-frame { flex: 1; width: 100%; border: 0; display: block; }
 
     .messages {
       flex: 1 1 auto; overflow-y: auto; padding: 16px;
@@ -273,7 +231,7 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   private signalR = inject(SignalRService);
   private dmService = inject(DirectMessageService);
   private notificationService = inject(NotificationService);
-  private sanitizer = inject(DomSanitizer);
+  private callService = inject(CallService);
   @ViewChild('messageContainer') private messagesEl?: ElementRef;
 
   myId = this.auth.currentUser()?.id ?? '';
@@ -284,28 +242,17 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   newMessage = '';
   sending = false;
   isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
-  inCall = false;
-  private cachedCallUrl?: SafeResourceUrl;
   private dmSub?: Subscription;
   private deletedSub?: Subscription;
   private shouldScroll = false;
 
-  get callUrl(): SafeResourceUrl {
-    if (!this.cachedCallUrl && this.activeUser) {
-      const user = this.auth.currentUser();
-      const name = encodeURIComponent(user?.username || user?.email || 'Student');
-      const ids = [user?.id, this.activeUser.userId].filter(Boolean).sort();
-      const room = encodeURIComponent(`studyroom-dm-${ids.join('-')}`);
-      this.cachedCallUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
-        `https://sfu.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1&screen=1&duration=unlimited`
-      );
-    }
-    return this.cachedCallUrl!;
-  }
-
-  toggleCall(): void {
-    this.inCall = !this.inCall;
-    if (this.inCall) this.cachedCallUrl = undefined;
+  async startCall(): Promise<void> {
+    if (!this.activeUser) return;
+    await this.callService.startCall(
+      this.activeUser.userId,
+      this.activeUser.displayName || this.activeUser.username,
+      this.activeUser.avatarUrl
+    );
   }
 
   ngAfterViewChecked(): void {
@@ -348,8 +295,6 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   async openConversation(userId: string): Promise<void> {
-    this.inCall = false;
-    this.cachedCallUrl = undefined;
     this.activeUserId = userId;
     this.activeUser = this.conversations.find(c => c.userId === userId);
     this.messages = (await this.dmService.getConversation(userId).toPromise()) || [];
@@ -359,8 +304,6 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   closeConversation(): void {
-    this.inCall = false;
-    this.cachedCallUrl = undefined;
     this.activeUserId = '';
     this.activeUser = undefined;
     this.messages = [];

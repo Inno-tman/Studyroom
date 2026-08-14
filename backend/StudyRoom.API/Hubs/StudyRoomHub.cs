@@ -138,6 +138,108 @@ public class StudyRoomHub : Hub
         return Task.FromResult(result);
     }
 
+    // ── Call lifecycle ────────────────────────────────────────
+    private static readonly Dictionary<string, CallState> _calls = new();
+
+    public Task Ring(string calleeId, string callId)
+    {
+        var callerId = UserId.ToString();
+        if (callerId == calleeId) return Task.CompletedTask;
+
+        var user = _userRepo.GetByIdAsync(UserId).GetAwaiter().GetResult();
+
+        lock (_calls)
+        {
+            if (_calls.Values.Any(c => c.CalleeId == calleeId && c.Status == "Ringing"))
+                return Task.CompletedTask; // already ringing someone
+
+            _calls[callId] = new CallState
+            {
+                CallId = callId,
+                CallerId = callerId,
+                CallerName = Username,
+                CallerAvatar = user?.AvatarUrl,
+                CalleeId = calleeId,
+                Status = "Ringing"
+            };
+        }
+
+        return Clients.Group(GetUserGroup(calleeId)).SendAsync("IncomingCall", new
+        {
+            callId,
+            callerId,
+            callerName = Username,
+            callerAvatar = user?.AvatarUrl
+        });
+    }
+
+    public async Task AnswerCall(string callId)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return;
+            if (call.CalleeId != me) return;
+            call.Status = "Active";
+        }
+
+        await Clients.Group(GetUserGroup(call.CallerId)).SendAsync("CallAccepted", new
+        {
+            callId,
+            calleeId = me,
+            calleeName = Username,
+            calleeAvatar = (await _userRepo.GetByIdAsync(UserId))?.AvatarUrl
+        });
+    }
+
+    public async Task DeclineCall(string callId)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return;
+            if (call.CalleeId != me) return;
+            _calls.Remove(callId);
+        }
+
+        await Clients.Group(GetUserGroup(call.CallerId)).SendAsync("CallDeclined", new
+        {
+            callId
+        });
+    }
+
+    public Task CancelCall(string callId)
+    {
+        var me = UserId.ToString();
+        CallState call;
+        lock (_calls)
+        {
+            if (!_calls.TryGetValue(callId, out call)) return Task.CompletedTask;
+            if (call.CallerId != me) return Task.CompletedTask;
+            _calls.Remove(callId);
+        }
+
+        return Clients.Group(GetUserGroup(call.CalleeId)).SendAsync("CallCancelled", new
+        {
+            callId
+        });
+    }
+
+    public async Task EndCall(string callId)
+    {
+        CallState call;
+        lock (_calls)
+        {
+            if (_calls.TryGetValue(callId, out call)) _calls.Remove(callId);
+        }
+        if (call == null) return;
+
+        await Clients.Group(GetUserGroup(call.CallerId)).SendAsync("CallEnded", new { callId });
+        await Clients.Group(GetUserGroup(call.CalleeId)).SendAsync("CallEnded", new { callId });
+    }
+
     public async Task SendMessage(string roomId, string content)
     {
         var message = new Message
@@ -300,6 +402,27 @@ public class StudyRoomHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var uid = UserId.ToString();
+
+        // Clean up any calls this user is part of.
+        List<string> callersToNotify = new();
+        List<string> calleesToNotify = new();
+        lock (_calls)
+        {
+            foreach (var kv in _calls.ToList())
+            {
+                if (kv.Value.CallerId == uid || kv.Value.CalleeId == uid)
+                {
+                    _calls.Remove(kv.Key);
+                    if (kv.Value.CallerId != uid) callersToNotify.Add(kv.Value.CallerId);
+                    if (kv.Value.CalleeId != uid) calleesToNotify.Add(kv.Value.CalleeId);
+                }
+            }
+        }
+        foreach (var userId in callersToNotify)
+            await Clients.Group(GetUserGroup(userId)).SendAsync("CallEnded", new { callId = "" });
+        foreach (var userId in calleesToNotify)
+            await Clients.Group(GetUserGroup(userId)).SendAsync("CallEnded", new { callId = "" });
+
         if (_onlineUsers.TryGetValue(Context.ConnectionId, out var roomId))
         {
             _onlineUsers.Remove(Context.ConnectionId);
@@ -360,4 +483,14 @@ public class StudyRoomHub : Hub
     private static string GetGroupName(string roomId) => $"room_{roomId}";
 
     private static string GetUserGroup(string userId) => $"user_{userId}";
+}
+
+public class CallState
+{
+    public string CallId { get; set; } = "";
+    public string CallerId { get; set; } = "";
+    public string CallerName { get; set; } = "";
+    public string? CallerAvatar { get; set; }
+    public string CalleeId { get; set; } = "";
+    public string Status { get; set; } = "Ringing";
 }

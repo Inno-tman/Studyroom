@@ -22,6 +22,11 @@ export class SignalRService {
   private directMessageSubject = new Subject<DirectMessage>();
   private notificationSubject = new Subject<NotificationItem>();
   private messageDeletedSubject = new Subject<string>();
+  private incomingCallSubject = new Subject<any>();
+  private callAcceptedSubject = new Subject<any>();
+  private callDeclinedSubject = new Subject<any>();
+  private callCancelledSubject = new Subject<any>();
+  private callEndedSubject = new Subject<any>();
 
   message$ = this.messageSubject.asObservable();
   userJoined$ = this.userJoinedSubject.asObservable();
@@ -35,6 +40,11 @@ export class SignalRService {
   directMessage$ = this.directMessageSubject.asObservable();
   notification$ = this.notificationSubject.asObservable();
   messageDeleted$ = this.messageDeletedSubject.asObservable();
+  incomingCall$ = this.incomingCallSubject.asObservable();
+  callAccepted$ = this.callAcceptedSubject.asObservable();
+  callDeclined$ = this.callDeclinedSubject.asObservable();
+  callCancelled$ = this.callCancelledSubject.asObservable();
+  callEnded$ = this.callEndedSubject.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -64,6 +74,11 @@ export class SignalRService {
     this.hubConnection.on('ReceiveDirectMessage', (msg: DirectMessage) => this.directMessageSubject.next(msg));
     this.hubConnection.on('ReceiveNotification', (notification: NotificationItem) => this.notificationSubject.next(notification));
     this.hubConnection.on('MessageDeleted', (messageId: string) => this.messageDeletedSubject.next(messageId));
+    this.hubConnection.on('IncomingCall', (data: any) => this.incomingCallSubject.next(data));
+    this.hubConnection.on('CallAccepted', (data: any) => this.callAcceptedSubject.next(data));
+    this.hubConnection.on('CallDeclined', (data: any) => this.callDeclinedSubject.next(data));
+    this.hubConnection.on('CallCancelled', (data: any) => this.callCancelledSubject.next(data));
+    this.hubConnection.on('CallEnded', (data: any) => this.callEndedSubject.next(data));
 
     await this.hubConnection.start();
   }
@@ -78,6 +93,26 @@ export class SignalRService {
 
   async getPresence(): Promise<any[]> {
     return await this.hubConnection.invoke('GetPresence');
+  }
+
+  async ring(calleeId: string, callId: string): Promise<void> {
+    await this.hubConnection.invoke('Ring', calleeId, callId);
+  }
+
+  async answerCall(callId: string): Promise<void> {
+    await this.hubConnection.invoke('AnswerCall', callId);
+  }
+
+  async declineCall(callId: string): Promise<void> {
+    await this.hubConnection.invoke('DeclineCall', callId);
+  }
+
+  async cancelCall(callId: string): Promise<void> {
+    await this.hubConnection.invoke('CancelCall', callId);
+  }
+
+  async endCall(callId: string): Promise<void> {
+    await this.hubConnection.invoke('EndCall', callId);
   }
 
   async sendMessage(roomId: string, content: string): Promise<void> {

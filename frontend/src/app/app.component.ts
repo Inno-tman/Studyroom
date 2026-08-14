@@ -5,12 +5,13 @@ import { SidebarComponent } from './shared/components/sidebar/sidebar.component'
 import { ProfileReminderComponent } from './shared/components/profile-reminder/profile-reminder.component';
 import { CommandPaletteComponent } from './shared/components/command-palette/command-palette.component';
 import { PresenceDockComponent } from './shared/components/presence-dock/presence-dock.component';
+import { CallOverlayComponent } from './shared/components/call-overlay/call-overlay.component';
 import { NotificationService } from './core/services/notification.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, NgIf],
+  imports: [RouterOutlet, SidebarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, CallOverlayComponent, NgIf],
   template: `
     <div class="app-container">
       <app-sidebar [hidden]="sidebarHidden()" (toggle)="toggleSidebar()" />
@@ -25,6 +26,7 @@ import { NotificationService } from './core/services/notification.service';
       </div>
       <app-command-palette />
       <app-presence-dock />
+      <app-call-overlay />
     </div>
   `,
   styles: [`
