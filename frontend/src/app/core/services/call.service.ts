@@ -44,6 +44,8 @@ export class CallService implements OnDestroy {
   private remoteAudioEl?: HTMLAudioElement;
   private pendingOffer?: RTCSessionDescriptionInit;
   private pendingIce: RTCIceCandidateInit[] = [];
+  private speakerSinkId?: string;
+  private handsetSinkId?: string;
 
   constructor() {
     this.subs.push(
@@ -202,11 +204,14 @@ export class CallService implements OnDestroy {
       if (!this.remoteAudioEl) {
         this.remoteAudioEl = document.createElement('audio');
         this.remoteAudioEl.autoplay = true;
-        this.remoteAudioEl.style.display = 'none';
+        (this.remoteAudioEl as any).playsInline = true;
+        // Off-screen (not display:none) — some browsers ignore audio from hidden elements.
+        this.remoteAudioEl.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
         document.body.appendChild(this.remoteAudioEl);
+        this.enumerateSinks();
       }
       this.remoteAudioEl.srcObject = stream;
-      this.remoteAudioEl.play().catch(() => { });
+      this.playRemoteAudio();
       this.remoteConnected.set(true);
       this.applySink();
     };
@@ -252,9 +257,47 @@ export class CallService implements OnDestroy {
     const el = this.remoteAudioEl as any;
     if (!el || typeof el.setSinkId !== 'function') return;
     try {
-      const sinkId = this.speakerOn() ? 'default' : 'communications';
+      const sinkId = this.speakerOn()
+        ? (this.speakerSinkId ?? 'default')
+        : (this.handsetSinkId ?? 'communications');
       await el.setSinkId(sinkId);
     } catch { }
+  }
+
+  /**
+   * Chrome's setSinkId only accepts 'default' or 'communications' plus real
+   * device ids. 'communications' doesn't exist on most desktops/devices and the
+   * magic ids vary by platform, so resolve real audiooutput device ids first
+   * and fall back to the magic names.
+   */
+  private async enumerateSinks(): Promise<void> {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const outputs = devices.filter(d => d.kind === 'audiooutput');
+      for (const d of outputs) {
+        const label = d.label.toLowerCase();
+        if (!this.speakerSinkId && /(^|[\s(-])speaker|外放|扬声|public|ambient/i.test(label)) {
+          this.speakerSinkId = d.deviceId;
+        } else if (!this.handsetSinkId && /earpiece|听筒|handset|receiver|headset|耳机/i.test(label)) {
+          this.handsetSinkId = d.deviceId;
+        }
+      }
+    } catch { }
+  }
+
+  /** Retries play() on the next user gesture if autoplay was blocked. */
+  private playRemoteAudio(): void {
+    const el = this.remoteAudioEl;
+    if (!el) return;
+    el.play().catch(() => {
+      const resume = () => {
+        el.play().catch(() => { });
+        window.removeEventListener('pointerdown', resume);
+        window.removeEventListener('keydown', resume);
+      };
+      window.addEventListener('pointerdown', resume);
+      window.addEventListener('keydown', resume);
+    });
   }
 
   private closePeerConnection(): void {
