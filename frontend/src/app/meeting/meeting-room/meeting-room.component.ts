@@ -447,6 +447,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       this.room.on(RoomEvent.ParticipantConnected, (participant) => { this.addTile(participant); this.syncTile(participant.identity); });
       this.room.on(RoomEvent.ParticipantDisconnected, (participant) => this.removeTile(participant.identity));
       this.room.on(RoomEvent.Disconnected, () => {
+        if (this.leaving) return;
         this.doLeave(false);
         this.phase.set('prejoin');
         this.error.set('You were disconnected from the meeting.');
