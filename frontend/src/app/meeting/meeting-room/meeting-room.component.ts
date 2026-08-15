@@ -2,7 +2,7 @@ import { Component, inject, input, output, OnDestroy, OnInit, signal, HostListen
 import { NgFor, NgIf, NgClass, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
-  Room, RoomEvent, Track, Participant, LocalVideoTrack, LocalAudioTrack,
+  Room, RoomEvent, Track, Participant, RemoteTrack, LocalVideoTrack, LocalAudioTrack,
   createLocalTracks, createAudioAnalyser, ConnectionQuality, TrackPublication
 } from 'livekit-client';
 import { MeetingService } from '../../core/services/meeting.service';
@@ -522,6 +522,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   private previewAudioTrack?: LocalAudioTrack;
   private micLevelTimer?: any;
   private durationTimer?: any;
+  private audioOutputs = new Set<HTMLMediaElement>();
   private analyser?: { calculateVolume: () => number; cleanup: () => Promise<void> };
   private startedAt = 0;
   private leaving = false;
@@ -648,8 +649,14 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       this.phase.set('connecting');
 
       this.room = new Room({ adaptiveStream: true, dynacast: true });
-      this.room.on(RoomEvent.TrackSubscribed, (_t, _p, participant) => this.syncTile(participant.identity));
-      this.room.on(RoomEvent.TrackUnsubscribed, (_t, _p, participant) => this.syncTile(participant.identity));
+      this.room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _p, participant) => {
+        this.attachRemoteAudio(track);
+        this.syncTile(participant.identity);
+      });
+      this.room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _p, participant) => {
+        this.detachRemoteAudio(track);
+        this.syncTile(participant.identity);
+      });
       this.room.on(RoomEvent.ParticipantConnected, (participant) => { this.addTile(participant); this.syncTile(participant.identity); });
       this.room.on(RoomEvent.ParticipantDisconnected, (participant) => this.removeTile(participant.identity));
       this.room.on(RoomEvent.Disconnected, () => {
@@ -682,6 +689,8 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       } else if (this.micOn()) {
         await lp.setMicrophoneEnabled(true);
       }
+
+      void this.room.startAudio().catch(() => {});
 
       this.startedAt = Date.now();
       this.durationTimer = setInterval(() => this.duration.set(Math.floor((Date.now() - this.startedAt) / 1000)), 1000);
@@ -1065,11 +1074,31 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     await this.room?.localParticipant.setCameraEnabled(!this.camOn());
   }
 
+  private attachRemoteAudio(track: RemoteTrack): void {
+    if (track.kind !== Track.Kind.Audio) return;
+    const el = track.attach() as HTMLAudioElement;
+    el.autoplay = true;
+    el.muted = false;
+    el.controls = false;
+    el.style.display = 'none';
+    document.body.appendChild(el);
+    this.audioOutputs.add(el);
+    void el.play().catch(() => {});
+  }
+
+  private detachRemoteAudio(track: RemoteTrack): void {
+    if (track.kind !== Track.Kind.Audio) return;
+    track.detach().forEach(el => {
+      this.audioOutputs.delete(el);
+      el.remove();
+    });
+  }
+
   async toggleScreenShare(): Promise<void> {
     if (this.room?.localParticipant.isScreenShareEnabled) {
       await this.room.localParticipant.setScreenShareEnabled(false);
     } else {
-      await this.room?.localParticipant.setScreenShareEnabled(true);
+      await this.room?.localParticipant.setScreenShareEnabled(true, { audio: true });
     }
     this.syncLocalTile();
     if (this.room) this.syncTile(this.room.localParticipant.identity);
@@ -1093,6 +1122,8 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     try { this.previewVideoTrack?.stop(); } catch { }
     try { this.previewAudioTrack?.stop(); } catch { }
     try { this.room?.disconnect(); } catch { }
+    for (const el of this.audioOutputs) { try { el.remove(); } catch { } }
+    this.audioOutputs.clear();
     this.room = undefined;
     this.previewVideoTrack = undefined;
     this.previewAudioTrack = undefined;
