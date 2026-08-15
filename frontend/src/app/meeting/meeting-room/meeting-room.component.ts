@@ -478,6 +478,11 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       this.localTile = this.addTile(lp);
       this.syncLocalTile();
       this.syncTile(lp.identity);
+
+      for (const remote of this.room.remoteParticipants.values()) {
+        this.addTile(remote);
+        this.syncTile(remote.identity);
+      }
     } catch (err) {
       this.phase.set('prejoin');
       this.error.set(this.readableError(err));
@@ -557,23 +562,26 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       tile.camMuted = !!camPub?.isMuted;
     }
 
-    const camBox = document.querySelector(`[data-tile="${identity}"] .tile-video`);
-    if (tile.videoEl) { tile.videoEl.remove(); tile.videoEl = undefined; }
-    if (camVideo && camBox) {
-      const el = camVideo.attach() as HTMLVideoElement;
-      tile.videoEl = el;
-      camBox.appendChild(el);
-    }
-
-    const scrBox = document.querySelector(`[data-tile="${identity}"] .tile-screen`);
-    if (tile.screenEl) { tile.screenEl.remove(); tile.screenEl = undefined; }
-    if (scrVideo && scrBox) {
-      const el = scrVideo.attach() as HTMLVideoElement;
-      tile.screenEl = el;
-      scrBox.appendChild(el);
-    }
-
     this.participants.set([...this.tiles.values()]);
+
+    setTimeout(() => {
+      if (!this.tiles.has(identity)) return;
+      const camBox = document.querySelector(`[data-tile="${identity}"] .tile-video`);
+      if (tile.videoEl) { tile.videoEl.remove(); tile.videoEl = undefined; }
+      if (camVideo && camBox) {
+        const el = camVideo.attach() as HTMLVideoElement;
+        tile.videoEl = el;
+        camBox.appendChild(el);
+      }
+
+      const scrBox = document.querySelector(`[data-tile="${identity}"] .tile-screen`);
+      if (tile.screenEl) { tile.screenEl.remove(); tile.screenEl = undefined; }
+      if (scrVideo && scrBox) {
+        const el = scrVideo.attach() as HTMLVideoElement;
+        tile.screenEl = el;
+        scrBox.appendChild(el);
+      }
+    }, 0);
   }
 
   private syncLocalTile(): void {
@@ -717,14 +725,14 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   leave(): void {
     const others = this.room ? Array.from(this.room.remoteParticipants.keys()).length : 0;
     if (others > 0 && !this.leaving && !confirm('Other people are still in this call. Leave anyway?')) return;
-    this.doLeave();
+    this.doLeave(true);
   }
 
   cancel(): void {
-    this.doLeave();
+    this.doLeave(true);
   }
 
-  private doLeave(): void {
+  private doLeave(emit: boolean): void {
     this.leaving = true;
     if (this.durationTimer) clearInterval(this.durationTimer);
     if (this.micLevelTimer) clearInterval(this.micLevelTimer);
@@ -740,10 +748,10 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.phase.set('prejoin');
     this.connected.set(false);
     this.error.set('');
-    this.leaveRequest.emit();
+    if (emit) this.leaveRequest.emit();
   }
 
   ngOnDestroy(): void {
-    this.doLeave();
+    this.doLeave(false);
   }
 }
