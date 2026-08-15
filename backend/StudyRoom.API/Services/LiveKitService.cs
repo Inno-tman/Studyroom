@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using StudyRoom.API.Models;
@@ -32,7 +32,7 @@ public class LiveKitService : ILiveKitService
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        var grants = new JsonObject
+        var grants = new Dictionary<string, object>
         {
             ["room"] = roomName,
             ["roomJoin"] = true,
@@ -40,23 +40,27 @@ public class LiveKitService : ILiveKitService
             ["canSubscribe"] = true,
             ["canPublishData"] = true,
             ["canUpdateOwnMetadata"] = true,
-            ["canPublishSources"] = new JsonArray("camera", "microphone", "screen_share", "screen_share_audio")
+            ["canPublishSources"] = new[] { "camera", "microphone", "screen_share", "screen_share_audio" }
         };
 
-        var payload = new JwtPayload
+        var claims = new List<Claim>
         {
-            ["iss"] = _settings.ApiKey,
-            ["sub"] = _settings.ApiKey,
-            ["nbf"] = now - 10,
-            ["exp"] = now + 3600,
-            ["jti"] = Guid.NewGuid().ToString("N"),
-            ["name"] = displayName,
-            ["video"] = JsonNode.Parse(grants.ToJsonString())
+            new Claim("iss", _settings.ApiKey),
+            new Claim("sub", _settings.ApiKey),
+            new Claim("nbf", (now - 10).ToString()),
+            new Claim("exp", (now + 3600).ToString()),
+            new Claim("jti", Guid.NewGuid().ToString("N")),
+            new Claim("name", displayName),
+            new Claim("video", JsonSerializer.Serialize(grants), "JSON")
         };
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.ApiSecret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
         var header = new JwtHeader(credentials);
+
+        var payload = new JwtPayload();
+        foreach (var claim in claims)
+            payload.AddClaim(claim);
 
         var token = new JwtSecurityToken(header, payload);
         var encoded = new JwtSecurityTokenHandler().WriteToken(token);
