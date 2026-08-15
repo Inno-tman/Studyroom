@@ -338,7 +338,7 @@ type ViewMode = 'grid' | 'spotlight';
     .tile-grid.maximized { grid-template-columns: 1fr; }
     .tile-grid.maximized .tile.hidden { display: none; }
     .tile-grid.maximized .tile.maximized { aspect-ratio: auto; height: 100%; }
-    .tile-grid .tile.screen { grid-column: 1 / -1; aspect-ratio: auto; min-height: 320px; }
+    .tile-grid .tile.screen { grid-column: 1 / -1; aspect-ratio: auto; min-height: 320px; max-height: calc(100vh - 240px); width: 100%; }
 
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -817,8 +817,14 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       if (tile.screenEl) { tile.screenEl.remove(); tile.screenEl = undefined; }
       if (scrVideo && scrBox) {
         const el = scrVideo.attach() as HTMLVideoElement;
+        el.style.objectFit = 'contain';
+        el.style.width = '100%';
+        el.style.height = '100%';
         tile.screenEl = el;
         scrBox.appendChild(el);
+        console.log('[screen] attached', { baseIdentity, video: `${el.videoWidth}x${el.videoHeight}`, box: `${scrBox.clientWidth}x${scrBox.clientHeight}`, tile: (document.querySelector(`[data-tile="${baseIdentity}"]`) as HTMLElement)?.className });
+      } else {
+        console.log('[screen] nothing to attach', { baseIdentity, hasScrVideo: !!scrVideo, hasScrBox: !!scrBox, screenSharing: tile.screenSharing });
       }
     }, 0);
   }
