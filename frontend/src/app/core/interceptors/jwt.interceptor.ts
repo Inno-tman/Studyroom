@@ -23,7 +23,12 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
-      if (refreshFailed || !auth.getRefreshToken()) {
+      if (!auth.getRefreshToken()) {
+        console.warn('[jwt] 401 but no refresh token stored', { url: req.url, hadToken: !!token });
+        return throwError(() => err);
+      }
+      if (refreshFailed) {
+        console.warn('[jwt] 401 but previous refresh already failed', { url: req.url });
         auth.logout();
         return throwError(() => err);
       }
@@ -31,6 +36,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
       return refreshToken(auth).pipe(
         switchMap(success => {
           if (!success) {
+            console.warn('[jwt] refresh failed', { url: req.url });
             auth.logout();
             return throwError(() => err);
           }
