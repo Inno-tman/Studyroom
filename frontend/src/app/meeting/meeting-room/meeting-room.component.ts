@@ -26,6 +26,14 @@ interface ParticipantTile {
       </div>
 
       <div class="tile-grid" [class.single]="participants().length === 1">
+        <div *ngIf="!connected() && !error()" class="status-box">
+          <span class="spinner"></span> Connecting to meeting…
+        </div>
+        <div *ngIf="error()" class="status-box error">
+          <span class="material-icons">error_outline</span>
+          {{ error() }}
+          <button class="retry-btn" (click)="retry()">Retry</button>
+        </div>
         <div *ngFor="let p of participants()" class="tile" [class.local]="p.isLocal" [attr.data-tile]="p.identity">
           <div class="tile-video" #tileVideo>
             <span class="tile-placeholder" *ngIf="p.camMuted">
@@ -67,6 +75,11 @@ interface ParticipantTile {
 
     .tile-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; padding: 12px; align-content: start; overflow-y: auto; }
     .tile-grid.single { grid-template-columns: 1fr; }
+    .status-box { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text-secondary); font-size: var(--font-14); }
+    .status-box.error { color: var(--error); flex-direction: column; }
+    .status-box .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status-box .retry-btn { margin-top: 8px; padding: 8px 18px; border-radius: 8px; border: none; background: var(--primary); color: #fff; cursor: pointer; }
     .tile { position: relative; aspect-ratio: 16 / 9; background: #141a24; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
     .tile-video { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
     .tile-video video { width: 100%; height: 100%; object-fit: cover; }
@@ -97,6 +110,8 @@ export class MeetingRoomComponent implements OnDestroy {
   readonly micOn = signal(true);
   readonly camOn = signal(true);
   readonly sharing = signal(false);
+  readonly connected = signal(false);
+  readonly error = signal('');
 
   private room?: Room;
   private localTile?: ParticipantTile;
@@ -107,9 +122,11 @@ export class MeetingRoomComponent implements OnDestroy {
   }
 
   private async connect(): Promise<void> {
+    this.error.set('');
+    this.connected.set(false);
     try {
       const resp = await this.meetingService.getLiveKitToken(this.roomId()).toPromise();
-      if (!resp) { this.leaveRequest.emit(); return; }
+      if (!resp) throw new Error('No token response from server');
       const { url, token } = resp;
       this.room = new Room({ adaptiveStream: true, dynacast: true });
       this.room.on(RoomEvent.TrackSubscribed, (_track, _pub, participant) => this.attachRemote(participant.identity));
@@ -119,14 +136,33 @@ export class MeetingRoomComponent implements OnDestroy {
       this.room.on(RoomEvent.TrackMuted, (pub: TrackPublication, participant: Participant) => this.onMuteState(pub, participant.identity));
       this.room.on(RoomEvent.TrackUnmuted, (pub: TrackPublication, participant: Participant) => this.onMuteState(pub, participant.identity));
 
-      await this.room.connect(url, token);
+      await Promise.race([
+        this.room.connect(url, token),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Connection timed out')), 15000))
+      ]);
 
+      this.connected.set(true);
       this.localTile = this.addTile(this.room.localParticipant);
       await this.room.localParticipant.setCameraEnabled(true);
       await this.room.localParticipant.setMicrophoneEnabled(true);
-    } catch {
-      this.leave();
+    } catch (err) {
+      this.error.set(this.readableError(err));
+      this.connected.set(false);
     }
+  }
+
+  retry(): void {
+    this.leave();
+    this.connect();
+  }
+
+  private readableError(err: unknown): string {
+    if (!err) return 'Failed to join meeting';
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('Unauthorized') || msg.includes('401')) return 'Token rejected (check LiveKit API secret)';
+    if (msg.includes('timeout')) return 'Could not reach LiveKit servers (connection timed out)';
+    if (msg.includes('403')) return 'You are not a member of this room';
+    return `Failed to join: ${msg}`;
   }
 
   private addTile(participant: Participant): ParticipantTile {
