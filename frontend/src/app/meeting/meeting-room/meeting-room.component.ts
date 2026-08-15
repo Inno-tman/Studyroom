@@ -446,6 +446,11 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       this.room.on(RoomEvent.TrackUnsubscribed, (_t, _p, participant) => this.syncTile(participant.identity));
       this.room.on(RoomEvent.ParticipantConnected, (participant) => { this.addTile(participant); this.syncTile(participant.identity); });
       this.room.on(RoomEvent.ParticipantDisconnected, (participant) => this.removeTile(participant.identity));
+      this.room.on(RoomEvent.Disconnected, () => {
+        this.doLeave(false);
+        this.phase.set('prejoin');
+        this.error.set('You were disconnected from the meeting.');
+      });
       this.room.on(RoomEvent.LocalTrackPublished, () => { this.syncTile(this.room!.localParticipant.identity); this.syncLocalTile(); });
       this.room.on(RoomEvent.TrackMuted, (pub: TrackPublication, participant: Participant) => this.onMuteState(pub, participant.identity));
       this.room.on(RoomEvent.TrackUnmuted, (pub: TrackPublication, participant: Participant) => this.onMuteState(pub, participant.identity));

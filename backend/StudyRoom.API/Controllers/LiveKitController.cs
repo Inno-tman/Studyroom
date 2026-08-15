@@ -30,7 +30,7 @@ public class LiveKitController : ControllerBase
             return Forbid();
 
         var displayName = User.FindFirstValue(ClaimTypes.Name) ?? "Student";
-        var identity = UserId.ToString();
+        var identity = $"{UserId:N}-{Guid.NewGuid():N}";
         var roomName = dto.RoomName ?? $"studyroom-{roomId:N}";
 
         var result = _liveKit.CreateToken(roomName, identity, displayName, canPublish: true);
