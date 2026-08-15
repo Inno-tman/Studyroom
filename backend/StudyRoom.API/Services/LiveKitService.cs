@@ -16,7 +16,7 @@ public class LiveKitTokenResult
 
 public interface ILiveKitService
 {
-    LiveKitTokenResult CreateToken(string roomName, string identity, string displayName, bool canPublish);
+    LiveKitTokenResult CreateToken(string roomName, string identity, string displayName, string metadata, bool canPublish);
 }
 
 public class LiveKitService : ILiveKitService
@@ -25,7 +25,7 @@ public class LiveKitService : ILiveKitService
 
     public LiveKitService(IOptions<LivekitSettings> settings) => _settings = settings.Value;
 
-    public LiveKitTokenResult CreateToken(string roomName, string identity, string displayName, bool canPublish)
+    public LiveKitTokenResult CreateToken(string roomName, string identity, string displayName, string metadata, bool canPublish)
     {
         var apiKey = _settings.ApiKey.Trim();
         var apiSecret = _settings.ApiSecret.Trim();
@@ -58,6 +58,7 @@ public class LiveKitService : ILiveKitService
             ["exp"] = now + 3600,
             ["jti"] = Guid.NewGuid().ToString("N"),
             ["name"] = displayName,
+            ["metadata"] = metadata,
             ["video"] = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(grants))
         };
 

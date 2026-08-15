@@ -11,6 +11,7 @@ interface ParticipantTile {
   identity: string;
   name: string;
   isLocal: boolean;
+  isHost: boolean;
   micMuted: boolean;
   camMuted: boolean;
   hasVideo: boolean;
@@ -144,6 +145,7 @@ type ViewMode = 'grid' | 'spotlight';
                 <span class="material-icons">{{ qualityIcon(p.quality) }}</span>
               </span>
               <span class="tile-name">{{ p.name }}{{ p.isLocal ? ' (you)' : '' }}</span>
+              <span class="host-badge" *ngIf="p.isHost" title="Host">👑</span>
               <span class="tile-flag" [class.off]="p.micMuted"><span class="material-icons">mic{{ p.micMuted ? '_off' : '' }}</span></span>
               <span class="tile-flag" [class.off]="p.camMuted" *ngIf="!p.screenSharing"><span class="material-icons">videocam{{ p.camMuted ? '_off' : '' }}</span></span>
               <span class="tile-flag" *ngIf="p.screenSharing"><span class="material-icons">screen_share</span></span>
@@ -180,7 +182,7 @@ type ViewMode = 'grid' | 'spotlight';
               <div class="person-row" *ngFor="let p of peopleList">
                 <span class="person-avatar" [class.speaking]="speakingIds().has(p.identity)">{{ p.name.charAt(0).toUpperCase() }}</span>
                 <span class="person-info">
-                  <span class="person-name">{{ p.name }}{{ p.isLocal ? ' (You)' : '' }}</span>
+                  <span class="person-name">{{ p.name }}{{ p.isLocal ? ' (You)' : '' }} <span class="host-tag" *ngIf="p.isHost">Host</span></span>
                   <span class="person-sub">{{ p.isLocal ? 'You' : (p.screenSharing ? 'Presenting' : 'Participant') }}</span>
                 </span>
                 <span class="person-flags">
@@ -215,6 +217,9 @@ type ViewMode = 'grid' | 'spotlight';
               <div class="settings-miclevel">
                 <span class="settings-miclabel">Mic level</span>
                 <div class="mic-level-bar"><div class="mic-level-fill" [style.width.%]="micLevel()"></div></div>
+              </div>
+              <div class="danger-zone" *ngIf="isHost()">
+                <button class="danger-btn" (click)="endMeeting()"><span class="material-icons">logout</span> End meeting for everyone</button>
               </div>
             </div>
           </ng-container>
@@ -260,6 +265,10 @@ type ViewMode = 'grid' | 'spotlight';
         <div class="ctl-group">
           <button class="ctl ctl-round" [class.on]="view() === 'spotlight'" (click)="toggleView()" title="Switch view (G)">
             <span class="material-icons">{{ view() === 'grid' ? 'featured_video' : 'grid_view' }}</span>
+          </button>
+          <button class="ctl end" *ngIf="isHost()" (click)="endMeeting()" title="End meeting for everyone">
+            <span class="material-icons">logout</span>
+            <span class="ctl-label">End</span>
           </button>
           <button class="ctl leave" (click)="leave()" title="Leave call (Esc)">
             <span class="material-icons">call_end</span>
@@ -349,6 +358,7 @@ type ViewMode = 'grid' | 'spotlight';
 
     .tile-meta { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; }
     .tile-name { font-size: var(--font-12); font-weight: 600; background: rgba(0,0,0,0.55); padding: 2px 8px; border-radius: 6px; }
+    .host-badge { font-size: var(--font-13); line-height: 1; background: rgba(0,0,0,0.55); padding: 2px 5px; border-radius: 6px; }
     .tile-flag { background: rgba(0,0,0,0.55); border-radius: 6px; padding: 2px 4px; display: inline-flex; }
     .tile-flag .material-icons { font-size: var(--font-16); }
     .tile-flag.off { color: var(--error); }
@@ -390,6 +400,7 @@ type ViewMode = 'grid' | 'spotlight';
     .person-avatar.speaking { box-shadow: 0 0 0 2px var(--success); }
     .person-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .person-name { font-size: var(--font-13); font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .host-tag { font-size: var(--font-10); font-weight: 700; color: #ffd166; background: rgba(255, 209, 102, 0.14); border: 1px solid rgba(255, 209, 102, 0.45); padding: 1px 6px; border-radius: 6px; margin-left: 4px; vertical-align: 1px; }
     .person-sub { font-size: var(--font-11); color: var(--text-muted); }
     .person-flags { display: flex; align-items: center; gap: 8px; }
     .person-flag { font-size: var(--font-18); color: var(--text-secondary); }
@@ -408,6 +419,10 @@ type ViewMode = 'grid' | 'spotlight';
     .settings-miclevel { display: flex; flex-direction: column; gap: 6px; }
     .settings-miclabel { font-size: var(--font-12); font-weight: 600; color: var(--text-secondary); }
     .settings-miclevel .mic-level-bar { width: 100%; }
+    .danger-zone { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px; }
+    .danger-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px 12px; background: rgba(239, 68, 68, 0.12); border: 1px solid var(--error); border-radius: 8px; color: var(--error); font-size: var(--font-13); font-weight: 700; cursor: pointer; transition: background 0.15s; }
+    .danger-btn:hover { background: var(--error); color: #fff; }
+    .danger-btn .material-icons { font-size: var(--font-18); }
 
     /* ── Reactions ────────────────────────────────────────── */
     .tile-reaction { position: absolute; top: 26%; left: 50%; font-size: 42px; z-index: 6; pointer-events: none; animation: reactFloat 2.6s ease-out forwards; }
@@ -433,6 +448,8 @@ type ViewMode = 'grid' | 'spotlight';
     .ctl.on { background: var(--error); }
     .ctl.active { background: var(--primary); }
     .ctl.leave { background: var(--error); }
+    .ctl.end { background: rgba(255,255,255,0.06); border: 1px solid var(--error); color: #f87171; }
+    .ctl.end:hover { background: rgba(239, 68, 68, 0.15); color: #fff; }
     .ctl .material-icons { font-size: var(--font-24); }
     .ctl-label { font-size: var(--font-11); font-weight: 600; }
     .ctl-round { width: 52px; min-width: 52px; height: 52px; padding: 6px; }
@@ -482,6 +499,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   reactOpen = signal(false);
   effect = signal<Effect>('none');
   view = signal<ViewMode>('grid');
+  isHost = signal(false);
   effectOptions: { v: Effect; l: string }[] = [
     { v: 'none', l: 'None' },
     { v: 'blur', l: 'Blur' },
@@ -646,6 +664,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       this.room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => this.onSpeakers(speakers));
       this.room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => this.onQuality(quality, participant));
       this.room.on(RoomEvent.DataReceived, (payload, participant) => this.onData(payload, participant));
+      this.room.on(RoomEvent.ParticipantMetadataChanged, (_metadata, participant) => this.onMetadataChanged(participant));
 
       await Promise.race([
         this.room.connect(url, token),
@@ -669,6 +688,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
 
       this.connected.set(true);
       this.phase.set('connected');
+      this.isHost.set((lp.metadata || '') === 'host');
       this.localTile = this.addTile(lp);
       this.syncLocalTile();
       this.syncTile(lp.identity);
@@ -715,6 +735,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       identity: participant.identity,
       name: participant.name || (participant.isLocal ? 'You' : participant.identity),
       isLocal: participant.isLocal,
+      isHost: (participant.metadata || '') === 'host',
       micMuted: false,
       camMuted: false,
       hasVideo: false,
@@ -867,6 +888,13 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.participants.set([...this.tiles.values()]);
   }
 
+  private onMetadataChanged(participant: Participant): void {
+    const tile = this.tiles.get(participant.identity);
+    if (!tile) return;
+    tile.isHost = (participant.metadata || '') === 'host';
+    this.participants.set([...this.tiles.values()]);
+  }
+
   qualityIcon(q: ConnectionQuality): string {
     switch (q) {
       case ConnectionQuality.Excellent: return 'network_check';
@@ -889,6 +917,8 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
         this.pushChat({ from, name, text: String(data.m), ts: Date.now(), own: false });
       } else if (data.t === 'react' && data.r) {
         this.addReaction(from, String(data.r));
+      } else if (data.t === 'endmeeting') {
+        this.endMeetingForced();
       }
     } catch { }
   }
@@ -951,6 +981,24 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
 
   toggleView(): void {
     this.view.set(this.view() === 'grid' ? 'spotlight' : 'grid');
+  }
+
+  /** Host: broadcast to every participant to hang up and end the meeting. */
+  async endMeeting(): Promise<void> {
+    if (!this.room) return;
+    if (!confirm('End the meeting for everyone? All participants will be disconnected.')) return;
+    try {
+      const payload = new TextEncoder().encode(JSON.stringify({ t: 'endmeeting' }));
+      void this.room.localParticipant.publishData(payload, { reliable: true });
+    } catch { }
+    this.doLeave(true);
+  }
+
+  /** Non-host: a remote host ended the meeting. */
+  private endMeetingForced(): void {
+    if (this.leaving) return;
+    alert('The host ended this meeting for everyone.');
+    this.doLeave(true);
   }
 
   private localVideoPublication(): TrackPublication | undefined {
@@ -1065,6 +1113,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.view.set('grid');
     this.maximizedId.set('');
     this.effect.set('none');
+    this.isHost.set(false);
     this.phase.set('prejoin');
     this.connected.set(false);
     this.error.set('');

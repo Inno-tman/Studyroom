@@ -29,11 +29,13 @@ public class LiveKitController : ControllerBase
         if (!await _roomRepo.IsMemberAsync(roomId, UserId))
             return Forbid();
 
+        var room = await _roomRepo.GetByIdAsync(roomId);
         var displayName = User.FindFirstValue(ClaimTypes.Name) ?? "Student";
         var identity = $"{UserId:N}-{Guid.NewGuid():N}";
         var roomName = dto.RoomName ?? $"studyroom-{roomId:N}";
+        var isHost = room is not null && room.CreatedBy == UserId;
 
-        var result = _liveKit.CreateToken(roomName, identity, displayName, canPublish: true);
+        var result = _liveKit.CreateToken(roomName, identity, displayName, metadata: isHost ? "host" : "", canPublish: true);
         return Ok(new { url = result.Url, token = result.Token });
     }
 }
