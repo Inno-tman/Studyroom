@@ -157,14 +157,21 @@ export class MeetingRoomComponent implements OnDestroy {
   }
 
   private readableError(err: unknown): string {
-    const anyErr = err as { status?: number; message?: string; error?: unknown; statusText?: string };
+    const anyErr = err as { status?: number; message?: string; error?: unknown; statusText?: string; url?: string };
     if (anyErr?.status) {
-      const detail = typeof anyErr.error === 'string' && anyErr.error ? `: ${anyErr.error}` : '';
-      if (anyErr.status === 401) return `Not authenticated (401)${detail}`;
-      if (anyErr.status === 403) return `You are not a member of this room (403)${detail}`;
-      if (anyErr.status === 500) return `Server error (500)${detail} — LiveKit secret configured?`;
-      if (anyErr.status === 404) return `Endpoint not found (404)${detail}`;
-      return `Request failed (${anyErr.status})${detail}`;
+      let detail = '';
+      try {
+        const e = anyErr.error;
+        if (typeof e === 'string' && e) detail = e;
+        else if (e && typeof e === 'object') detail = JSON.stringify(e);
+      } catch { }
+      const loc = anyErr.url ? ` @ ${anyErr.url}` : '';
+      if (anyErr.status === 401) return `Not authenticated (401)${detail ? `: ${detail}` : ''}${loc}`;
+      if (anyErr.status === 403) return `You are not a member of this room (403)${detail ? `: ${detail}` : ''}${loc}`;
+      if (anyErr.status === 400) return `Bad request (400)${detail ? `: ${detail}` : ''}${loc}`;
+      if (anyErr.status === 500) return `Server error (500)${detail ? `: ${detail}` : ''}${loc}`;
+      if (anyErr.status === 404) return `Endpoint not found (404)${detail ? `: ${detail}` : ''}${loc}`;
+      return `Request failed (${anyErr.status})${detail ? `: ${detail}` : ''}${loc}`;
     }
     if (anyErr?.message) return anyErr.message;
     try { return JSON.stringify(err); } catch { return 'Unknown error'; }

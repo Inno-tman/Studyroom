@@ -27,6 +27,9 @@ public class LiveKitService : ILiveKitService
 
     public LiveKitTokenResult CreateToken(string roomName, string identity, string displayName, bool canPublish)
     {
+        if (string.IsNullOrWhiteSpace(_settings.ApiKey) || string.IsNullOrWhiteSpace(_settings.ApiSecret))
+            throw new InvalidOperationException("LiveKit API key or API secret is not configured. Set Livekit:ApiKey and Livekit:ApiSecret in appsettings.json or environment variables.");
+
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         var grants = new JsonObject
