@@ -245,6 +245,7 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
     .tile-grid.maximized { grid-template-columns: 1fr; }
     .tile-grid.maximized .tile.hidden { display: none; }
     .tile-grid.maximized .tile.maximized { aspect-ratio: auto; height: 100%; }
+    .tile-grid .tile.screen { grid-column: 1 / -1; aspect-ratio: auto; min-height: 320px; }
 
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -519,6 +520,10 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   }
 
   private addTile(participant: Participant): ParticipantTile {
+    if (participant.identity.endsWith('_screen')) {
+      const base = this.tiles.get(participant.identity.slice(0, -'_screen'.length));
+      if (base) return base;
+    }
     const tile: ParticipantTile = {
       identity: participant.identity,
       name: participant.name || (participant.isLocal ? 'You' : participant.identity),
@@ -535,6 +540,15 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   }
 
   private removeTile(identity: string): void {
+    if (identity.endsWith('_screen')) {
+      const base = this.tiles.get(identity.slice(0, -'_screen'.length));
+      if (!base) return;
+      base.screenSharing = false;
+      base.screenEl?.remove();
+      base.screenEl = undefined;
+      this.participants.set([...this.tiles.values()]);
+      return;
+    }
     const tile = this.tiles.get(identity);
     if (!tile) return;
     tile.videoEl?.remove();
@@ -546,9 +560,17 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   private syncTile(identity: string): void {
     if (!this.room) return;
     const lp = this.room.localParticipant;
+    const isScreenParticipant = identity.endsWith('_screen');
+    const baseIdentity = isScreenParticipant ? identity.slice(0, -'_screen'.length) : identity;
     const participant = identity === lp.identity ? lp : this.room.remoteParticipants.get(identity);
     if (!participant) return;
-    let tile = this.tiles.get(identity);
+
+    if (isScreenParticipant) {
+      this.syncScreenShare(baseIdentity, participant);
+      return;
+    }
+
+    let tile = this.tiles.get(baseIdentity);
     if (!tile) tile = this.addTile(participant);
 
     const isLocal = participant.isLocal;
@@ -559,8 +581,8 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     const camVideo = camPub?.videoTrack ?? undefined;
     const scrVideo = scrPub?.videoTrack ?? undefined;
 
-    tile.screenSharing = !!scrVideo;
     tile.hasVideo = !!camVideo;
+    if (isLocal) tile.screenSharing = !!scrVideo;
     if (isLocal) {
       tile.camMuted = !lp.isCameraEnabled;
       tile.micMuted = !lp.isMicrophoneEnabled;
@@ -571,8 +593,8 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.participants.set([...this.tiles.values()]);
 
     setTimeout(() => {
-      if (!this.tiles.has(identity)) return;
-      const camBox = document.querySelector(`[data-tile="${identity}"] .tile-video`);
+      if (!this.tiles.has(baseIdentity)) return;
+      const camBox = document.querySelector(`[data-tile="${baseIdentity}"] .tile-video`);
       if (tile.videoEl) { tile.videoEl.remove(); tile.videoEl = undefined; }
       if (camVideo && camBox) {
         const el = camVideo.attach() as HTMLVideoElement;
@@ -580,7 +602,34 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
         camBox.appendChild(el);
       }
 
-      const scrBox = document.querySelector(`[data-tile="${identity}"] .tile-screen`);
+      if (isLocal) {
+        const scrBox = document.querySelector(`[data-tile="${baseIdentity}"] .tile-screen`);
+        if (tile.screenEl) { tile.screenEl.remove(); tile.screenEl = undefined; }
+        if (scrVideo && scrBox) {
+          const el = scrVideo.attach() as HTMLVideoElement;
+          tile.screenEl = el;
+          scrBox.appendChild(el);
+        }
+      }
+    }, 0);
+  }
+
+  private syncScreenShare(baseIdentity: string, screenParticipant: Participant): void {
+    const scrPub = [...screenParticipant.videoTrackPublications.values()]
+      .find(p => p.source === Track.Source.ScreenShare && p.isSubscribed);
+    const scrVideo = scrPub?.videoTrack ?? undefined;
+    let tile = this.tiles.get(baseIdentity);
+    if (!tile) {
+      const baseParticipant = this.room?.remoteParticipants.get(baseIdentity);
+      if (!baseParticipant) return;
+      tile = this.addTile(baseParticipant);
+    }
+    tile.screenSharing = !!scrVideo;
+    this.participants.set([...this.tiles.values()]);
+
+    setTimeout(() => {
+      if (!this.tiles.has(baseIdentity)) return;
+      const scrBox = document.querySelector(`[data-tile="${baseIdentity}"] .tile-screen`);
       if (tile.screenEl) { tile.screenEl.remove(); tile.screenEl = undefined; }
       if (scrVideo && scrBox) {
         const el = scrVideo.attach() as HTMLVideoElement;
