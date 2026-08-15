@@ -27,7 +27,10 @@ public class LiveKitService : ILiveKitService
 
     public LiveKitTokenResult CreateToken(string roomName, string identity, string displayName, bool canPublish)
     {
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey) || string.IsNullOrWhiteSpace(_settings.ApiSecret))
+        var apiKey = _settings.ApiKey.Trim();
+        var apiSecret = _settings.ApiSecret.Trim();
+
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
             throw new InvalidOperationException("LiveKit API key or API secret is not configured. Set Livekit:ApiKey and Livekit:ApiSecret in appsettings.json or environment variables.");
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -43,24 +46,20 @@ public class LiveKitService : ILiveKitService
             ["canPublishSources"] = new[] { "camera", "microphone", "screen_share", "screen_share_audio" }
         };
 
-        var claims = new List<Claim>
-        {
-            new Claim("iss", _settings.ApiKey),
-            new Claim("sub", _settings.ApiKey),
-            new Claim("nbf", (now - 10).ToString()),
-            new Claim("exp", (now + 3600).ToString()),
-            new Claim("jti", Guid.NewGuid().ToString("N")),
-            new Claim("name", displayName),
-            new Claim("video", JsonSerializer.Serialize(grants), "JSON")
-        };
-
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.ApiSecret));
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(apiSecret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
         var header = new JwtHeader(credentials);
 
-        var payload = new JwtPayload();
-        foreach (var claim in claims)
-            payload.AddClaim(claim);
+        var payload = new JwtPayload
+        {
+            ["iss"] = apiKey,
+            ["sub"] = apiKey,
+            ["nbf"] = now - 10,
+            ["exp"] = now + 3600,
+            ["jti"] = Guid.NewGuid().ToString("N"),
+            ["name"] = displayName,
+            ["video"] = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(grants))
+        };
 
         var token = new JwtSecurityToken(header, payload);
         var encoded = new JwtSecurityTokenHandler().WriteToken(token);
