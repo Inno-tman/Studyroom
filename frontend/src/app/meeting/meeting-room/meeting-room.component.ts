@@ -168,21 +168,26 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
       <div class="meeting-controls" *ngIf="phase() === 'connected'">
         <button class="ctl" [class.on]="!micOn()" (click)="toggleMic()" title="Mute / unmute mic (M)">
           <span class="material-icons">{{ micOn() ? 'mic' : 'mic_off' }}</span>
+          <span class="ctl-label">{{ micOn() ? 'Mute' : 'Unmute' }}</span>
         </button>
         <button class="ctl" [class.on]="!camOn()" (click)="toggleCam()" title="Camera on / off (V)">
           <span class="material-icons">{{ camOn() ? 'videocam' : 'videocam_off' }}</span>
+          <span class="ctl-label">{{ camOn() ? 'Cam off' : 'Cam on' }}</span>
         </button>
         <button class="ctl" [class.on]="sharing()" (click)="toggleScreenShare()" title="Share screen (D)">
           <span class="material-icons">screen_share</span>
+          <span class="ctl-label">{{ sharing() ? 'Stop share' : 'Share' }}</span>
         </button>
         <button class="ctl leave" (click)="leave()" title="Leave call (Esc)">
           <span class="material-icons">call_end</span>
+          <span class="ctl-label">Leave</span>
         </button>
       </div>
     </div>
   `,
   styles: [`
-    .meeting-room { display: flex; flex-direction: column; height: 100%; background: #0b0f14; color: #fff; }
+    :host { display: flex; flex-direction: column; height: 100%; min-height: 0; flex: 1; }
+    .meeting-room { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #0b0f14; color: #fff; }
     .meeting-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
     .meeting-header h2 { display: flex; align-items: center; gap: 8px; font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
     .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); animation: pulse 1.5s infinite; }
@@ -206,7 +211,8 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
     .preview-off { flex-direction: column; gap: 10px; color: var(--text-muted); font-size: var(--font-13); }
     .preview-off .material-icons { font-size: 48px; }
     .preview-controls { position: absolute; bottom: 16px; left: 0; right: 0; display: flex; justify-content: center; gap: 12px; }
-    .prectl { width: 46px; height: 46px; background: rgba(255,255,255,0.14); }
+    .prectl { width: 46px; height: 46px; min-width: 46px; border-radius: 50%; background: rgba(255,255,255,0.14); }
+    .prectl .ctl-label { display: none; }
     .mic-level { padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
     .mic-level-label { font-size: var(--font-11); color: var(--text-secondary); flex-shrink: 0; }
     .mic-level-bar { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.12); overflow: hidden; }
@@ -293,12 +299,13 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
     .send-btn .material-icons { font-size: var(--font-18); }
 
     /* ── Controls ──────────────────────────────────────────── */
-    .meeting-controls { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 16px; background: var(--surface); border-top: 1px solid var(--border); }
-    .ctl { width: 54px; height: 54px; border-radius: 50%; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; transition: transform 0.15s, background 0.15s; }
-    .ctl:hover { transform: scale(1.06); }
+    .meeting-controls { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px 16px; background: var(--surface); border-top: 1px solid var(--border); }
+    .ctl { width: auto; min-width: 76px; height: 64px; border-radius: 12px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 14px; transition: transform 0.15s, background 0.15s; }
+    .ctl:hover { transform: scale(1.05); background: rgba(255,255,255,0.18); }
     .ctl.on { background: var(--error); }
     .ctl.leave { background: var(--error); }
     .ctl .material-icons { font-size: var(--font-24); }
+    .ctl-label { font-size: var(--font-11); font-weight: 600; }
 
     /* ── Mobile ────────────────────────────────────────────── */
     @media (max-width: 900px) {
