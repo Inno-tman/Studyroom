@@ -106,6 +106,19 @@ builder.Services.AddScoped<IPushService, PushService>();
 builder.Services.Configure<LivekitSettings>(builder.Configuration.GetSection("Livekit"));
 builder.Services.AddScoped<ILiveKitService, LiveKitService>();
 
+var livekitUrl = Environment.GetEnvironmentVariable("LIVEKIT_URL");
+var livekitApiKey = Environment.GetEnvironmentVariable("LIVEKIT_API_KEY");
+var livekitApiSecret = Environment.GetEnvironmentVariable("LIVEKIT_API_SECRET");
+if (!string.IsNullOrWhiteSpace(livekitUrl) || !string.IsNullOrWhiteSpace(livekitApiKey) || !string.IsNullOrWhiteSpace(livekitApiSecret))
+{
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["Livekit:Url"] = livekitUrl ?? builder.Configuration["Livekit:Url"],
+        ["Livekit:ApiKey"] = livekitApiKey ?? builder.Configuration["Livekit:ApiKey"],
+        ["Livekit:ApiSecret"] = livekitApiSecret ?? builder.Configuration["Livekit:ApiSecret"]
+    });
+}
+
 builder.Services.AddHostedService<StaleDirectMessageNotifier>();
 
 var app = builder.Build();
