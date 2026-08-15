@@ -53,7 +53,7 @@ public class LiveKitService : ILiveKitService
         var payload = new JwtPayload
         {
             ["iss"] = apiKey,
-            ["sub"] = apiKey,
+            ["sub"] = identity,
             ["nbf"] = now - 10,
             ["exp"] = now + 3600,
             ["jti"] = Guid.NewGuid().ToString("N"),
