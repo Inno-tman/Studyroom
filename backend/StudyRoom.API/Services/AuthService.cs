@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
@@ -41,7 +42,7 @@ public class AuthService : IAuthService
 
         await _userRepo.AddAsync(user);
 
-        return GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
@@ -51,7 +52,7 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Invalid credentials.");
 
-        return GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
     public async Task<AuthResponseDto> GoogleLoginAsync(string idToken)
@@ -85,7 +86,7 @@ public class AuthService : IAuthService
             await _userRepo.UpdateAsync(user);
         }
 
-        return GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
     public async Task<AuthResponseDto> UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
@@ -112,7 +113,7 @@ public class AuthService : IAuthService
 
         await _userRepo.UpdateAsync(user);
 
-        return GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordDto dto)
@@ -125,6 +126,20 @@ public class AuthService : IAuthService
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         await _userRepo.UpdateAsync(user);
+    }
+
+    public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            throw new UnauthorizedAccessException("Refresh token is required.");
+
+        var user = await _userRepo.GetByRefreshTokenAsync(refreshToken)
+            ?? throw new UnauthorizedAccessException("Refresh token is invalid.");
+
+        if (user.RefreshTokenExpiresAt == null || user.RefreshTokenExpiresAt.Value < DateTime.UtcNow)
+            throw new UnauthorizedAccessException("Refresh token has expired.");
+
+        return await GenerateAuthResponseAsync(user);
     }
 
     private async Task<GoogleJsonWebSignature.Payload?> ValidateGoogleTokenAsync(string idToken)
@@ -165,10 +180,15 @@ public class AuthService : IAuthService
         return username;
     }
 
-    private AuthResponseDto GenerateAuthResponse(User user)
+    private async Task<AuthResponseDto> GenerateAuthResponseAsync(User user)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwt.ExpiryMinutes);
         var token = GenerateJwtToken(user, expiresAt);
+
+        var refreshToken = GenerateRefreshToken();
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiresAt = DateTime.UtcNow.AddDays(30);
+        await _userRepo.UpdateAsync(user);
 
         return new AuthResponseDto
         {
@@ -187,8 +207,18 @@ public class AuthService : IAuthService
             Role = user.Role,
             ProfileComplete = IsProfileComplete(user),
             Token = token,
-            ExpiresAt = expiresAt
+            ExpiresAt = expiresAt,
+            RefreshToken = refreshToken,
+            RefreshTokenExpiresAt = user.RefreshTokenExpiresAt.Value
         };
+    }
+
+    private static string GenerateRefreshToken()
+    {
+        var bytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(bytes);
+        return Convert.ToBase64String(bytes);
     }
 
     private static bool IsProfileComplete(User user) =>

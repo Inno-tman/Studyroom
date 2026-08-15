@@ -8,6 +8,7 @@ import { User, RegisterDto, LoginDto, UpdateProfileDto } from '../../shared/mode
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly TOKEN_KEY = 'studyroom_token';
+  private readonly REFRESH_KEY = 'studyroom_refresh_token';
   private readonly USER_KEY = 'studyroom_user';
 
   currentUser = signal<User | null>(null);
@@ -75,6 +76,7 @@ export class AuthService {
 
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_KEY);
     localStorage.removeItem(this.USER_KEY);
     this.currentUser.set(null);
     this.router.navigate(['/login']);
@@ -96,18 +98,44 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
+  getRefreshToken(): string | null {
+    return localStorage.getItem(this.REFRESH_KEY);
+  }
+
+  refreshToken(): Observable<User> {
+    return this.http.post<User>(`${environment.apiUrl}/auth/refresh`, {
+      refreshToken: this.getRefreshToken()
+    }).pipe(
+      tap(user => this.setSession(user))
+    );
+  }
+
   private setSession(user: User): void {
     localStorage.setItem(this.TOKEN_KEY, user.token);
+    if (user.refreshToken) localStorage.setItem(this.REFRESH_KEY, user.refreshToken);
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     this.currentUser.set(user);
   }
 
   private loadUser(): void {
     const stored = localStorage.getItem(this.USER_KEY);
+    const refresh = localStorage.getItem(this.REFRESH_KEY);
     if (stored && this.isAuthenticated()) {
       this.currentUser.set(JSON.parse(stored));
+    } else if (stored && refresh && !this.isAuthenticated()) {
+      this.refreshToken().subscribe({
+        next: user => {
+          this.currentUser.set(user);
+        },
+        error: () => {
+          localStorage.removeItem(this.TOKEN_KEY);
+          localStorage.removeItem(this.REFRESH_KEY);
+          localStorage.removeItem(this.USER_KEY);
+        }
+      });
     } else {
       localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.REFRESH_KEY);
       localStorage.removeItem(this.USER_KEY);
     }
   }

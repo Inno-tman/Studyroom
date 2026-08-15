@@ -48,6 +48,11 @@ public class User
     [MaxLength(1000)]
     public string? Bio { get; set; }
 
+    [MaxLength(200)]
+    public string? RefreshToken { get; set; }
+
+    public DateTime? RefreshTokenExpiresAt { get; set; }
+
     public string Role { get; set; } = "User";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
