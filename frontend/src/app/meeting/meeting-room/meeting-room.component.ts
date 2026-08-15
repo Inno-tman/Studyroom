@@ -726,10 +726,10 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     try { return JSON.stringify(err); } catch { return 'Unknown error'; }
   }
 
-  private addTile(participant: Participant): ParticipantTile {
+  private addTile(participant: Participant): ParticipantTile | undefined {
     if (participant.identity.endsWith('_screen')) {
       const base = this.tiles.get(participant.identity.slice(0, -'_screen'.length));
-      if (base) return base;
+      return base;
     }
     const tile: ParticipantTile = {
       identity: participant.identity,
@@ -774,29 +774,32 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     if (!participant) return;
 
     if (isScreenParticipant) {
-      this.syncScreenShare(baseIdentity, participant);
+      this.syncScreenShare(baseIdentity);
       return;
     }
 
     let tile = this.tiles.get(baseIdentity);
     if (!tile) tile = this.addTile(participant);
+    if (!tile) return;
 
     const isLocal = participant.isLocal;
     const pubs = [...participant.videoTrackPublications.values()];
     const camPub = pubs.find(p => p.source === Track.Source.Camera && (isLocal || p.isSubscribed));
-    const scrPub = pubs.find(p => p.source === Track.Source.ScreenShare && (isLocal || p.isSubscribed));
+    const ownScrPub = pubs.find(p => p.source === Track.Source.ScreenShare && (isLocal || p.isSubscribed));
+
+    // Screen share may arrive either as a track on the base participant, or on a
+    // separate '{identity}_screen' participant created by LiveKit.
+    const screenParticipant = this.room.remoteParticipants.get(baseIdentity + '_screen');
+    const scrPub = ownScrPub ?? [...(screenParticipant?.videoTrackPublications.values() ?? [])]
+      .find(p => p.source === Track.Source.ScreenShare && p.isSubscribed);
 
     const camVideo = camPub?.videoTrack ?? undefined;
     const scrVideo = scrPub?.videoTrack ?? undefined;
 
     tile.hasVideo = !!camVideo;
-    if (isLocal) tile.screenSharing = !!scrVideo;
-    if (isLocal) {
-      tile.camMuted = !lp.isCameraEnabled;
-      tile.micMuted = !lp.isMicrophoneEnabled;
-    } else {
-      tile.camMuted = !!camPub?.isMuted;
-    }
+    tile.screenSharing = !!scrVideo;
+    tile.camMuted = isLocal ? !lp.isCameraEnabled : !!camPub?.isMuted;
+    if (isLocal) tile.micMuted = !lp.isMicrophoneEnabled;
 
     this.participants.set([...this.tiles.values()]);
 
@@ -810,33 +813,6 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
         camBox.appendChild(el);
       }
 
-      if (isLocal) {
-        const scrBox = document.querySelector(`[data-tile="${baseIdentity}"] .tile-screen`);
-        if (tile.screenEl) { tile.screenEl.remove(); tile.screenEl = undefined; }
-        if (scrVideo && scrBox) {
-          const el = scrVideo.attach() as HTMLVideoElement;
-          tile.screenEl = el;
-          scrBox.appendChild(el);
-        }
-      }
-    }, 0);
-  }
-
-  private syncScreenShare(baseIdentity: string, screenParticipant: Participant): void {
-    const scrPub = [...screenParticipant.videoTrackPublications.values()]
-      .find(p => p.source === Track.Source.ScreenShare && p.isSubscribed);
-    const scrVideo = scrPub?.videoTrack ?? undefined;
-    let tile = this.tiles.get(baseIdentity);
-    if (!tile) {
-      const baseParticipant = this.room?.remoteParticipants.get(baseIdentity);
-      if (!baseParticipant) return;
-      tile = this.addTile(baseParticipant);
-    }
-    tile.screenSharing = !!scrVideo;
-    this.participants.set([...this.tiles.values()]);
-
-    setTimeout(() => {
-      if (!this.tiles.has(baseIdentity)) return;
       const scrBox = document.querySelector(`[data-tile="${baseIdentity}"] .tile-screen`);
       if (tile.screenEl) { tile.screenEl.remove(); tile.screenEl = undefined; }
       if (scrVideo && scrBox) {
@@ -845,6 +821,18 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
         scrBox.appendChild(el);
       }
     }, 0);
+  }
+
+  private syncScreenShare(baseIdentity: string): void {
+    if (!this.room) return;
+    let tile = this.tiles.get(baseIdentity);
+    if (!tile) {
+      const baseParticipant = this.room.remoteParticipants.get(baseIdentity) ?? this.room.localParticipant;
+      if (!baseParticipant) return;
+      tile = this.addTile(baseParticipant);
+      if (!tile) return;
+    }
+    this.syncTile(baseIdentity);
   }
 
   private syncLocalTile(): void {
