@@ -157,12 +157,17 @@ export class MeetingRoomComponent implements OnDestroy {
   }
 
   private readableError(err: unknown): string {
-    if (!err) return 'Failed to join meeting';
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('Unauthorized') || msg.includes('401')) return 'Token rejected (check LiveKit API secret)';
-    if (msg.includes('timeout')) return 'Could not reach LiveKit servers (connection timed out)';
-    if (msg.includes('403')) return 'You are not a member of this room';
-    return `Failed to join: ${msg}`;
+    const anyErr = err as { status?: number; message?: string; error?: unknown; statusText?: string };
+    if (anyErr?.status) {
+      const detail = typeof anyErr.error === 'string' && anyErr.error ? `: ${anyErr.error}` : '';
+      if (anyErr.status === 401) return `Not authenticated (401)${detail}`;
+      if (anyErr.status === 403) return `You are not a member of this room (403)${detail}`;
+      if (anyErr.status === 500) return `Server error (500)${detail} — LiveKit secret configured?`;
+      if (anyErr.status === 404) return `Endpoint not found (404)${detail}`;
+      return `Request failed (${anyErr.status})${detail}`;
+    }
+    if (anyErr?.message) return anyErr.message;
+    try { return JSON.stringify(err); } catch { return 'Unknown error'; }
   }
 
   private addTile(participant: Participant): ParticipantTile {
