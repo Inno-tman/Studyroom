@@ -28,22 +28,28 @@ interface ChatMsg {
   own: boolean;
 }
 
+interface Reaction {
+  id: number;
+  identity: string;
+  emoji: string;
+}
+
 type Phase = 'prejoin' | 'connecting' | 'connected';
+type Panel = '' | 'chat' | 'people' | 'settings';
+type Effect = 'none' | 'blur' | 'grayscale' | 'sepia' | 'invert' | 'mirror';
+type ViewMode = 'grid' | 'spotlight';
 
 @Component({
   selector: 'app-meeting-room',
   standalone: true,
   imports: [NgFor, NgIf, NgClass, FormsModule, DatePipe],
   template: `
-    <div class="meeting-room" [class.screen-full]="fullscreen()">
+    <div class="meeting-room" [class.screen-full]="fullscreen()" [attr.data-effect]="effect()">
       <div class="meeting-header">
         <h2><span class="live-dot" [class.ok]="phase() === 'connected'"></span> {{ roomName() }}</h2>
         <div class="meeting-stats">
           <span class="meeting-count">{{ participants().length }} connected</span>
           <span class="meeting-timer" *ngIf="phase() === 'connected'"><span class="material-icons">schedule</span> {{ elapsed }}</span>
-          <button class="icon-btn" *ngIf="phase() === 'connected'" (click)="toggleChat()" title="In-call chat" [class.active]="chatOpen()">
-            <span class="material-icons">chat</span>
-          </button>
           <button class="icon-btn" *ngIf="phase() === 'connected'" (click)="toggleFullscreen()" title="Toggle fullscreen">
             <span class="material-icons">{{ fullscreen() ? 'fullscreen_exit' : 'fullscreen' }}</span>
           </button>
@@ -116,14 +122,14 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
 
       <!-- ── CONNECTED ────────────────────────────────────────── -->
       <div class="call-body" *ngIf="phase() === 'connected'">
-        <div class="tile-grid" [class.single]="participants().length === 1" [class.maximized]="maximizedId()">
+        <div class="tile-grid" [class.single]="participants().length === 1" [class.maximized]="effectiveMaximized">
           <div *ngFor="let p of participants()"
                class="tile"
                [class.local]="p.isLocal"
                [class.screen]="p.screenSharing"
                [class.speaking]="speakingIds().has(p.identity)"
-               [class.maximized]="p.identity === maximizedId()"
-               [class.hidden]="maximizedId() && p.identity !== maximizedId()"
+               [class.maximized]="isTileMaximized(p.identity)"
+               [class.hidden]="effectiveMaximized && p.identity !== effectiveMaximized"
                [attr.data-tile]="p.identity"
                (click)="toggleMaximize(p.identity)">
             <div class="tile-screen" #tileScreen></div>
@@ -132,6 +138,7 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
                 <span class="avatar">{{ p.name.charAt(0).toUpperCase() }}</span>
               </span>
             </div>
+            <span class="tile-reaction" *ngFor="let r of tileReactions(p.identity)">{{ r.emoji }}</span>
             <div class="tile-meta">
               <span class="quality-badge" [class]="p.quality" [title]="'Connection: ' + p.quality">
                 <span class="material-icons">{{ qualityIcon(p.quality) }}</span>
@@ -145,43 +152,120 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
           </div>
         </div>
 
-        <!-- In-call chat -->
-        <div class="call-chat" [class.open]="chatOpen()">
-          <div class="call-chat-header">
-            <h4>In-call chat</h4>
-            <button class="dialog-close" (click)="chatOpen.set(false)"><span class="material-icons">close</span></button>
+        <!-- Side panel: chat / people / settings -->
+        <div class="side-panel" [class.open]="panel() !== ''">
+          <div class="side-panel-header">
+            <h4>{{ panelTitle }}</h4>
+            <button class="dialog-close" (click)="panel.set('')"><span class="material-icons">close</span></button>
           </div>
-          <div class="call-chat-body" #chatBody>
-            <div *ngFor="let m of chatMessages()" class="call-msg" [class.own]="m.own">
-              <span class="call-msg-name">{{ m.name }}</span>
-              <span class="call-msg-text">{{ m.text }}</span>
-              <span class="call-msg-time">{{ m.ts | date:'shortTime' }}</span>
+
+          <!-- Chat -->
+          <ng-container *ngIf="panel() === 'chat'">
+            <div class="side-panel-body chat">
+              <div *ngFor="let m of chatMessages()" class="call-msg" [class.own]="m.own">
+                <span class="call-msg-name">{{ m.name }}</span>
+                <span class="call-msg-text">{{ m.text }}</span>
+                <span class="call-msg-time">{{ m.ts | date:'shortTime' }}</span>
+              </div>
             </div>
-          </div>
-          <div class="call-chat-input">
-            <input type="text" [(ngModel)]="chatText" (keyup.enter)="sendChat()" placeholder="Message the room…" />
-            <button class="send-btn" (click)="sendChat()" [disabled]="!chatText.trim()"><span class="material-icons">send</span></button>
-          </div>
+            <div class="chat-input-row">
+              <input type="text" [(ngModel)]="chatText" (keyup.enter)="sendChat()" placeholder="Message the room…" />
+              <button class="send-btn" (click)="sendChat()" [disabled]="!chatText.trim()"><span class="material-icons">send</span></button>
+            </div>
+          </ng-container>
+
+          <!-- People -->
+          <ng-container *ngIf="panel() === 'people'">
+            <div class="side-panel-body">
+              <div class="person-row" *ngFor="let p of peopleList">
+                <span class="person-avatar" [class.speaking]="speakingIds().has(p.identity)">{{ p.name.charAt(0).toUpperCase() }}</span>
+                <span class="person-info">
+                  <span class="person-name">{{ p.name }}{{ p.isLocal ? ' (You)' : '' }}</span>
+                  <span class="person-sub">{{ p.isLocal ? 'You' : (p.screenSharing ? 'Presenting' : 'Participant') }}</span>
+                </span>
+                <span class="person-flags">
+                  <span class="material-icons person-flag" [class.off]="p.micMuted" title="Microphone">{{ p.micMuted ? 'mic_off' : 'mic' }}</span>
+                  <span class="material-icons person-flag" [class.off]="p.camMuted" title="Camera">{{ p.camMuted ? 'videocam_off' : 'videocam' }}</span>
+                  <span class="material-icons person-flag share" *ngIf="p.screenSharing" title="Screen share">screen_share</span>
+                </span>
+              </div>
+              <p class="panel-empty" *ngIf="participants().length <= 1">No one else is here yet.</p>
+            </div>
+          </ng-container>
+
+          <!-- Settings -->
+          <ng-container *ngIf="panel() === 'settings'">
+            <div class="side-panel-body settings">
+              <h5 class="settings-title">Video effects</h5>
+              <div class="effect-chips">
+                <button *ngFor="let e of effectOptions" class="chip" [class.active]="effect() === e.v" (click)="effect.set(e.v)">{{ e.l }}</button>
+              </div>
+              <label class="field settings-field">
+                Camera
+                <select [value]="selectedCam()" (change)="onSettingsCamSelect($event)">
+                  <option *ngFor="let d of videoDevices()" [value]="d.deviceId">{{ d.label || 'Camera ' + d.deviceId }}</option>
+                </select>
+              </label>
+              <label class="field settings-field">
+                Microphone
+                <select [value]="selectedMic()" (change)="onSettingsMicSelect($event)">
+                  <option *ngFor="let d of audioDevices()" [value]="d.deviceId">{{ d.label || 'Microphone ' + d.deviceId }}</option>
+                </select>
+              </label>
+              <div class="settings-miclevel">
+                <span class="settings-miclabel">Mic level</span>
+                <div class="mic-level-bar"><div class="mic-level-fill" [style.width.%]="micLevel()"></div></div>
+              </div>
+            </div>
+          </ng-container>
         </div>
       </div>
 
       <div class="meeting-controls" *ngIf="phase() === 'connected'">
-        <button class="ctl" [class.on]="!micOn()" (click)="toggleMic()" title="Mute / unmute mic (M)">
-          <span class="material-icons">{{ micOn() ? 'mic' : 'mic_off' }}</span>
-          <span class="ctl-label">{{ micOn() ? 'Mute' : 'Unmute' }}</span>
-        </button>
-        <button class="ctl" [class.on]="!camOn()" (click)="toggleCam()" title="Camera on / off (V)">
-          <span class="material-icons">{{ camOn() ? 'videocam' : 'videocam_off' }}</span>
-          <span class="ctl-label">{{ camOn() ? 'Cam off' : 'Cam on' }}</span>
-        </button>
-        <button class="ctl" [class.on]="sharing()" (click)="toggleScreenShare()" title="Share screen (D)">
-          <span class="material-icons">screen_share</span>
-          <span class="ctl-label">{{ sharing() ? 'Stop share' : 'Share' }}</span>
-        </button>
-        <button class="ctl leave" (click)="leave()" title="Leave call (Esc)">
-          <span class="material-icons">call_end</span>
-          <span class="ctl-label">Leave</span>
-        </button>
+        <div class="ctl-group">
+          <button class="ctl" [class.on]="!micOn()" (click)="toggleMic()" title="Mute / unmute mic (M)">
+            <span class="material-icons">{{ micOn() ? 'mic' : 'mic_off' }}</span>
+            <span class="ctl-label">{{ micOn() ? 'Mute' : 'Unmute' }}</span>
+          </button>
+          <button class="ctl" [class.on]="!camOn()" (click)="toggleCam()" title="Camera on / off (V)">
+            <span class="material-icons">{{ camOn() ? 'videocam' : 'videocam_off' }}</span>
+            <span class="ctl-label">{{ camOn() ? 'Cam off' : 'Cam on' }}</span>
+          </button>
+          <button class="ctl" [class.on]="sharing()" (click)="toggleScreenShare()" title="Share screen (D)">
+            <span class="material-icons">screen_share</span>
+            <span class="ctl-label">{{ sharing() ? 'Stop share' : 'Share' }}</span>
+          </button>
+        </div>
+        <div class="ctl-group ctl-center">
+          <div class="ctl-wrap">
+            <button class="ctl ctl-round" [class.on]="reactOpen()" (click)="reactOpen.set(!reactOpen())" title="Send a reaction">
+              <span class="material-icons">emoji_emotions</span>
+            </button>
+            <div class="react-tray" *ngIf="reactOpen()">
+              <button *ngFor="let r of reactionList" (click)="sendReaction(r)">{{ r }}</button>
+            </div>
+          </div>
+          <button class="ctl ctl-round" [class.active]="panel() === 'chat'" (click)="togglePanel('chat')" title="In-call chat">
+            <span class="material-icons">chat</span>
+            <span class="badge" *ngIf="unread() > 0">{{ unread() }}</span>
+          </button>
+          <button class="ctl ctl-round" [class.active]="panel() === 'people'" (click)="togglePanel('people')" title="People / attendees">
+            <span class="material-icons">group</span>
+            <span class="badge badge-people">{{ participants().length }}</span>
+          </button>
+          <button class="ctl ctl-round" [class.active]="panel() === 'settings'" (click)="togglePanel('settings')" title="Video effects & audio settings">
+            <span class="material-icons">more_horiz</span>
+          </button>
+        </div>
+        <div class="ctl-group">
+          <button class="ctl ctl-round" [class.on]="view() === 'spotlight'" (click)="toggleView()" title="Switch view (G)">
+            <span class="material-icons">{{ view() === 'grid' ? 'featured_video' : 'grid_view' }}</span>
+          </button>
+          <button class="ctl leave" (click)="leave()" title="Leave call (Esc)">
+            <span class="material-icons">call_end</span>
+            <span class="ctl-label">Leave</span>
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -277,42 +361,95 @@ type Phase = 'prejoin' | 'connecting' | 'connected';
     .quality-badge.lost { color: var(--error); }
     .quality-badge.unknown { color: var(--text-muted); }
 
-    /* ── In-call chat ──────────────────────────────────────── */
-    .call-chat { position: absolute; top: 0; right: 0; bottom: 0; width: 0; z-index: 20; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: width 0.2s ease; }
-    .call-chat.open { width: 320px; }
-    .call-chat-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
-    .call-chat-header h4 { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
+    /* ── Side panel (chat / people / settings) ────────────── */
+    .side-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 0; z-index: 20; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: width 0.2s ease; }
+    .side-panel.open { width: 320px; }
+    .side-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .side-panel-header h4 { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
     .dialog-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
     .dialog-close:hover { color: var(--text-primary); }
-    .call-chat-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .side-panel-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
     .call-msg { display: flex; flex-direction: column; gap: 2px; }
     .call-msg.own { align-items: flex-end; }
     .call-msg-name { font-size: var(--font-11); font-weight: 700; color: var(--accent); }
     .call-msg-text { font-size: var(--font-13); color: var(--text-primary); background: var(--background); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; word-break: break-word; max-width: 90%; }
     .call-msg.own .call-msg-text { background: var(--primary); border-color: var(--primary); color: #fff; }
     .call-msg-time { font-size: var(--font-10); color: var(--text-muted); }
-    .call-chat-input { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
-    .call-chat-input input { flex: 1; padding: 9px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none; }
-    .call-chat-input input:focus { border-color: var(--primary); }
+    .chat-input-row { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
+    .chat-input-row input { flex: 1; padding: 9px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none; }
+    .chat-input-row input:focus { border-color: var(--primary); }
     .send-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--primary); border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; flex-shrink: 0; }
     .send-btn:hover:not(:disabled) { background: var(--primary-hover); }
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .send-btn .material-icons { font-size: var(--font-18); }
 
+    /* ── People ───────────────────────────────────────────── */
+    .person-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; transition: background 0.15s; }
+    .person-row:hover { background: rgba(255,255,255,0.04); }
+    .person-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 700; font-size: var(--font-14); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .person-avatar.speaking { box-shadow: 0 0 0 2px var(--success); }
+    .person-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .person-name { font-size: var(--font-13); font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .person-sub { font-size: var(--font-11); color: var(--text-muted); }
+    .person-flags { display: flex; align-items: center; gap: 8px; }
+    .person-flag { font-size: var(--font-18); color: var(--text-secondary); }
+    .person-flag.off { color: var(--error); }
+    .person-flag.share { color: var(--success); }
+    .panel-empty { font-size: var(--font-12); color: var(--text-muted); text-align: center; padding: 16px 0; }
+
+    /* ── Settings ─────────────────────────────────────────── */
+    .settings { gap: 12px; }
+    .settings-title { font-size: var(--font-12); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; margin: 4px 0 0; }
+    .effect-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--background); color: var(--text-secondary); font-size: var(--font-12); font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .chip:hover { border-color: var(--primary); color: var(--text-primary); }
+    .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .settings-field select { width: 100%; }
+    .settings-miclevel { display: flex; flex-direction: column; gap: 6px; }
+    .settings-miclabel { font-size: var(--font-12); font-weight: 600; color: var(--text-secondary); }
+    .settings-miclevel .mic-level-bar { width: 100%; }
+
+    /* ── Reactions ────────────────────────────────────────── */
+    .tile-reaction { position: absolute; top: 26%; left: 50%; font-size: 42px; z-index: 6; pointer-events: none; animation: reactFloat 2.6s ease-out forwards; }
+    @keyframes reactFloat { 0% { opacity: 0; transform: translate(-50%, 20px) scale(0.5); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -120px) scale(1.3); } }
+
+    /* ── Video effects (local tile + prejoin preview) ─────── */
+    .meeting-room[data-effect="blur"] .tile.local .tile-video video,
+    .meeting-room[data-effect="blur"] .preview-video video { filter: blur(10px); }
+    .meeting-room[data-effect="grayscale"] .tile.local .tile-video video,
+    .meeting-room[data-effect="grayscale"] .preview-video video { filter: grayscale(1); }
+    .meeting-room[data-effect="sepia"] .tile.local .tile-video video,
+    .meeting-room[data-effect="sepia"] .preview-video video { filter: sepia(1); }
+    .meeting-room[data-effect="invert"] .tile.local .tile-video video,
+    .meeting-room[data-effect="invert"] .preview-video video { filter: invert(1); }
+    .meeting-room[data-effect="mirror"] .tile.local .tile-video video,
+    .meeting-room[data-effect="mirror"] .preview-video video { transform: scaleX(-1); }
+
     /* ── Controls ──────────────────────────────────────────── */
     .meeting-controls { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px 16px; background: var(--surface); border-top: 1px solid var(--border); }
-    .ctl { width: auto; min-width: 76px; height: 64px; border-radius: 12px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 14px; transition: transform 0.15s, background 0.15s; }
+    .ctl-group { display: flex; align-items: center; gap: 8px; }
+    .ctl { width: auto; min-width: 76px; height: 64px; border-radius: 12px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 14px; transition: transform 0.15s, background 0.15s; position: relative; }
     .ctl:hover { transform: scale(1.05); background: rgba(255,255,255,0.18); }
     .ctl.on { background: var(--error); }
+    .ctl.active { background: var(--primary); }
     .ctl.leave { background: var(--error); }
     .ctl .material-icons { font-size: var(--font-24); }
     .ctl-label { font-size: var(--font-11); font-weight: 600; }
+    .ctl-round { width: 52px; min-width: 52px; height: 52px; padding: 6px; }
+    .ctl-round .ctl-label { display: none; }
+    .badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--error); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .badge-people { background: rgba(255,255,255,0.2); }
+    .react-tray { position: absolute; bottom: 62px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px; z-index: 30; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .react-tray button { width: 40px; height: 40px; font-size: 22px; background: none; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.12s; }
+    .react-tray button:hover { transform: scale(1.25); background: rgba(255,255,255,0.1); }
 
     /* ── Mobile ────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .prejoin { flex-direction: column; align-items: stretch; padding: 12px; }
       .prejoin-panel { width: 100%; }
-      .call-chat.open { width: 100%; }
+      .side-panel.open { width: 100%; }
+      .meeting-controls { justify-content: flex-start; overflow-x: auto; }
+      .ctl { min-width: 64px; height: 60px; }
     }
   `]
 })
@@ -337,9 +474,23 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   fullscreen = signal(false);
   maximizedId = signal('');
   speakingIds = signal<Set<string>>(new Set());
-  chatOpen = signal(false);
   chatMessages = signal<ChatMsg[]>([]);
   chatText = '';
+  panel = signal<Panel>('');
+  unread = signal(0);
+  reactions = signal<Reaction[]>([]);
+  reactOpen = signal(false);
+  effect = signal<Effect>('none');
+  view = signal<ViewMode>('grid');
+  effectOptions: { v: Effect; l: string }[] = [
+    { v: 'none', l: 'None' },
+    { v: 'blur', l: 'Blur' },
+    { v: 'grayscale', l: 'B&W' },
+    { v: 'sepia', l: 'Sepia' },
+    { v: 'invert', l: 'Invert' },
+    { v: 'mirror', l: 'Mirror' }
+  ];
+  reactionList = ['👍', '❤️', '😂', '😮', '😢', '👏', '🙌'];
   duration = signal(0);
   videoDevices = signal<MediaDeviceInfo[]>([]);
   audioDevices = signal<MediaDeviceInfo[]>([]);
@@ -356,6 +507,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   private analyser?: { calculateVolume: () => number; cleanup: () => Promise<void> };
   private startedAt = 0;
   private leaving = false;
+  private reactionSeq = 0;
 
   get elapsed(): string {
     const s = this.duration();
@@ -363,6 +515,41 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     const h = Math.floor(m / 60);
     if (h > 0) return `${h}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     return `${m}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  get peopleList(): ParticipantTile[] {
+    return this.participants();
+  }
+
+  get panelTitle(): string {
+    switch (this.panel()) {
+      case 'chat': return 'In-call chat';
+      case 'people': return `People (${this.participants().length})`;
+      case 'settings': return 'Settings';
+      default: return '';
+    }
+  }
+
+  get effectiveMaximized(): string {
+    if (this.maximizedId()) return this.maximizedId();
+    if (this.view() === 'spotlight') return this.spotlightIdentity;
+    return '';
+  }
+
+  get spotlightIdentity(): string {
+    const tiles = this.participants();
+    if (tiles.length < 2) return '';
+    const screen = tiles.find(t => t.screenSharing);
+    if (screen) return screen.identity;
+    const speaking = tiles.find(t => !t.isLocal && this.speakingIds().has(t.identity));
+    if (speaking) return speaking.identity;
+    const remote = tiles.find(t => !t.isLocal);
+    if (remote) return remote.identity;
+    return '';
+  }
+
+  isTileMaximized(identity: string): boolean {
+    return this.effectiveMaximized === identity;
   }
 
   ngOnInit() {
@@ -694,19 +881,24 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     try {
       const text = new TextDecoder().decode(payload);
       const data = JSON.parse(text);
-      if (data?.t !== 'chat' || !data?.m) return;
+      if (!data?.t) return;
       const from = participant?.identity || 'unknown';
       if (this.room && from === this.room.localParticipant.identity) return;
-      const name = participant?.name || from;
-      this.pushChat({ from, name, text: String(data.m), ts: Date.now(), own: false });
+      if (data.t === 'chat' && data.m) {
+        const name = participant?.name || from;
+        this.pushChat({ from, name, text: String(data.m), ts: Date.now(), own: false });
+      } else if (data.t === 'react' && data.r) {
+        this.addReaction(from, String(data.r));
+      }
     } catch { }
   }
 
   private pushChat(msg: ChatMsg): void {
-    const list = [...this.chatMessages(), msg];
-    this.chatMessages.set(list.slice(-200));
+    const list = [...this.chatMessages(), msg].slice(-200);
+    this.chatMessages.set(list);
+    if (!msg.own && this.panel() !== 'chat') this.unread.set(this.unread() + 1);
     setTimeout(() => {
-      const el = document.querySelector('.call-chat-body');
+      const el = document.querySelector('.side-panel-body.chat');
       if (el) el.scrollTop = el.scrollHeight;
     }, 0);
   }
@@ -723,7 +915,70 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     } catch { }
   }
 
-  toggleChat(): void { this.chatOpen.set(!this.chatOpen()); }
+  togglePanel(p: Exclude<Panel, ''>): void {
+    if (this.panel() === p) { this.panel.set(''); return; }
+    this.panel.set(p);
+    if (p === 'chat') this.unread.set(0);
+    if (p === 'settings') void this.loadDevices();
+    setTimeout(() => {
+      const el = document.querySelector('.side-panel-body.chat');
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 0);
+  }
+
+  tileReactions(identity: string): Reaction[] {
+    return this.reactions().filter(r => r.identity === identity);
+  }
+
+  private addReaction(identity: string, emoji: string): void {
+    const id = ++this.reactionSeq;
+    this.reactions.set([...this.reactions(), { id, identity, emoji }].slice(-40));
+    setTimeout(() => {
+      this.reactions.set(this.reactions().filter(r => r.id !== id));
+    }, 2600);
+  }
+
+  sendReaction(emoji: string): void {
+    this.reactOpen.set(false);
+    if (!this.room) return;
+    const local = this.room.localParticipant;
+    this.addReaction(local.identity, emoji);
+    try {
+      const payload = new TextEncoder().encode(JSON.stringify({ t: 'react', r: emoji }));
+      void this.room.localParticipant.publishData(payload, { reliable: true });
+    } catch { }
+  }
+
+  toggleView(): void {
+    this.view.set(this.view() === 'grid' ? 'spotlight' : 'grid');
+  }
+
+  private localVideoPublication(): TrackPublication | undefined {
+    if (!this.room) return undefined;
+    return [...this.room.localParticipant.videoTrackPublications.values()]
+      .find(p => p.source === Track.Source.Camera);
+  }
+
+  private localAudioPublication(): TrackPublication | undefined {
+    if (!this.room) return undefined;
+    return [...this.room.localParticipant.audioTrackPublications.values()]
+      .find(p => p.source === Track.Source.Microphone);
+  }
+
+  async onSettingsCamSelect(event: Event): Promise<void> {
+    const id = (event.target as HTMLSelectElement).value;
+    this.selectedCam.set(id);
+    const pub = this.localVideoPublication();
+    try { await (pub?.track as any)?.restartTrack?.({ deviceId: id }); } catch { }
+    if (this.room) this.syncTile(this.room.localParticipant.identity);
+  }
+
+  async onSettingsMicSelect(event: Event): Promise<void> {
+    const id = (event.target as HTMLSelectElement).value;
+    this.selectedMic.set(id);
+    const pub = this.localAudioPublication();
+    try { await (pub?.track as any)?.restartTrack?.({ deviceId: id }); } catch { }
+  }
 
   toggleMaximize(identity: string): void {
     this.maximizedId.set(this.maximizedId() === identity ? '' : identity);
@@ -756,6 +1011,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     if (key === 'm') { event.preventDefault(); void this.toggleMic(); }
     else if (key === 'v') { event.preventDefault(); void this.toggleCam(); }
     else if (key === 'd') { event.preventDefault(); void this.toggleScreenShare(); }
+    else if (key === 'g') { event.preventDefault(); this.toggleView(); }
     else if (key === 'escape') { this.leave(); }
   }
 
@@ -800,6 +1056,15 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.previewAudioTrack = undefined;
     this.tiles.clear();
     this.participants.set([]);
+    this.panel.set('');
+    this.unread.set(0);
+    this.reactions.set([]);
+    this.reactOpen.set(false);
+    this.chatMessages.set([]);
+    this.chatText = '';
+    this.view.set('grid');
+    this.maximizedId.set('');
+    this.effect.set('none');
     this.phase.set('prejoin');
     this.connected.set(false);
     this.error.set('');
