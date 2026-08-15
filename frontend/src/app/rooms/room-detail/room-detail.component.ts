@@ -1,5 +1,4 @@
 import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef, HostListener } from '@angular/core';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,6 +20,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
 import { NotesEditorComponent } from '../../notes/notes-editor/notes-editor.component';
 import { PomodoroTimerComponent } from '../../timer/pomodoro-timer/pomodoro-timer.component';
 import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.component';
+import { MeetingRoomComponent } from '../../meeting/meeting-room/meeting-room.component';
 
 interface RoomTab { id: string; label: string; icon: string; }
 
@@ -35,7 +35,7 @@ const TABS: RoomTab[] = [
 @Component({
   selector: 'app-room-detail',
   standalone: true,
-  imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent],
+  imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent, MeetingRoomComponent],
   template: `
     <div class="room-detail">
       <!-- ── Header ─────────────────────────────────────────── -->
@@ -297,18 +297,9 @@ const TABS: RoomTab[] = [
         </div>
       </div>
 
-      <!-- ── Call overlay ────────────────────────────────────── -->
+      <!-- ── Call overlay (LiveKit) ──────────────────────────── -->
       <div class="call-overlay" *ngIf="isMember && inCall">
-        <div class="call-overlay-header">
-          <h2><span class="live-dot"></span> {{ room?.name }}</h2>
-          <button class="btn-primary end-call-btn" (click)="toggleCall()" title="End call"><span class="material-icons">call_end</span> <span class="end-call-label">End Call</span></button>
-        </div>
-        <iframe
-          class="call-frame"
-          [src]="callUrl"
-          allow="camera; microphone; speaker-selection; display-capture; fullscreen; clipboard-read; clipboard-write; web-share; autoplay; picture-in-picture"
-          allowfullscreen
-        ></iframe>
+        <app-meeting-room [roomId]="roomId" [roomName]="room?.name || 'Meeting'" (leaveRequest)="toggleCall()" />
       </div>
 
       <!-- ── Mobile FAB + tab bar ────────────────────────────── -->
@@ -689,7 +680,6 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private invitationService = inject(InvitationService);
   private friendService = inject(FriendService);
-  private sanitizer = inject(DomSanitizer);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
 
@@ -761,20 +751,6 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
 
   get currentUserId(): string | undefined {
     return this.auth.currentUser()?.id;
-  }
-
-  private cachedCallUrl?: SafeResourceUrl;
-
-  get callUrl(): SafeResourceUrl {
-    if (!this.cachedCallUrl) {
-      const user = this.auth.currentUser();
-      const name = encodeURIComponent(user?.username || user?.email || 'Student');
-      const room = encodeURIComponent(`studyroom-${this.roomId}`);
-      this.cachedCallUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
-        `https://sfu.mirotalk.com/join?room=${room}&name=${name}&audio=1&video=1&screen=1&duration=unlimited`
-      );
-    }
-    return this.cachedCallUrl;
   }
 
   toggleCall() {

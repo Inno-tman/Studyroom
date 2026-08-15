@@ -103,6 +103,9 @@ builder.Services.AddHttpClient<IResearchService, ResearchService>();
 builder.Services.Configure<VapidSettings>(builder.Configuration.GetSection("Vapid"));
 builder.Services.AddScoped<IPushService, PushService>();
 
+builder.Services.Configure<LivekitSettings>(builder.Configuration.GetSection("Livekit"));
+builder.Services.AddScoped<ILiveKitService, LiveKitService>();
+
 builder.Services.AddHostedService<StaleDirectMessageNotifier>();
 
 var app = builder.Build();
