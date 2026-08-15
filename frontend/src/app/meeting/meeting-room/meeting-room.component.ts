@@ -123,6 +123,7 @@ type ViewMode = 'grid' | 'spotlight';
 
       <!-- ── CONNECTED ────────────────────────────────────────── -->
       <div class="call-body" *ngIf="phase() === 'connected'">
+        <div class="toast" *ngIf="notice()">{{ notice() }}</div>
         <div class="tile-grid" [class.single]="participants().length === 1" [class.maximized]="effectiveMaximized">
           <div *ngFor="let p of participants()"
                class="tile"
@@ -236,9 +237,10 @@ type ViewMode = 'grid' | 'spotlight';
             <span class="material-icons">{{ camOn() ? 'videocam' : 'videocam_off' }}</span>
             <span class="ctl-label">{{ camOn() ? 'Cam off' : 'Cam on' }}</span>
           </button>
-          <button class="ctl" [class.on]="sharing()" (click)="toggleScreenShare()" title="Share screen (D)">
+          <button class="ctl" [class.on]="sharing()" [class.disabled]="otherSharing() && !sharing()"
+                  (click)="toggleScreenShare()" [title]="otherSharing() && !sharing() ? 'Someone else is sharing' : 'Share screen (D)'">
             <span class="material-icons">screen_share</span>
-            <span class="ctl-label">{{ sharing() ? 'Stop share' : 'Share' }}</span>
+            <span class="ctl-label">{{ sharing() ? 'Stop share' : (otherSharing() ? 'In use' : 'Share') }}</span>
           </button>
         </div>
         <div class="ctl-group ctl-center">
@@ -446,6 +448,10 @@ type ViewMode = 'grid' | 'spotlight';
     .ctl { width: auto; min-width: 76px; height: 64px; border-radius: 12px; border: none; cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 14px; transition: transform 0.15s, background 0.15s; position: relative; }
     .ctl:hover { transform: scale(1.05); background: rgba(255,255,255,0.18); }
     .ctl.on { background: var(--error); }
+    .ctl.disabled { opacity: 0.45; cursor: not-allowed; }
+    .ctl.disabled:hover { transform: none; background: rgba(255,255,255,0.1); }
+    .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 60; background: rgba(20,20,30,0.95); border: 1px solid var(--border); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: none; animation: toast-in 0.2s ease; }
+    @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(-6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
     .ctl.active { background: var(--primary); }
     .ctl.leave { background: var(--error); }
     .ctl.end { background: rgba(255,255,255,0.06); border: 1px solid var(--error); color: #f87171; }
@@ -483,6 +489,8 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   camOn = signal(true);
   cameraOn = signal(true);
   sharing = signal(false);
+  otherSharing = signal(false);
+  notice = signal('');
   connected = signal(false);
   error = signal('');
   joining = signal(false);
@@ -652,22 +660,24 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       this.room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _p, participant) => {
         this.attachRemoteAudio(track);
         this.syncTile(participant.identity);
+        this.refreshScreenShareLock();
       });
       this.room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _p, participant) => {
         this.detachRemoteAudio(track);
         this.syncTile(participant.identity);
+        this.refreshScreenShareLock();
       });
-      this.room.on(RoomEvent.ParticipantConnected, (participant) => { this.addTile(participant); this.syncTile(participant.identity); });
-      this.room.on(RoomEvent.ParticipantDisconnected, (participant) => this.removeTile(participant.identity));
+      this.room.on(RoomEvent.ParticipantConnected, (participant) => { this.addTile(participant); this.syncTile(participant.identity); this.refreshScreenShareLock(); });
+      this.room.on(RoomEvent.ParticipantDisconnected, (participant) => { this.removeTile(participant.identity); this.refreshScreenShareLock(); });
       this.room.on(RoomEvent.Disconnected, () => {
         if (this.leaving) return;
         this.doLeave(false);
         this.phase.set('prejoin');
         this.error.set('You were disconnected from the meeting.');
       });
-      this.room.on(RoomEvent.LocalTrackPublished, () => { this.syncTile(this.room!.localParticipant.identity); this.syncLocalTile(); });
-      this.room.on(RoomEvent.TrackMuted, (pub: TrackPublication, participant: Participant) => this.onMuteState(pub, participant.identity));
-      this.room.on(RoomEvent.TrackUnmuted, (pub: TrackPublication, participant: Participant) => this.onMuteState(pub, participant.identity));
+      this.room.on(RoomEvent.LocalTrackPublished, () => { this.syncTile(this.room!.localParticipant.identity); this.syncLocalTile(); this.refreshScreenShareLock(); });
+      this.room.on(RoomEvent.TrackMuted, (pub: TrackPublication, participant: Participant) => { this.onMuteState(pub, participant.identity); this.refreshScreenShareLock(); });
+      this.room.on(RoomEvent.TrackUnmuted, (pub: TrackPublication, participant: Participant) => { this.onMuteState(pub, participant.identity); this.refreshScreenShareLock(); });
       this.room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => this.onSpeakers(speakers));
       this.room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => this.onQuality(quality, participant));
       this.room.on(RoomEvent.DataReceived, (payload, participant) => this.onData(payload, participant));
@@ -701,6 +711,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
       this.localTile = this.addTile(lp);
       this.syncLocalTile();
       this.syncTile(lp.identity);
+      this.refreshScreenShareLock();
 
       for (const remote of this.room.remoteParticipants.values()) {
         this.addTile(remote);
@@ -1098,10 +1109,30 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     if (this.room?.localParticipant.isScreenShareEnabled) {
       await this.room.localParticipant.setScreenShareEnabled(false);
     } else {
+      if (this.otherSharing()) {
+        this.showNotice('Another participant is already sharing their screen.');
+        return;
+      }
       await this.room?.localParticipant.setScreenShareEnabled(true, { audio: true });
     }
     this.syncLocalTile();
+    this.refreshScreenShareLock();
     if (this.room) this.syncTile(this.room.localParticipant.identity);
+  }
+
+  private refreshScreenShareLock(): void {
+    if (!this.room) { this.otherSharing.set(false); return; }
+    const sharer = Array.from(this.room.remoteParticipants.values())
+      .find(p => !p.identity.endsWith('_screen') && (p.getTrackPublication(Track.Source.ScreenShare)?.isMuted === false));
+    this.otherSharing.set(!!sharer);
+  }
+
+  private noticeTimer?: any;
+
+  private showNotice(msg: string): void {
+    this.notice.set(msg);
+    if (this.noticeTimer) clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => this.notice.set(''), 2500);
   }
 
   leave(): void {
@@ -1118,6 +1149,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.leaving = true;
     if (this.durationTimer) clearInterval(this.durationTimer);
     if (this.micLevelTimer) clearInterval(this.micLevelTimer);
+    if (this.noticeTimer) clearTimeout(this.noticeTimer);
     try { void this.analyser?.cleanup(); } catch { }
     try { this.previewVideoTrack?.stop(); } catch { }
     try { this.previewAudioTrack?.stop(); } catch { }
@@ -1139,6 +1171,8 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.maximizedId.set('');
     this.effect.set('none');
     this.isHost.set(false);
+    this.otherSharing.set(false);
+    this.notice.set('');
     this.phase.set('prejoin');
     this.connected.set(false);
     this.error.set('');
