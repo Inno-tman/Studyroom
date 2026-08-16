@@ -5,11 +5,12 @@ import { ProfileReminderComponent } from './shared/components/profile-reminder/p
 import { CommandPaletteComponent } from './shared/components/command-palette/command-palette.component';
 import { PresenceDockComponent } from './shared/components/presence-dock/presence-dock.component';
 import { CallOverlayComponent } from './shared/components/call-overlay/call-overlay.component';
+import { YoutubePlayerComponent } from './shared/components/youtube-player/youtube-player.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, CallOverlayComponent],
+  imports: [RouterOutlet, NavbarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, CallOverlayComponent, YoutubePlayerComponent],
   template: `
     <div class="app-container">
       <app-navbar />
@@ -22,6 +23,7 @@ import { CallOverlayComponent } from './shared/components/call-overlay/call-over
       <app-command-palette />
       <app-presence-dock />
       <app-call-overlay />
+      <app-youtube-player />
     </div>
   `,
   styles: [``]

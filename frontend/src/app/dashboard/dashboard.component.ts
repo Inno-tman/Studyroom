@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +6,7 @@ import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
 import { StatisticsService } from '../core/services/statistics.service';
 import { YoutubeService, YoutubeSearchResult } from '../core/services/youtube.service';
+import { YoutubePlayerService } from '../core/services/youtube-player.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
@@ -70,16 +71,12 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <span class="material-icons">play_circle</span>
             <div>
               <h2>Study Player</h2>
-              <p>Search YouTube for lo-fi, focus music or tutorials — play it right here while you study.</p>
+              <p>Search YouTube for lo-fi, focus music or tutorials — it plays in the mini-player while you browse the app.</p>
             </div>
           </div>
-          <button class="player-close" *ngIf="youtubeEmbed" (click)="closeVideo()" aria-label="Back to search">
-            <span class="material-icons">close</span>
-          </button>
         </div>
 
-        <ng-container *ngIf="!youtubeEmbed">
-          <div class="player-input">
+        <div class="player-input">
             <input
               [(ngModel)]="ytQuery"
               (keyup.enter)="searchYoutube()"
@@ -97,14 +94,19 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           <div class="yt-error" *ngIf="ytError">{{ ytError }}</div>
 
           <div class="yt-results" *ngIf="ytResults.length > 0">
-            <button class="yt-result" *ngFor="let r of ytResults" (click)="playYoutube(r.id)">
-              <img *ngIf="r.thumbnail; else noThumb" [src]="r.thumbnail" alt="" loading="lazy" />
-              <ng-template #noThumb><span class="yt-no-thumb material-icons">play_circle</span></ng-template>
-              <div class="yt-result-info">
-                <span class="yt-result-title">{{ r.title }}</span>
-                <span class="yt-result-channel">{{ r.channel }}</span>
-              </div>
-            </button>
+            <div class="yt-result" *ngFor="let r of ytResults">
+              <button class="yt-result-add" title="Add to queue" (click)="enqueue(r)">
+                <span class="material-icons">playlist_add</span>
+              </button>
+              <button class="yt-result-play" (click)="playYoutube(r)">
+                <img *ngIf="r.thumbnail; else noThumb" [src]="r.thumbnail" alt="" loading="lazy" />
+                <ng-template #noThumb><span class="yt-no-thumb material-icons">play_circle</span></ng-template>
+                <div class="yt-result-info">
+                  <span class="yt-result-title">{{ r.title }}</span>
+                  <span class="yt-result-channel">{{ r.channel }}</span>
+                </div>
+              </button>
+            </div>
           </div>
 
           <div class="player-link-row">
@@ -120,17 +122,6 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
               </button>
             </div>
           </div>
-        </ng-container>
-
-        <div class="player-frame" *ngIf="youtubeEmbed">
-          <div class="yt-player-wrap">
-            <div #playerHost class="yt-player-host"></div>
-            <button class="yt-overlay-play" *ngIf="!ytPlaying && !ytError" (click)="playVideo()" aria-label="Play video">
-              <span class="material-icons">play_arrow</span>
-            </button>
-            <div class="yt-error-overlay" *ngIf="ytError">This video couldn't be played. Try another one.</div>
-          </div>
-        </div>
       </div>
 
       <!-- ── Segmented sections ───────────────────────────────── -->
@@ -245,12 +236,6 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .player-title .material-icons { font-size: 34px; color: var(--error); }
     .player-title h2 { font-size: var(--font-17); font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
     .player-title p { font-size: var(--font-13); color: var(--text-muted); }
-    .player-close {
-      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
-      background: none; color: var(--text-secondary); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; transition: background 0.15s;
-    }
-    .player-close:hover { background: var(--surface-hover); }
     .player-input { display: flex; gap: 10px; }
     .player-input input {
       flex: 1; min-width: 0; padding: 11px 14px; border-radius: 10px;
@@ -280,12 +265,26 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       gap: 12px; margin-top: 16px;
     }
     .yt-result {
-      display: flex; flex-direction: column; gap: 8px; text-align: left;
+      position: relative; display: flex; flex-direction: column; gap: 8px;
       background: var(--surface-hover); border: 1px solid var(--border); border-radius: 12px;
-      padding: 10px; cursor: pointer; transition: border-color 0.15s, transform 0.15s;
+      padding: 10px; transition: border-color 0.15s, transform 0.15s;
       overflow: hidden;
     }
     .yt-result:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .yt-result-play {
+      width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left;
+      background: none; border: none; padding: 0; cursor: pointer; color: inherit;
+    }
+    .yt-result-add {
+      position: absolute; top: 8px; right: 8px; z-index: 2;
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text-primary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25); transition: border-color 0.15s, color 0.15s;
+    }
+    .yt-result-add:hover { border-color: var(--primary); color: var(--primary); }
+    .yt-result-add .material-icons { font-size: 18px; }
     .yt-result img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #000; }
     .yt-no-thumb { width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 36px; background: var(--surface); border-radius: 8px; }
     .yt-result-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -297,24 +296,6 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .player-link-row { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
     .player-link-row > span { font-size: var(--font-12); color: var(--text-muted); }
     .player-link { margin-top: 0; }
-    .player-frame {
-      position: relative; padding-top: 56.25%; border-radius: 12px; overflow: hidden;
-      background: #000;
-    }
-    .yt-player-wrap { position: absolute; inset: 0; }
-    .yt-player-host { width: 100%; height: 100%; }
-    .yt-player-host iframe { width: 100%; height: 100%; border: none; }
-    .yt-overlay-play {
-      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.55); border: none; cursor: pointer; color: #fff;
-      transition: background 0.15s;
-    }
-    .yt-overlay-play:hover { background: rgba(0,0,0,0.35); }
-    .yt-overlay-play .material-icons { font-size: 64px; }
-    .yt-error-overlay {
-      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-      background: #000; color: rgba(255,255,255,0.85); font-size: var(--font-13); padding: 0 16px; text-align: center;
-    }
 
     /* Segmented tabs */
     .section { margin-bottom: 32px; }
@@ -362,6 +343,7 @@ export class DashboardComponent implements OnInit {
   private roomService = inject(RoomService);
   private statsService = inject(StatisticsService);
   private youtubeService = inject(YoutubeService);
+  private youtubePlayer = inject(YoutubePlayerService);
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
@@ -369,28 +351,13 @@ export class DashboardComponent implements OnInit {
   loading = true;
   tab: 'mine' | 'all' = 'mine';
   youtubeUrl = '';
-  youtubeEmbed = '';
   ytQuery = '';
   ytResults: YoutubeSearchResult[] = [];
   ytLoading = false;
   ytError = '';
   ytConfigured = true;
-  ytVideoId = '';
-  ytPlaying = false;
-  ytErrorPlaying = false;
-  private readonly YT_KEY = 'studyroom.youtube';
-  private ytApiPromise?: Promise<void>;
-  private ytPlayer?: any;
-
-  @ViewChild('playerHost', { read: ElementRef }) playerHost?: ElementRef<HTMLElement>;
 
   async ngOnInit() {
-    const saved = localStorage.getItem(this.YT_KEY) || '';
-    const savedId = /embed\/([A-Za-z0-9_-]{11})/.exec(saved)?.[1] ?? (/^[A-Za-z0-9_-]{11}$/.test(saved) ? saved : '');
-    if (savedId) {
-      this.ytVideoId = savedId;
-      this.youtubeEmbed = `https://www.youtube.com/embed/${savedId}`;
-    }
     try {
       const [myRooms, allRooms, stats] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
@@ -412,7 +379,7 @@ export class DashboardComponent implements OnInit {
   loadVideo(): void {
     const id = this.extractYouTubeId(this.youtubeUrl);
     if (!id) return;
-    this.playYoutube(id);
+    this.youtubePlayer.playNow({ id });
     this.youtubeUrl = '';
   }
 
@@ -434,65 +401,12 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  async playYoutube(id: string): Promise<void> {
-    this.ytVideoId = id;
-    this.ytPlaying = false;
-    this.ytErrorPlaying = false;
-    this.youtubeEmbed = `https://www.youtube.com/embed/${id}`;
-    localStorage.setItem(this.YT_KEY, id);
-    try {
-      await this.loadYtApi();
-    } catch {
-      this.ytErrorPlaying = true;
-      return;
-    }
-    // The result click is a user gesture, so auto-play once the player is mounted.
-    setTimeout(() => this.playVideo(), 80);
+  playYoutube(result: YoutubeSearchResult): void {
+    this.youtubePlayer.playNow({ id: result.id, title: result.title, channel: result.channel });
   }
 
-  playVideo(): void {
-    const w = window as any;
-    const host = this.playerHost?.nativeElement;
-    if (!host || !w.YT?.Player || !this.ytVideoId) return;
-    try { this.ytPlayer?.destroy(); } catch { }
-    const player = new w.YT.Player(host, {
-      videoId: this.ytVideoId,
-      width: '100%',
-      height: '100%',
-      playerVars: { rel: 0, playsinline: 1 },
-      events: {
-        onReady: () => {
-          this.ytPlaying = true;
-          try { player.playVideo(); } catch { }
-        },
-        onError: () => { this.ytErrorPlaying = true; this.ytPlaying = false; }
-      }
-    });
-    this.ytPlayer = player;
-  }
-
-  private loadYtApi(): Promise<void> {
-    if (!this.ytApiPromise) {
-      this.ytApiPromise = new Promise<void>((resolve) => {
-        const w = window as any;
-        if (w.YT?.Player) { resolve(); return; }
-        w.onYouTubeIframeAPIReady = () => resolve();
-        const s = document.createElement('script');
-        s.src = 'https://www.youtube.com/iframe_api';
-        s.onerror = () => { this.ytErrorPlaying = true; };
-        document.head.appendChild(s);
-      });
-    }
-    return this.ytApiPromise;
-  }
-
-  closeVideo(): void {
-    this.youtubeEmbed = '';
-    this.ytVideoId = '';
-    this.ytPlaying = false;
-    this.ytErrorPlaying = false;
-    if (this.ytPlayer) { try { this.ytPlayer.destroy(); } catch { } this.ytPlayer = undefined; }
-    localStorage.removeItem(this.YT_KEY);
+  enqueue(result: YoutubeSearchResult): void {
+    this.youtubePlayer.enqueue({ id: result.id, title: result.title, channel: result.channel });
   }
 
   private extractYouTubeId(url: string): string {
