@@ -106,6 +106,26 @@ builder.Services.AddScoped<IPushService, PushService>();
 builder.Services.Configure<LivekitSettings>(builder.Configuration.GetSection("Livekit"));
 builder.Services.AddScoped<ILiveKitService, LiveKitService>();
 
+builder.Services.Configure<YoutubeSettings>(builder.Configuration.GetSection("Youtube"));
+
+var youtubeApiKey = Environment.GetEnvironmentVariable("YOUTUBE_API_KEY");
+if (!string.IsNullOrWhiteSpace(youtubeApiKey))
+{
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["Youtube:ApiKey"] = youtubeApiKey
+    });
+}
+
+var geminiApiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? Environment.GetEnvironmentVariable("AI_API_KEY");
+if (!string.IsNullOrWhiteSpace(geminiApiKey))
+{
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["AiSettings:ApiKey"] = geminiApiKey
+    });
+}
+
 var livekitUrl = Environment.GetEnvironmentVariable("LIVEKIT_URL");
 var livekitApiKey = Environment.GetEnvironmentVariable("LIVEKIT_API_KEY");
 var livekitApiSecret = Environment.GetEnvironmentVariable("LIVEKIT_API_SECRET");

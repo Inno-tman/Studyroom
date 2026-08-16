@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
 import { StatisticsService } from '../core/services/statistics.service';
+import { YoutubeService, YoutubeSearchResult } from '../core/services/youtube.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
@@ -69,23 +70,58 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <span class="material-icons">play_circle</span>
             <div>
               <h2>Study Player</h2>
-              <p>Lo-fi, focus music or a tutorial — play a YouTube video while you study.</p>
+              <p>Search YouTube for lo-fi, focus music or tutorials — play it right here while you study.</p>
             </div>
           </div>
-          <button class="player-close" *ngIf="youtubeEmbed" (click)="closeVideo()" aria-label="Close video">
+          <button class="player-close" *ngIf="youtubeEmbed" (click)="closeVideo()" aria-label="Back to search">
             <span class="material-icons">close</span>
           </button>
         </div>
-        <div class="player-input" *ngIf="!youtubeEmbed">
-          <input
-            [(ngModel)]="youtubeUrl"
-            (keyup.enter)="loadVideo()"
-            placeholder="Paste a YouTube link (song, lo-fi, tutorial…)"
-          />
-          <button class="player-play" [disabled]="!youtubeUrl.trim()" (click)="loadVideo()">
-            <span class="material-icons">play_arrow</span> Play
-          </button>
-        </div>
+
+        <ng-container *ngIf="!youtubeEmbed">
+          <div class="player-input">
+            <input
+              [(ngModel)]="ytQuery"
+              (keyup.enter)="searchYoutube()"
+              placeholder="Search YouTube — songs, lo-fi, tutorials…"
+            />
+            <button class="player-play" [disabled]="!ytQuery.trim() || ytLoading" (click)="searchYoutube()">
+              <span class="material-icons">{{ ytLoading ? 'hourglass_top' : 'search' }}</span>
+              Search
+            </button>
+          </div>
+
+          <div class="yt-hint" *ngIf="!ytConfigured && !ytLoading && ytResults.length === 0">
+            YouTube search needs a free API key. Set the <code>YOUTUBE_API_KEY</code> environment variable on the server, then search will work.
+          </div>
+          <div class="yt-error" *ngIf="ytError">{{ ytError }}</div>
+
+          <div class="yt-results" *ngIf="ytResults.length > 0">
+            <button class="yt-result" *ngFor="let r of ytResults" (click)="playYoutube(r.id)">
+              <img *ngIf="r.thumbnail; else noThumb" [src]="r.thumbnail" alt="" loading="lazy" />
+              <ng-template #noThumb><span class="yt-no-thumb material-icons">play_circle</span></ng-template>
+              <div class="yt-result-info">
+                <span class="yt-result-title">{{ r.title }}</span>
+                <span class="yt-result-channel">{{ r.channel }}</span>
+              </div>
+            </button>
+          </div>
+
+          <div class="player-link-row">
+            <span>…or paste a YouTube link directly:</span>
+            <div class="player-input player-link">
+              <input
+                [(ngModel)]="youtubeUrl"
+                (keyup.enter)="loadVideo()"
+                placeholder="https://youtube.com/watch?v=…"
+              />
+              <button class="player-play" [disabled]="!youtubeUrl.trim()" (click)="loadVideo()">
+                <span class="material-icons">play_arrow</span> Play
+              </button>
+            </div>
+          </div>
+        </ng-container>
+
         <div class="player-frame" *ngIf="youtubeEmbed">
           <iframe
             [src]="youtubeEmbed"
@@ -230,6 +266,38 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       transition: background 0.15s;
     }
     .player-play:disabled { opacity: 0.5; cursor: not-allowed; }
+    .yt-hint {
+      margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+      background: rgba(var(--accent-rgb, 56, 89, 202), 0.08); border: 1px solid var(--border);
+      font-size: var(--font-13); color: var(--text-secondary);
+    }
+    .yt-hint code {
+      background: var(--surface-hover); padding: 2px 6px; border-radius: 6px;
+      font-family: ui-monospace, monospace; font-size: var(--font-12); color: var(--text-primary);
+    }
+    .yt-error { margin-top: 12px; color: var(--error); font-size: var(--font-13); }
+    .yt-results {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px; margin-top: 16px;
+    }
+    .yt-result {
+      display: flex; flex-direction: column; gap: 8px; text-align: left;
+      background: var(--surface-hover); border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px; cursor: pointer; transition: border-color 0.15s, transform 0.15s;
+      overflow: hidden;
+    }
+    .yt-result:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .yt-result img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #000; }
+    .yt-no-thumb { width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 36px; background: var(--surface); border-radius: 8px; }
+    .yt-result-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .yt-result-title {
+      font-size: var(--font-13); font-weight: 600; color: var(--text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .yt-result-channel { font-size: var(--font-12); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .player-link-row { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .player-link-row > span { font-size: var(--font-12); color: var(--text-muted); }
+    .player-link { margin-top: 0; }
     .player-frame {
       position: relative; padding-top: 56.25%; border-radius: 12px; overflow: hidden;
       background: #000;
@@ -281,6 +349,7 @@ export class DashboardComponent implements OnInit {
   auth = inject(AuthService);
   private roomService = inject(RoomService);
   private statsService = inject(StatisticsService);
+  private youtubeService = inject(YoutubeService);
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
@@ -289,6 +358,11 @@ export class DashboardComponent implements OnInit {
   tab: 'mine' | 'all' = 'mine';
   youtubeUrl = '';
   youtubeEmbed = '';
+  ytQuery = '';
+  ytResults: YoutubeSearchResult[] = [];
+  ytLoading = false;
+  ytError = '';
+  ytConfigured = true;
   private readonly YT_KEY = 'studyroom.youtube';
 
   async ngOnInit() {
@@ -314,8 +388,30 @@ export class DashboardComponent implements OnInit {
   loadVideo(): void {
     const id = this.extractYouTubeId(this.youtubeUrl);
     if (!id) return;
-    this.youtubeEmbed = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+    this.playYoutube(id);
     this.youtubeUrl = '';
+  }
+
+  async searchYoutube(): Promise<void> {
+    const q = this.ytQuery.trim();
+    if (!q) return;
+    this.ytLoading = true;
+    this.ytError = '';
+    try {
+      const resp = await this.youtubeService.search(q).toPromise();
+      this.ytConfigured = resp?.configured !== false;
+      this.ytResults = resp?.items ?? [];
+      if (!this.ytConfigured) this.ytError = '';
+    } catch {
+      this.ytError = 'Search failed. Try again.';
+      this.ytResults = [];
+    } finally {
+      this.ytLoading = false;
+    }
+  }
+
+  playYoutube(id: string): void {
+    this.youtubeEmbed = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
     localStorage.setItem(this.YT_KEY, this.youtubeEmbed);
   }
 

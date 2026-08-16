@@ -8,9 +8,9 @@ namespace StudyRoom.API.Services;
 
 public class AiSettings
 {
-    public string Provider { get; set; } = "openai";
+    public string Provider { get; set; } = "gemini";
     public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "openai/gpt-oss-120b";
+    public string Model { get; set; } = "gemini-2.5-flash-lite";
     public string Endpoint { get; set; } = "https://api.groq.com/openai/v1/chat/completions";
     public int MaxTokens { get; set; } = 800;
 }
@@ -147,73 +147,24 @@ The full research process:
 
     private async Task<AcademicResponseDto> CallAiProvider(string systemPrompt, string userMessage, string? subject, List<DTOs.AI.PreviousMessageDto>? history = null)
     {
-        var messages = new List<object>
-        {
-            new { role = "system", content = systemPrompt }
-        };
+        var messages = new List<DTOs.AI.PreviousMessageDto>();
 
         if (history != null)
         {
             var recent = history.Count > 10
                 ? history.Skip(history.Count - 10).ToList()
                 : history;
-            foreach (var msg in recent)
-            {
-                messages.Add(new { role = msg.Role, content = msg.Content });
-            }
+            messages.AddRange(recent);
         }
 
-        messages.Add(new { role = "user", content = userMessage });
-
-        var payload = new
-        {
-            model = _settings.Model,
-            messages = messages.ToArray(),
-            max_tokens = _settings.MaxTokens,
-            temperature = 0.3
-        };
+        messages.Add(new DTOs.AI.PreviousMessageDto { Role = "user", Content = userMessage });
 
         try
         {
-            var json = JsonSerializer.Serialize(payload);
-            var request = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint)
-            {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
-            };
-            if (!string.IsNullOrEmpty(_settings.ApiKey))
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+            if (_settings.Provider.Equals("gemini", StringComparison.OrdinalIgnoreCase))
+                return await CallGemini(systemPrompt, messages, subject);
 
-            var response = await _http.SendAsync(request);
-
-            if ((int)response.StatusCode == 429)
-            {
-                _logger.LogWarning("Groq rate limited (429).");
-                return new AcademicResponseDto
-                {
-                    Answer = GenerateFallbackResponse(userMessage, subject),
-                    Subject = subject,
-                    IsError = true,
-                    ErrorMessage = "AI service is rate limited. Please wait 30 seconds and try again."
-                };
-            }
-
-            response.EnsureSuccessStatusCode();
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(responseJson);
-
-            var answer = doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString() ?? "I'm sorry, I couldn't generate a response.";
-
-            return new AcademicResponseDto
-            {
-                Answer = answer,
-                Subject = subject,
-                CreatedAt = DateTime.UtcNow
-            };
+            return await CallOpenAiCompatible(systemPrompt, messages, subject);
         }
         catch (OperationCanceledException)
         {
@@ -237,6 +188,156 @@ The full research process:
                 ErrorMessage = $"AI service error: {ex.Message}"
             };
         }
+    }
+
+    /// <summary>Gemini API (Google AI Studio free tier). Uses the v1beta generateContent endpoint.</summary>
+    private async Task<AcademicResponseDto> CallGemini(string systemPrompt, List<DTOs.AI.PreviousMessageDto> messages, string? subject)
+    {
+        if (string.IsNullOrEmpty(_settings.ApiKey))
+        {
+            _logger.LogWarning("Gemini API key is not configured.");
+            return new AcademicResponseDto
+            {
+                Answer = GenerateFallbackResponse("", subject),
+                Subject = subject,
+                IsError = true,
+                ErrorMessage = "AI is not configured yet. Add a Gemini API key to enable the tutor."
+            };
+        }
+
+        var model = _settings.Model;
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(_settings.ApiKey)}";
+
+        // Gemini requires alternating user/model roles, so merge consecutive same-role messages.
+        var contents = new List<Dictionary<string, object>>();
+        foreach (var m in messages)
+        {
+            var role = m.Role == "assistant" ? "model" : "user";
+            var text = m.Content ?? "";
+            if (contents.Count > 0 && (string)contents[^1]["role"] == role)
+            {
+                var parts = (List<object>)contents[^1]["parts"];
+                parts.Add(new { text });
+            }
+            else
+            {
+                contents.Add(new Dictionary<string, object>
+                {
+                    ["role"] = role,
+                    ["parts"] = new List<object> { new { text } }
+                });
+            }
+        }
+
+        if (contents.Count == 0)
+            contents.Add(new Dictionary<string, object> { ["role"] = "user", ["parts"] = new List<object> { new { text = "" } } });
+
+        var payload = new
+        {
+            system_instruction = new { parts = new[] { new { text = systemPrompt } } },
+            contents,
+            generationConfig = new { temperature = 0.3, maxOutputTokens = _settings.MaxTokens }
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+        var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+
+        var response = await _http.SendAsync(request);
+
+        if ((int)response.StatusCode == 429)
+        {
+            _logger.LogWarning("Gemini rate limited (429).");
+            return new AcademicResponseDto
+            {
+                Answer = GenerateFallbackResponse(messages.LastOrDefault()?.Content ?? "", subject),
+                Subject = subject,
+                IsError = true,
+                ErrorMessage = "AI service is rate limited. Please wait a moment and try again."
+            };
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var responseJson = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(responseJson);
+
+        var answer = doc.RootElement
+            .GetProperty("candidates")[0]
+            .GetProperty("content")
+            .GetProperty("parts")[0]
+            .GetProperty("text")
+            .GetString() ?? "I'm sorry, I couldn't generate a response.";
+
+        return new AcademicResponseDto
+        {
+            Answer = answer,
+            Subject = subject,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>OpenAI-compatible chat completions (e.g. Groq).</summary>
+    private async Task<AcademicResponseDto> CallOpenAiCompatible(string systemPrompt, List<DTOs.AI.PreviousMessageDto> messages, string? subject)
+    {
+        var chat = new List<object>
+        {
+            new { role = "system", content = systemPrompt }
+        };
+        foreach (var msg in messages)
+        {
+            chat.Add(new { role = msg.Role, content = msg.Content });
+        }
+
+        var payload = new
+        {
+            model = _settings.Model,
+            messages = chat.ToArray(),
+            max_tokens = _settings.MaxTokens,
+            temperature = 0.3
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+        var request = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        if (!string.IsNullOrEmpty(_settings.ApiKey))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+
+        var response = await _http.SendAsync(request);
+
+        if ((int)response.StatusCode == 429)
+        {
+            _logger.LogWarning("AI provider rate limited (429).");
+            return new AcademicResponseDto
+            {
+                Answer = GenerateFallbackResponse(messages.LastOrDefault()?.Content ?? "", subject),
+                Subject = subject,
+                IsError = true,
+                ErrorMessage = "AI service is rate limited. Please wait 30 seconds and try again."
+            };
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var responseJson = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(responseJson);
+
+        var answer = doc.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString() ?? "I'm sorry, I couldn't generate a response.";
+
+        return new AcademicResponseDto
+        {
+            Answer = answer,
+            Subject = subject,
+            CreatedAt = DateTime.UtcNow
+        };
     }
 
     private static string GenerateFallbackResponse(string question, string? subject)
