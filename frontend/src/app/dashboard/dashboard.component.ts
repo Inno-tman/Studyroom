@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -123,14 +123,13 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         </ng-container>
 
         <div class="player-frame" *ngIf="youtubeEmbed">
-          <iframe
-            [src]="youtubeEmbed"
-            title="YouTube player"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen
-          ></iframe>
+          <div class="yt-player-wrap">
+            <div #playerHost class="yt-player-host"></div>
+            <button class="yt-overlay-play" *ngIf="!ytPlaying && !ytError" (click)="playVideo()" aria-label="Play video">
+              <span class="material-icons">play_arrow</span>
+            </button>
+            <div class="yt-error-overlay" *ngIf="ytError">This video couldn't be played. Try another one.</div>
+          </div>
         </div>
       </div>
 
@@ -302,7 +301,20 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       position: relative; padding-top: 56.25%; border-radius: 12px; overflow: hidden;
       background: #000;
     }
-    .player-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .yt-player-wrap { position: absolute; inset: 0; }
+    .yt-player-host { width: 100%; height: 100%; }
+    .yt-player-host iframe { width: 100%; height: 100%; border: none; }
+    .yt-overlay-play {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.55); border: none; cursor: pointer; color: #fff;
+      transition: background 0.15s;
+    }
+    .yt-overlay-play:hover { background: rgba(0,0,0,0.35); }
+    .yt-overlay-play .material-icons { font-size: 64px; }
+    .yt-error-overlay {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: #000; color: rgba(255,255,255,0.85); font-size: var(--font-13); padding: 0 16px; text-align: center;
+    }
 
     /* Segmented tabs */
     .section { margin-bottom: 32px; }
@@ -363,10 +375,22 @@ export class DashboardComponent implements OnInit {
   ytLoading = false;
   ytError = '';
   ytConfigured = true;
+  ytVideoId = '';
+  ytPlaying = false;
+  ytErrorPlaying = false;
   private readonly YT_KEY = 'studyroom.youtube';
+  private ytApiPromise?: Promise<void>;
+  private ytPlayer?: any;
+
+  @ViewChild('playerHost', { read: ElementRef }) playerHost?: ElementRef<HTMLElement>;
 
   async ngOnInit() {
-    this.youtubeEmbed = localStorage.getItem(this.YT_KEY) || '';
+    const saved = localStorage.getItem(this.YT_KEY) || '';
+    const savedId = /embed\/([A-Za-z0-9_-]{11})/.exec(saved)?.[1] ?? (/^[A-Za-z0-9_-]{11}$/.test(saved) ? saved : '');
+    if (savedId) {
+      this.ytVideoId = savedId;
+      this.youtubeEmbed = `https://www.youtube.com/embed/${savedId}`;
+    }
     try {
       const [myRooms, allRooms, stats] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
@@ -410,13 +434,64 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  playYoutube(id: string): void {
-    this.youtubeEmbed = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
-    localStorage.setItem(this.YT_KEY, this.youtubeEmbed);
+  async playYoutube(id: string): Promise<void> {
+    this.ytVideoId = id;
+    this.ytPlaying = false;
+    this.ytErrorPlaying = false;
+    this.youtubeEmbed = `https://www.youtube.com/embed/${id}`;
+    localStorage.setItem(this.YT_KEY, id);
+    try {
+      await this.loadYtApi();
+    } catch {
+      this.ytErrorPlaying = true;
+      return;
+    }
+    // The result click is a user gesture, so auto-play once the player is mounted.
+    setTimeout(() => this.playVideo(), 80);
+  }
+
+  playVideo(): void {
+    const w = window as any;
+    const host = this.playerHost?.nativeElement;
+    if (!host || !w.YT?.Player || !this.ytVideoId) return;
+    try { this.ytPlayer?.destroy(); } catch { }
+    const player = new w.YT.Player(host, {
+      videoId: this.ytVideoId,
+      width: '100%',
+      height: '100%',
+      playerVars: { rel: 0, playsinline: 1 },
+      events: {
+        onReady: () => {
+          this.ytPlaying = true;
+          try { player.playVideo(); } catch { }
+        },
+        onError: () => { this.ytErrorPlaying = true; this.ytPlaying = false; }
+      }
+    });
+    this.ytPlayer = player;
+  }
+
+  private loadYtApi(): Promise<void> {
+    if (!this.ytApiPromise) {
+      this.ytApiPromise = new Promise<void>((resolve) => {
+        const w = window as any;
+        if (w.YT?.Player) { resolve(); return; }
+        w.onYouTubeIframeAPIReady = () => resolve();
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        s.onerror = () => { this.ytErrorPlaying = true; };
+        document.head.appendChild(s);
+      });
+    }
+    return this.ytApiPromise;
   }
 
   closeVideo(): void {
     this.youtubeEmbed = '';
+    this.ytVideoId = '';
+    this.ytPlaying = false;
+    this.ytErrorPlaying = false;
+    if (this.ytPlayer) { try { this.ytPlayer.destroy(); } catch { } this.ytPlayer = undefined; }
     localStorage.removeItem(this.YT_KEY);
   }
 
