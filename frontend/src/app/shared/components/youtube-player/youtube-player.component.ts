@@ -7,8 +7,6 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="yt-host" #playerHost></div>
-
     <div class="yt-queue" *ngIf="showQueue && player.queue().length > 0">
       <div class="yt-queue-head">
         <span>Up next ({{ player.queue().length }})</span>
@@ -27,9 +25,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     </div>
 
     <div class="yt-mini" *ngIf="player.videoId()">
-      <div class="yt-mini-thumb">
-        <span class="material-icons">music_video</span>
-      </div>
+      <div class="yt-mini-video" #playerHost></div>
       <div class="yt-mini-info">
         <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
         <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
@@ -60,11 +56,11 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
   `,
   styles: [
     `
-    .yt-host {
-      position: fixed; left: -9999px; top: 0;
-      width: 480px; height: 270px; z-index: -1;
+    .yt-mini-video {
+      width: 120px; height: 68px; border-radius: 8px; overflow: hidden; flex: none;
+      background: #000; margin-right: 8px;
     }
-    .yt-host iframe { width: 100%; height: 100%; border: none; }
+    .yt-mini-video iframe { width: 100%; height: 100%; border: none; display: block; }
     .yt-mini {
       position: fixed; left: 16px; bottom: 16px; z-index: 1200;
       display: flex; align-items: center; gap: 2px;
@@ -74,13 +70,6 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       box-shadow: 0 8px 28px rgba(0,0,0,0.35);
       max-width: min(560px, calc(100vw - 32px));
     }
-    .yt-mini-thumb {
-      width: 44px; height: 28px; border-radius: 6px; flex: none;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, rgba(255,0,0,0.65), rgba(255,0,0,0.25));
-      color: #fff; margin-right: 8px;
-    }
-    .yt-mini-thumb .material-icons { font-size: 18px; }
     .yt-mini-info {
       min-width: 0; flex: 1; display: flex; flex-direction: column; line-height: 1.2;
       margin-right: 6px;
@@ -195,30 +184,36 @@ export class YoutubePlayerComponent {
     if (!w.YT?.Player || !this.hostEl) return;
     try { this.ytInstance?.destroy(); } catch { }
     this.ytInstance = undefined;
-    const player = new w.YT.Player(this.hostEl, {
-      videoId: id,
-      width: '100%',
-      height: '100%',
-      playerVars: { rel: 0, playsinline: 1 },
-      events: {
-        onReady: () => {
-          this.player.setPlayer(player);
-          this.ytInstance = player;
-          this.player.setError(false);
-          try { player.playVideo(); } catch { }
-        },
-        onStateChange: (e: any) => {
-          if (e.data === 1) this.player.setPlaying(true);
-          else if (e.data === 0) {
+    let player: any;
+    try {
+      player = new w.YT.Player(this.hostEl, {
+        videoId: id,
+        width: '100%',
+        height: '100%',
+        playerVars: { rel: 0, playsinline: 1, controls: 1 },
+        events: {
+          onReady: () => {
+            this.player.setPlayer(player);
+            this.ytInstance = player;
+            this.player.setError(false);
+            try { player.playVideo(); } catch { }
+          },
+          onStateChange: (e: any) => {
+            if (e.data === 1) this.player.setPlaying(true);
+            else if (e.data === 0) {
+              this.player.setPlaying(false);
+              this.player.next();
+            } else if (e.data === 2) this.player.setPlaying(false);
+          },
+          onError: () => {
+            this.player.setError(true);
             this.player.setPlaying(false);
-            this.player.next();
-          } else if (e.data === 2) this.player.setPlaying(false);
-        },
-        onError: () => {
-          this.player.setError(true);
-          this.player.setPlaying(false);
+          }
         }
-      }
-    });
+      });
+    } catch {
+      this.player.setError(true);
+      this.player.setPlaying(false);
+    }
   }
 }

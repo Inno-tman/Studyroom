@@ -137,13 +137,20 @@ export class YoutubePlayerService {
 
   ensureApi(): Promise<void> {
     if (!this.apiReady) {
-      this.apiReady = new Promise<void>((resolve) => {
+      this.apiReady = new Promise<void>((resolve, reject) => {
         const w = window as any;
         if (w.YT?.Player) { resolve(); return; }
         w.onYouTubeIframeAPIReady = () => resolve();
         const s = document.createElement('script');
         s.src = 'https://www.youtube.com/iframe_api';
+        s.onerror = () => { this.apiReady = undefined; reject(new Error('api-script-failed')); };
         document.head.appendChild(s);
+        setTimeout(() => {
+          if (!w.YT?.Player) {
+            this.apiReady = undefined;
+            reject(new Error('api-timeout'));
+          }
+        }, 10000);
       });
     }
     return this.apiReady;
