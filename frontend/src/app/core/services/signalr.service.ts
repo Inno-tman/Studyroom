@@ -116,8 +116,8 @@ export class SignalRService {
     return await this.hubConnection.invoke('GetPresence');
   }
 
-  async ring(calleeId: string, callId: string): Promise<void> {
-    await this.hubConnection.invoke('Ring', calleeId, callId);
+  async ring(calleeId: string, callId: string, callType: string = 'audio'): Promise<void> {
+    await this.hubConnection.invoke('Ring', calleeId, callId, callType);
   }
 
   async answerCall(callId: string): Promise<void> {

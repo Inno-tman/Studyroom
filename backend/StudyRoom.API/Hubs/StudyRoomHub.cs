@@ -141,7 +141,7 @@ public class StudyRoomHub : Hub
     // ── Call lifecycle ────────────────────────────────────────
     private static readonly Dictionary<string, CallState> _calls = new();
 
-    public async Task Ring(string calleeId, string callId)
+    public async Task Ring(string calleeId, string callId, string callType = "audio")
     {
         var callerId = UserId.ToString();
         if (callerId == calleeId) return;
@@ -160,6 +160,7 @@ public class StudyRoomHub : Hub
                 CallerName = Username,
                 CallerAvatar = user?.AvatarUrl,
                 CalleeId = calleeId,
+                CallType = callType == "video" ? "video" : "audio",
                 Status = "Ringing"
             };
         }
@@ -169,7 +170,8 @@ public class StudyRoomHub : Hub
             callId,
             callerId,
             callerName = Username,
-            callerAvatar = user?.AvatarUrl
+            callerAvatar = user?.AvatarUrl,
+            callType = callType == "video" ? "video" : "audio"
         });
 
         // Alert the callee even if their app is closed/backgrounded.
@@ -180,7 +182,8 @@ public class StudyRoomHub : Hub
                 ["callId"] = callId,
                 ["callerId"] = callerId,
                 ["callerName"] = Username,
-                ["callerAvatar"] = user?.AvatarUrl
+                ["callerAvatar"] = user?.AvatarUrl,
+                ["callType"] = callType == "video" ? "video" : "audio"
             });
     }
 
@@ -333,7 +336,8 @@ public class StudyRoomHub : Hub
                 callId = call.CallId,
                 callerId = call.CallerId,
                 callerName = call.CallerName,
-                callerAvatar = call.CallerAvatar
+                callerAvatar = call.CallerAvatar,
+                callType = call.CallType
             });
         }
     }
@@ -648,6 +652,7 @@ public class CallState
     public string? CallerAvatar { get; set; }
     public string CalleeId { get; set; } = "";
     public string Status { get; set; } = "Ringing";
+    public string CallType { get; set; } = "audio";
     public string? Offer { get; set; }
     public List<string> IceCandidates { get; set; } = new();
 }

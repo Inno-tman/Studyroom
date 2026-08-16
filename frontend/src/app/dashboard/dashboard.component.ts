@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe, NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
 import { StatisticsService } from '../core/services/statistics.service';
@@ -11,7 +12,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, NgFor, NgIf, NgClass, DatePipe, LoadingComponent],
+  imports: [RouterLink, NgFor, NgIf, NgClass, DatePipe, LoadingComponent, FormsModule],
   template: `
     <div class="dashboard">
       <!-- ── Hero header card ─────────────────────────────────── -->
@@ -58,6 +59,42 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         <div class="stats-strip-item">
           <span class="stat-value">{{ stats.weeklyStudyMinutes }}m</span>
           <span class="stat-label">This Week</span>
+        </div>
+      </div>
+
+      <!-- ── Study player (YouTube) ──────────────────────────── -->
+      <div class="player-card">
+        <div class="player-head">
+          <div class="player-title">
+            <span class="material-icons">play_circle</span>
+            <div>
+              <h2>Study Player</h2>
+              <p>Lo-fi, focus music or a tutorial — play a YouTube video while you study.</p>
+            </div>
+          </div>
+          <button class="player-close" *ngIf="youtubeEmbed" (click)="closeVideo()" aria-label="Close video">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="player-input" *ngIf="!youtubeEmbed">
+          <input
+            [(ngModel)]="youtubeUrl"
+            (keyup.enter)="loadVideo()"
+            placeholder="Paste a YouTube link (song, lo-fi, tutorial…)"
+          />
+          <button class="player-play" [disabled]="!youtubeUrl.trim()" (click)="loadVideo()">
+            <span class="material-icons">play_arrow</span> Play
+          </button>
+        </div>
+        <div class="player-frame" *ngIf="youtubeEmbed">
+          <iframe
+            [src]="youtubeEmbed"
+            title="YouTube player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
         </div>
       </div>
 
@@ -163,6 +200,42 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .stat-value { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); }
     .stat-label { font-size: var(--font-12); color: var(--text-muted); }
 
+    /* Study player */
+    .player-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px; margin-bottom: 28px;
+    }
+    .player-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .player-title { display: flex; align-items: flex-start; gap: 12px; }
+    .player-title .material-icons { font-size: 34px; color: var(--error); }
+    .player-title h2 { font-size: var(--font-17); font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+    .player-title p { font-size: var(--font-13); color: var(--text-muted); }
+    .player-close {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: none; color: var(--text-secondary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+    }
+    .player-close:hover { background: var(--surface-hover); }
+    .player-input { display: flex; gap: 10px; }
+    .player-input input {
+      flex: 1; min-width: 0; padding: 11px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface-hover);
+      color: var(--text-primary); font-size: var(--font-13); outline: none;
+    }
+    .player-input input:focus { border-color: var(--primary); }
+    .player-play {
+      display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+      padding: 0 18px; border: none; border-radius: 10px; background: var(--primary);
+      color: white; font-size: var(--font-13); font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .player-play:disabled { opacity: 0.5; cursor: not-allowed; }
+    .player-frame {
+      position: relative; padding-top: 56.25%; border-radius: 12px; overflow: hidden;
+      background: #000;
+    }
+    .player-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+
     /* Segmented tabs */
     .section { margin-bottom: 32px; }
     .section-tabs {
@@ -214,8 +287,12 @@ export class DashboardComponent implements OnInit {
   stats: UserStats = { totalStudyHours: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
   loading = true;
   tab: 'mine' | 'all' = 'mine';
+  youtubeUrl = '';
+  youtubeEmbed = '';
+  private readonly YT_KEY = 'studyroom.youtube';
 
   async ngOnInit() {
+    this.youtubeEmbed = localStorage.getItem(this.YT_KEY) || '';
     try {
       const [myRooms, allRooms, stats] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
@@ -232,5 +309,32 @@ export class DashboardComponent implements OnInit {
 
   navigateToRoom(id: string) {
     window.location.href = `/rooms/${id}`;
+  }
+
+  loadVideo(): void {
+    const id = this.extractYouTubeId(this.youtubeUrl);
+    if (!id) return;
+    this.youtubeEmbed = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+    this.youtubeUrl = '';
+    localStorage.setItem(this.YT_KEY, this.youtubeEmbed);
+  }
+
+  closeVideo(): void {
+    this.youtubeEmbed = '';
+    localStorage.removeItem(this.YT_KEY);
+  }
+
+  private extractYouTubeId(url: string): string {
+    const clean = url.trim();
+    const patterns = [
+      /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/,
+      /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/
+    ];
+    for (const p of patterns) {
+      const m = clean.match(p);
+      if (m) return m[1];
+    }
+    if (/^[A-Za-z0-9_-]{11}$/.test(clean)) return clean;
+    return '';
   }
 }

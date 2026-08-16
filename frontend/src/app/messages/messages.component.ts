@@ -59,6 +59,9 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               <div class="chat-title-wrap">
                 <span class="chat-title">{{ activeUser.displayName || activeUser.username }}</span>
               </div>
+              <button class="call-friend-btn call-video-btn" (click)="startVideoCall()" aria-label="Start video call">
+                <span class="material-icons">videocam</span>
+              </button>
               <button class="call-friend-btn" (click)="startCall()" aria-label="Start audio call">
                 <span class="material-icons">call</span>
               </button>
@@ -163,6 +166,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     }
     .call-friend-btn:hover { background: var(--surface-hover); }
     .call-friend-btn .material-icons { font-size: var(--font-20); }
+    .call-video-btn { color: var(--primary); }
 
     .messages {
       flex: 1 1 auto; overflow-y: auto; padding: 16px;
@@ -252,6 +256,16 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.activeUser.userId,
       this.activeUser.displayName || this.activeUser.username,
       this.activeUser.avatarUrl
+    );
+  }
+
+  async startVideoCall(): Promise<void> {
+    if (!this.activeUser) return;
+    await this.callService.startCall(
+      this.activeUser.userId,
+      this.activeUser.displayName || this.activeUser.username,
+      this.activeUser.avatarUrl,
+      true
     );
   }
 

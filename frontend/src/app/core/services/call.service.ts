@@ -12,6 +12,7 @@ export interface CallInfo {
   peerId: string;
   peerName: string;
   peerAvatar?: string;
+  video?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -29,6 +30,8 @@ export class CallService implements OnDestroy {
   readonly screenOff = signal(false);
   readonly elapsed = signal(0);
   readonly remoteConnected = signal(false);
+  readonly videoOn = signal(false);
+  readonly remoteVideoActive = signal(false);
 
   private subs: Subscription[] = [];
   private ringTimer: any;
@@ -41,7 +44,14 @@ export class CallService implements OnDestroy {
   private pc?: RTCPeerConnection;
   private localStream?: MediaStream;
   private localTrack?: MediaStreamTrack;
+  private localVideoTrack?: MediaStreamTrack;
   private remoteAudioEl?: HTMLAudioElement;
+  private remoteVideoEl?: HTMLVideoElement;
+  private localVideoEl?: HTMLVideoElement;
+  private mediaHost?: HTMLElement | null;
+  private negotiating = false;
+  private queuedNegotiation = false;
+  private queuedOffer?: RTCSessionDescriptionInit;
   private pendingOffer?: RTCSessionDescriptionInit;
   private pendingIce: RTCIceCandidateInit[] = [];
   private speakerSinkId?: string;
@@ -87,7 +97,8 @@ export class CallService implements OnDestroy {
           callId: active.callId,
           callerId: active.callerId,
           callerName: active.callerName || 'Caller',
-          callerAvatar: active.callerAvatar
+          callerAvatar: active.callerAvatar,
+          callType: active.callType
         });
       }
     } catch {
@@ -103,16 +114,16 @@ export class CallService implements OnDestroy {
     this.teardownMedia();
   }
 
-  async startCall(peerId: string, peerName: string, peerAvatar?: string): Promise<void> {
+  async startCall(peerId: string, peerName: string, peerAvatar?: string, video = false): Promise<void> {
     await this.signalR.startConnection();
     const callId = crypto.randomUUID();
-    this.call.set({ callId, peerId, peerName, peerAvatar });
+    this.call.set({ callId, peerId, peerName, peerAvatar, video });
     this.declined.set(false);
     this.waitingAnswer.set(true);
     this.phase.set('active');
     this.startTimer();
     this.setupProximity();
-    await this.signalR.ring(peerId, callId);
+    await this.signalR.ring(peerId, callId, video ? 'video' : 'audio');
 
     // Request the mic inside this user gesture, then send the offer immediately.
     // The callee buffers the offer until they answer, so this decouples the offer
@@ -210,6 +221,38 @@ export class CallService implements OnDestroy {
     this.screenOff.set(false);
   }
 
+  async toggleVideo(): Promise<void> {
+    if (this.videoOn()) {
+      this.videoOn.set(false);
+      this.hideLocalVideo();
+      const senders = (this.pc?.getSenders() ?? []).filter(s => s.track?.kind === 'video');
+      for (const s of senders) { try { this.pc?.removeTrack(s); } catch { } }
+      if (this.localVideoTrack) { try { this.localVideoTrack.stop(); } catch { } this.localVideoTrack = undefined; }
+      await this.maybeNegotiate();
+    } else {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch {
+        return;
+      }
+      this.localVideoTrack = stream.getVideoTracks()[0];
+      if (!this.pc || !this.localVideoTrack) {
+        try { this.localVideoTrack?.stop(); } catch { }
+        return;
+      }
+      this.localStream?.addTrack(this.localVideoTrack);
+      this.pc.addTrack(this.localVideoTrack, this.localStream ?? new MediaStream([this.localVideoTrack]));
+      this.videoOn.set(true);
+      this.showLocalVideo();
+      await this.maybeNegotiate();
+    }
+  }
+
+  get anyVideo(): boolean {
+    return this.videoOn() || this.remoteVideoActive() || !!this.call()?.video;
+  }
+
   get elapsedLabel(): string {
     const s = this.elapsed();
     const m = Math.floor(s / 60);
@@ -221,9 +264,15 @@ export class CallService implements OnDestroy {
 
   private async ensureLocalStream(): Promise<void> {
     if (this.localStream) return;
-    this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const wantVideo = this.call()?.video === true || this.videoOn();
+    this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: wantVideo });
     this.localTrack = this.localStream.getAudioTracks()[0];
     this.localTrack.enabled = !this.muted();
+    if (wantVideo) {
+      this.localVideoTrack = this.localStream.getVideoTracks()[0];
+      this.videoOn.set(true);
+      this.showLocalVideo();
+    }
   }
 
   private async setupPeerConnection(): Promise<void> {
@@ -248,21 +297,27 @@ export class CallService implements OnDestroy {
       }
     };
 
+    this.pc.onnegotiationneeded = () => { void this.maybeNegotiate(); };
+
     this.pc.ontrack = (e) => {
       const stream = e.streams[0] ?? new MediaStream([e.track]);
-      if (!this.remoteAudioEl) {
-        this.remoteAudioEl = document.createElement('audio');
-        this.remoteAudioEl.autoplay = true;
-        (this.remoteAudioEl as any).playsInline = true;
-        // Off-screen (not display:none) — some browsers ignore audio from hidden elements.
-        this.remoteAudioEl.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
-        document.body.appendChild(this.remoteAudioEl);
-        this.enumerateSinks();
+      if (e.track.kind === 'video') {
+        this.handleRemoteVideo(e.track, stream);
+      } else if (e.track.kind === 'audio') {
+        if (!this.remoteAudioEl) {
+          this.remoteAudioEl = document.createElement('audio');
+          this.remoteAudioEl.autoplay = true;
+          (this.remoteAudioEl as any).playsInline = true;
+          // Off-screen (not display:none) — some browsers ignore audio from hidden elements.
+          this.remoteAudioEl.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+          document.body.appendChild(this.remoteAudioEl);
+          this.enumerateSinks();
+        }
+        this.remoteAudioEl.srcObject = stream;
+        this.playRemoteAudio();
+        this.remoteConnected.set(true);
+        this.applySink();
       }
-      this.remoteAudioEl.srcObject = stream;
-      this.playRemoteAudio();
-      this.remoteConnected.set(true);
-      this.applySink();
     };
 
     this.pc.onconnectionstatechange = () => {
@@ -286,7 +341,13 @@ export class CallService implements OnDestroy {
 
   private async processOffer(): Promise<void> {
     if (!this.pc || !this.pendingOffer) return;
-    await this.pc.setRemoteDescription(this.pendingOffer);
+    try {
+      await this.pc.setRemoteDescription(this.pendingOffer);
+    } catch {
+      // Glare: we already have a local offer in flight — roll it back, then apply.
+      try { await this.pc.setLocalDescription({ type: 'rollback' }); } catch { }
+      try { await this.pc.setRemoteDescription(this.pendingOffer); } catch { return; }
+    }
     this.pendingOffer = undefined;
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
@@ -334,6 +395,88 @@ export class CallService implements OnDestroy {
     } catch { }
   }
 
+  private handleRemoteVideo(track: MediaStreamTrack, stream: MediaStream): void {
+    if (!this.remoteVideoEl) {
+      this.remoteVideoEl = document.createElement('video');
+      this.remoteVideoEl.autoplay = true;
+      this.remoteVideoEl.playsInline = true;
+      this.remoteVideoEl.muted = true;
+      this.remoteVideoEl.classList.add('lk-remote-video');
+    }
+    this.remoteVideoEl.srcObject = stream;
+    void this.remoteVideoEl.play().catch(() => { });
+    this.remoteVideoActive.set(true);
+    track.addEventListener('ended', () => {
+      this.remoteVideoActive.set(false);
+      if (this.remoteVideoEl) this.remoteVideoEl.srcObject = null;
+    });
+    this.rehostMedia();
+  }
+
+  private showLocalVideo(): void {
+    if (!this.localVideoTrack) return;
+    if (!this.localVideoEl) {
+      this.localVideoEl = document.createElement('video');
+      this.localVideoEl.autoplay = true;
+      this.localVideoEl.playsInline = true;
+      this.localVideoEl.muted = true;
+      this.localVideoEl.classList.add('lk-pip-video');
+    }
+    this.localVideoEl.srcObject = new MediaStream([this.localVideoTrack]);
+    void this.localVideoEl.play().catch(() => { });
+    this.rehostMedia();
+  }
+
+  private hideLocalVideo(): void {
+    if (this.localVideoEl) {
+      this.localVideoEl.srcObject = null;
+      this.localVideoEl.remove();
+      this.localVideoEl = undefined;
+    }
+  }
+
+  /** The overlay gives us a container to place live video elements into. */
+  hostMedia(container: HTMLElement | null): void {
+    this.mediaHost = container;
+    this.rehostMedia();
+  }
+
+  private rehostMedia(): void {
+    for (const el of [this.remoteVideoEl, this.localVideoEl]) {
+      if (!el) continue;
+      if (this.mediaHost) {
+        if (el.parentElement !== this.mediaHost) this.mediaHost.appendChild(el);
+      } else {
+        el.remove();
+      }
+    }
+  }
+
+  /** Re-negotiates after adding/removing the local video track (perfect negotiation). */
+  private async maybeNegotiate(): Promise<void> {
+    if (!this.pc || !this.call()) return;
+    if (this.pc.signalingState !== 'stable') { this.queuedNegotiation = true; return; }
+    if (this.negotiating) { this.queuedNegotiation = true; return; }
+    this.negotiating = true;
+    try {
+      const offer = await this.pc.createOffer();
+      await this.pc.setLocalDescription(offer);
+      await this.signalR.sendOffer(this.call()!.callId, JSON.stringify(offer));
+    } catch { } finally {
+      this.negotiating = false;
+      if (this.queuedOffer && this.pc && this.pc.signalingState === 'stable') {
+        const offer = this.queuedOffer;
+        this.queuedOffer = undefined;
+        this.pendingOffer = offer;
+        await this.processOffer();
+      }
+      if (this.queuedNegotiation) {
+        this.queuedNegotiation = false;
+        await this.maybeNegotiate();
+      }
+    }
+  }
+
   /** Retries play() on the next user gesture if autoplay was blocked. */
   private playRemoteAudio(): void {
     const el = this.remoteAudioEl;
@@ -354,16 +497,22 @@ export class CallService implements OnDestroy {
     this.pc = undefined;
     this.remoteAudioEl?.remove();
     this.remoteAudioEl = undefined;
+    if (this.remoteVideoEl) { this.remoteVideoEl.srcObject = null; this.remoteVideoEl.remove(); this.remoteVideoEl = undefined; }
+    this.remoteVideoActive.set(false);
+    this.mediaHost = null;
     this.pendingOffer = undefined;
+    this.queuedOffer = undefined;
     this.pendingIce = [];
     this.remoteConnected.set(false);
   }
 
   private teardownMedia(): void {
     this.closePeerConnection();
+    this.hideLocalVideo();
     this.localStream?.getTracks().forEach(t => t.stop());
     this.localStream = undefined;
     this.localTrack = undefined;
+    this.localVideoTrack = undefined;
   }
 
   /** Tells the peer this call is over (hang up / failure / connection lost). */
@@ -387,6 +536,8 @@ export class CallService implements OnDestroy {
     this.muted.set(false);
     this.speakerOn.set(false);
     this.screenOff.set(false);
+    this.videoOn.set(false);
+    this.remoteVideoActive.set(false);
     this.stopTimer();
     this.cleanupProximity();
     this.teardownMedia();
@@ -399,7 +550,8 @@ export class CallService implements OnDestroy {
       callId: data.callId,
       peerId: data.callerId,
       peerName: data.callerName || 'Caller',
-      peerAvatar: data.callerAvatar
+      peerAvatar: data.callerAvatar,
+      video: data.callType === 'video'
     });
     this.declined.set(false);
     this.waitingAnswer.set(false);
@@ -453,7 +605,11 @@ export class CallService implements OnDestroy {
     } catch {
       return;
     }
-    if (this.pc) await this.processOffer();
+    if (this.pc && this.pc.signalingState === 'stable') {
+      await this.processOffer();
+    } else if (this.pc) {
+      this.queuedOffer = this.pendingOffer;
+    }
   }
 
   private async handleAnswer(data: any): Promise<void> {
@@ -464,6 +620,10 @@ export class CallService implements OnDestroy {
       await this.pc.setRemoteDescription(JSON.parse(data.sdp));
     } catch { }
     await this.flushPendingIce();
+    if (this.queuedNegotiation) {
+      this.queuedNegotiation = false;
+      await this.maybeNegotiate();
+    }
   }
 
   private async handleIce(data: any): Promise<void> {
