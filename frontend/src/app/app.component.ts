@@ -1,12 +1,12 @@
-import { Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { ProfileReminderComponent } from './shared/components/profile-reminder/profile-reminder.component';
 import { CommandPaletteComponent } from './shared/components/command-palette/command-palette.component';
 import { PresenceDockComponent } from './shared/components/presence-dock/presence-dock.component';
 import { CallOverlayComponent } from './shared/components/call-overlay/call-overlay.component';
 import { YoutubePlayerComponent } from './shared/components/youtube-player/youtube-player.component';
-import { AuthService } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -24,11 +24,24 @@ import { AuthService } from './core/services/auth.service';
       <app-command-palette />
       <app-presence-dock />
       <app-call-overlay />
-      <app-youtube-player *ngIf="auth.currentUser()" />
+      <app-youtube-player *ngIf="showPlayer()" />
     </div>
   `,
   styles: [``]
 })
 export class AppComponent {
-  readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  showPlayer = signal(
+    this.router.url.startsWith('/login') || this.router.url.startsWith('/register') ? false : true
+  );
+
+  constructor() {
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd)
+    ).subscribe(() => {
+      const url = this.router.url;
+      const isAuthScreen = url.startsWith('/login') || url.startsWith('/register');
+      this.showPlayer.set(!isAuthScreen);
+    });
+  }
 }
