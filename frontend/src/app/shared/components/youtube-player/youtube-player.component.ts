@@ -466,8 +466,8 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
       this.ytConfigured = resp?.configured !== false;
       this.ytResults = resp?.items ?? [];
       if (!this.ytConfigured) this.ytError = '';
-    } catch {
-      this.ytError = 'Search failed. Try again.';
+    } catch (err: any) {
+      this.ytError = err?.status === 401 ? 'Sign in to search for music.' : 'Search failed. Try again.';
       this.ytResults = [];
     } finally {
       this.ytLoading = false;
