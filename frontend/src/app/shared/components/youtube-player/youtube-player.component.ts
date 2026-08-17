@@ -76,9 +76,10 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       border-radius: 14px; padding: 8px 10px;
       box-shadow: 0 8px 28px rgba(0,0,0,0.35);
       max-width: min(560px, calc(100vw - 32px));
+      overflow: hidden;
     }
     .yt-mini-info {
-      min-width: 0; flex: 1; display: flex; flex-direction: column; line-height: 1.2;
+      min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; line-height: 1.2;
       margin-right: 6px;
     }
     .yt-mini-title {
@@ -148,15 +149,19 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
         left: 0; right: 0; bottom: 0; max-width: none;
         border-radius: 16px 16px 0 0;
         border-left: none; border-right: none; border-bottom: none;
-        padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
       }
-      .yt-mini-video { width: 72px; height: 40px; }
-      .yt-mini-ctl { width: 44px; height: 44px; }
+      .yt-mini-video { width: 64px; height: 36px; }
+      .yt-mini-ctl { width: 40px; height: 40px; }
       .yt-queue {
-        left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom));
+        left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom));
         width: auto; border-radius: 16px 16px 0 0; max-height: 55vh;
         padding-bottom: calc(12px + env(safe-area-inset-bottom));
       }
+    }
+    @media (max-width: 400px) {
+      .yt-mini-video { width: 48px; height: 27px; }
+      .yt-queue { bottom: calc(48px + env(safe-area-inset-bottom)); }
     }
     `
   ]
