@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RoomService } from '../../core/services/room.service';
@@ -132,6 +132,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
 })
 export class RoomListComponent implements OnInit {
   private roomService = inject(RoomService);
+  private router = inject(Router);
 
   rooms: Room[] = [];
   search = '';
@@ -156,6 +157,6 @@ export class RoomListComponent implements OnInit {
   }
 
   navigateToRoom(id: string) {
-    window.location.href = `/rooms/${id}`;
+    this.router.navigate(['/rooms', id]);
   }
 }

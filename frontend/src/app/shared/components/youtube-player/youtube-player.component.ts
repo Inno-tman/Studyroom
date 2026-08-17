@@ -7,12 +7,22 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="yt-queue" *ngIf="showQueue && player.queue().length > 0">
+    <div class="yt-queue" *ngIf="showQueue">
       <div class="yt-queue-head">
         <span>Up next ({{ player.queue().length }})</span>
         <div class="yt-queue-actions">
-          <button class="yt-queue-clear" (click)="player.clearQueue()">Clear</button>
-          <button class="yt-queue-clear" (click)="showQueue = false">Close</button>
+          <button class="yt-queue-ctl" [class.active]="player.shuffle()" (click)="player.toggleShuffle()" title="Shuffle">
+            <span class="material-icons">shuffle</span>
+          </button>
+          <button class="yt-queue-ctl" (click)="player.prev()" title="Previous">
+            <span class="material-icons">skip_previous</span>
+          </button>
+          <button class="yt-queue-ctl" (click)="player.clearQueue()" title="Clear queue">
+            <span class="material-icons">delete_sweep</span>
+          </button>
+          <button class="yt-queue-ctl" (click)="showQueue = false" title="Close">
+            <span class="material-icons">close</span>
+          </button>
         </div>
       </div>
       <button class="yt-queue-item" *ngFor="let item of player.queue(); let i = index"
@@ -22,6 +32,9 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
         <span class="yt-queue-rm material-icons" (click)="$event.stopPropagation(); player.remove(i)"
               title="Remove from queue">close</span>
       </button>
+      <div class="yt-queue-empty" *ngIf="player.queue().length === 0">
+        Queue is empty — add videos from the dashboard search.
+      </div>
     </div>
 
     <div class="yt-mini" *ngIf="player.videoId()">
@@ -32,14 +45,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
         <span class="yt-mini-err" *ngIf="player.error()">Playback failed — tap the video or try another one</span>
         <span class="yt-mini-hint" *ngIf="player.hint()">{{ player.hint() }}</span>
       </div>
-      <button class="yt-mini-ctl" [class.active]="player.shuffle()" (click)="player.toggleShuffle()"
-              title="Shuffle">
-        <span class="material-icons">shuffle</span>
-      </button>
-      <button class="yt-mini-ctl" (click)="player.prev()" title="Previous">
-        <span class="material-icons">skip_previous</span>
-      </button>
-      <button class="yt-mini-ctl" (click)="player.togglePlay()"
+      <button class="yt-mini-ctl yt-mini-play" (click)="player.togglePlay()"
               [title]="player.playing() ? 'Pause' : 'Play'">
         <span class="material-icons">{{ player.playing() ? 'pause' : 'play_arrow' }}</span>
       </button>
@@ -85,12 +91,14 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     .yt-mini-ctl {
       position: relative; border: none; background: transparent; color: inherit; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      width: 32px; height: 32px; border-radius: 8px; flex: none;
+      width: 36px; height: 36px; border-radius: 10px; flex: none;
       transition: background 0.15s, color 0.15s;
     }
     .yt-mini-ctl:hover { background: rgba(255,255,255,0.08); }
     .yt-mini-ctl.active { color: var(--accent, #7d8cff); }
-    .yt-mini-ctl .material-icons { font-size: 22px; }
+    .yt-mini-ctl .material-icons { font-size: 24px; }
+    .yt-mini-play { background: var(--accent, #7d8cff); color: #fff; }
+    .yt-mini-play:hover { background: var(--accent, #7d8cff); }
     .yt-mini-badge {
       position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px;
       padding: 0 3px; border-radius: 999px; background: var(--accent, #7d8cff); color: #fff;
@@ -108,12 +116,15 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
       margin-bottom: 8px; font-size: var(--font-13, 13px); font-weight: 600;
     }
-    .yt-queue-actions { display: flex; gap: 4px; }
-    .yt-queue-clear {
-      border: none; background: rgba(255,255,255,0.08); color: inherit;
-      font-size: var(--font-12, 12px); padding: 4px 8px; border-radius: 6px; cursor: pointer;
+    .yt-queue-actions { display: flex; gap: 2px; }
+    .yt-queue-ctl {
+      border: none; background: transparent; color: inherit; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 8px; transition: background 0.15s, color 0.15s;
     }
-    .yt-queue-clear:hover { background: rgba(255,255,255,0.15); }
+    .yt-queue-ctl:hover { background: rgba(255,255,255,0.08); }
+    .yt-queue-ctl.active { color: var(--accent, #7d8cff); }
+    .yt-queue-ctl .material-icons { font-size: 20px; }
     .yt-queue-item {
       display: flex; align-items: center; gap: 8px; width: 100%;
       background: transparent; border: none; color: inherit;
@@ -130,10 +141,22 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       font-size: 16px; opacity: 0.55; flex: none; border-radius: 50%; padding: 2px;
     }
     .yt-queue-rm:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+    .yt-queue-empty { font-size: var(--font-12, 12px); opacity: 0.7; padding: 8px 2px; }
 
     @media (max-width: 640px) {
-      .yt-mini { left: 8px; right: 8px; bottom: 8px; max-width: none; }
-      .yt-queue { left: 8px; right: 8px; bottom: 68px; width: auto; }
+      .yt-mini {
+        left: 0; right: 0; bottom: 0; max-width: none;
+        border-radius: 16px 16px 0 0;
+        border-left: none; border-right: none; border-bottom: none;
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      }
+      .yt-mini-video { width: 72px; height: 40px; }
+      .yt-mini-ctl { width: 44px; height: 44px; }
+      .yt-queue {
+        left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom));
+        width: auto; border-radius: 16px 16px 0 0; max-height: 55vh;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+      }
     }
     `
   ]

@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/services/auth.service';
@@ -344,6 +344,7 @@ export class DashboardComponent implements OnInit {
   private statsService = inject(StatisticsService);
   private youtubeService = inject(YoutubeService);
   private youtubePlayer = inject(YoutubePlayerService);
+  private router = inject(Router);
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
@@ -373,7 +374,7 @@ export class DashboardComponent implements OnInit {
   }
 
   navigateToRoom(id: string) {
-    window.location.href = `/rooms/${id}`;
+    this.router.navigate(['/rooms', id]);
   }
 
   loadVideo(): void {
