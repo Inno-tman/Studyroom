@@ -64,14 +64,15 @@ import { NotificationService } from '../../../core/services/notification.service
       top: 0;
       left: 0;
       right: 0;
-      height: var(--navbar-height);
+      height: calc(var(--navbar-height) + env(safe-area-inset-top));
+      padding: env(safe-area-inset-top) 16px 0;
       background: var(--secondary);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 0 16px;
       z-index: 200;
+      box-sizing: border-box;
     }
 
     .navbar-left {

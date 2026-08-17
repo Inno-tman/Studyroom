@@ -7,7 +7,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="yt-player" *ngIf="player.videoId() || showQueue">
+    <div class="yt-player" *ngIf="player.videoId() || showQueue" [class.collapsed]="minimized">
       <div class="yt-queue" *ngIf="showQueue">
         <div class="yt-queue-head">
           <span>Up next ({{ player.queue().length }})</span>
@@ -38,8 +38,17 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
         </div>
       </div>
 
-      <div class="yt-mini" *ngIf="player.videoId()">
-        <div class="yt-mini-video" #playerHost></div>
+      <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Show player">
+        <span class="material-icons">{{ player.playing() ? 'pause' : 'play_arrow' }}</span>
+        <span class="yt-pill-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
+      </button>
+
+      <div class="yt-mini">
+        <div class="yt-mini-video" #playerHost>
+          <button class="yt-minimize" (click)="minimize()" title="Minimize">
+            <span class="material-icons">keyboard_arrow_down</span>
+          </button>
+        </div>
         <div class="yt-mini-info">
           <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
           <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
@@ -83,7 +92,38 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       border: 1px solid var(--line, rgba(255,255,255,0.09));
       border-radius: 16px; padding: 10px;
       box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+      transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
     }
+    .yt-player.collapsed .yt-mini {
+      opacity: 0; transform: translateY(10px); visibility: hidden; pointer-events: none;
+    }
+    .yt-pill {
+      position: absolute; left: 0; bottom: 0; z-index: 2;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--accent, #7d8cff); color: #fff; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      animation: ytPulse 2.2s ease-in-out infinite;
+    }
+    .yt-pill .material-icons { font-size: 24px; }
+    .yt-pill-badge {
+      position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px;
+      padding: 0 4px; border-radius: 999px; background: #ff5252; color: #fff;
+      font-size: 10px; line-height: 16px; text-align: center; font-weight: 700;
+    }
+    @keyframes ytPulse {
+      0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 0 rgba(125,140,255,0.5); }
+      50% { box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 10px rgba(125,140,255,0); }
+    }
+    .yt-minimize {
+      position: absolute; top: 6px; right: 6px; z-index: 10;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(0,0,0,0.55); color: #fff; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .yt-minimize:hover { background: rgba(0,0,0,0.75); }
+    .yt-minimize .material-icons { font-size: 18px; }
     .yt-mini-video {
       position: relative; width: 100%; aspect-ratio: 16 / 9;
       border-radius: 10px; overflow: hidden; background: #000;
@@ -167,6 +207,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
         bottom: calc(8px + env(safe-area-inset-bottom));
         width: min(320px, calc(100vw - 16px));
       }
+      .yt-pill { left: 50%; transform: translateX(-50%); }
       .yt-mini-ctl { width: 40px; height: 40px; }
       .yt-mini-play { width: 44px; height: 44px; }
       .yt-queue { max-height: 50vh; }
@@ -177,6 +218,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
 export class YoutubePlayerComponent {
   readonly player = inject(YoutubePlayerService);
   showQueue = false;
+  minimized = false;
 
   private hostEl?: HTMLElement;
   private currentId = '';
@@ -198,6 +240,11 @@ export class YoutubePlayerComponent {
       const id = this.player.videoId();
       if (id) void this.loadVideo(id);
     }, { allowSignalWrites: true });
+  }
+
+  minimize(): void {
+    this.showQueue = false;
+    this.minimized = true;
   }
 
   private async loadVideo(id: string): Promise<void> {

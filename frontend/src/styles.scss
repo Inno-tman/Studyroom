@@ -190,7 +190,7 @@ html, body {
   flex-direction: column;
   min-width: 0;
   height: 100vh;
-  padding-top: var(--navbar-height);
+  padding-top: calc(var(--navbar-height) + env(safe-area-inset-top));
   overflow: hidden;
 }
 
