@@ -161,7 +161,7 @@ export class YoutubePlayerComponent {
     effect(() => {
       const id = this.player.videoId();
       if (id) void this.loadVideo(id);
-    });
+    }, { allowSignalWrites: true });
   }
 
   private async loadVideo(id: string): Promise<void> {
