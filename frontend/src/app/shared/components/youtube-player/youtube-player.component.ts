@@ -44,11 +44,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       </button>
 
       <div class="yt-mini">
-        <div class="yt-mini-video" #playerHost>
-          <button class="yt-minimize" (click)="minimize()" title="Minimize">
-            <span class="material-icons">keyboard_arrow_down</span>
-          </button>
-        </div>
+        <div class="yt-mini-video" #playerHost></div>
         <div class="yt-mini-info">
           <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
           <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
@@ -72,6 +68,9 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
           <button class="yt-mini-ctl" (click)="showQueue = !showQueue" title="Queue">
             <span class="material-icons">queue_music</span>
             <span class="yt-mini-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
+          </button>
+          <button class="yt-mini-ctl yt-minimize-btn" (click)="minimize()" title="Minimize player">
+            <span class="material-icons">keyboard_arrow_down</span>
           </button>
           <button class="yt-mini-ctl" (click)="player.close(); showQueue = false" title="Close">
             <span class="material-icons">close</span>
@@ -115,15 +114,8 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       0%, 100% { box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 0 rgba(125,140,255,0.5); }
       50% { box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 0 10px rgba(125,140,255,0); }
     }
-    .yt-minimize {
-      position: absolute; top: 6px; right: 6px; z-index: 10;
-      width: 30px; height: 30px; border-radius: 50%;
-      background: rgba(0,0,0,0.55); color: #fff; border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s;
-    }
-    .yt-minimize:hover { background: rgba(0,0,0,0.75); }
-    .yt-minimize .material-icons { font-size: 18px; }
+    .yt-minimize-btn { color: var(--accent, #7d8cff); }
+    .yt-minimize-btn:hover { background: rgba(125,140,255,0.12); }
     .yt-mini-video {
       position: relative; width: 100%; aspect-ratio: 16 / 9;
       border-radius: 10px; overflow: hidden; background: #000;
@@ -146,7 +138,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     .yt-mini-ctl {
       position: relative; border: none; background: transparent; color: inherit; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      width: 34px; height: 34px; border-radius: 10px; flex: none;
+      width: 30px; height: 32px; border-radius: 8px; flex: none;
       transition: background 0.15s, color 0.15s;
     }
     .yt-mini-ctl:hover { background: rgba(255,255,255,0.08); }
@@ -208,8 +200,8 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
         width: min(320px, calc(100vw - 16px));
       }
       .yt-pill { left: 50%; transform: translateX(-50%); }
-      .yt-mini-ctl { width: 40px; height: 40px; }
-      .yt-mini-play { width: 44px; height: 44px; }
+      .yt-mini-ctl { width: 38px; height: 38px; }
+      .yt-mini-play { width: 42px; height: 42px; }
       .yt-queue { max-height: 50vh; }
     }
     `
