@@ -5,6 +5,7 @@ namespace StudyRoom.API.Services;
 public interface IPostService
 {
     Task<List<PostDto>> GetTimelineAsync(Guid userId);
+    Task<PostDto> GetPostAsync(Guid postId, Guid viewerId);
     Task<List<PostDto>> GetRoomPostsAsync(Guid roomId, Guid userId);
     Task<List<PostDto>> GetUserPostsAsync(Guid userId, Guid viewerId);
     Task<PostDto> CreatePostAsync(CreatePostDto dto, Guid userId);

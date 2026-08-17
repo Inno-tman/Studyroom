@@ -12,6 +12,10 @@ export class PostService {
     return this.http.get<Post[]>(`${environment.apiUrl}/posts/timeline`);
   }
 
+  getPost(id: string): Observable<Post> {
+    return this.http.get<Post>(`${environment.apiUrl}/posts/${id}`);
+  }
+
   getRoomPosts(roomId: string): Observable<Post[]> {
     return this.http.get<Post[]>(`${environment.apiUrl}/posts/room/${roomId}`);
   }

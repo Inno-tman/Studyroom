@@ -32,6 +32,13 @@ public class PostService : IPostService
         return posts.Select(p => MapToDto(p, userId)).ToList();
     }
 
+    public async Task<PostDto> GetPostAsync(Guid postId, Guid viewerId)
+    {
+        var post = await _postRepo.GetByIdAsync(postId)
+            ?? throw new KeyNotFoundException("Post not found.");
+        return MapToDto(post, viewerId);
+    }
+
     public async Task<List<PostDto>> GetRoomPostsAsync(Guid roomId, Guid userId)
     {
         if (!await _roomRepo.IsMemberAsync(roomId, userId))

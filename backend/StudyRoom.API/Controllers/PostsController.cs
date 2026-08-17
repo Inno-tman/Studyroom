@@ -24,6 +24,20 @@ public class PostsController : ControllerBase
         return Ok(posts);
     }
 
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> Get(Guid id)
+    {
+        try
+        {
+            var post = await _postService.GetPostAsync(id, UserId);
+            return Ok(post);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("room/{roomId}")]
     public async Task<IActionResult> GetRoomPosts(Guid roomId)
     {

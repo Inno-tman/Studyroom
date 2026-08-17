@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { PostService } from '../core/services/post.service';
 import { Post } from '../shared/models/social.model';
@@ -65,7 +66,8 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <p>{{ post.content }}</p>
           </div>
 
-          <div *ngIf="post.sharedFrom" class="shared-card">
+          <div *ngIf="post.sharedFrom" class="shared-card" (click)="openShared(post.sharedFrom)"
+               role="button" tabindex="0" title="View original post">
             <div class="post-header">
               <div class="avatar sm" [class.has-image]="post.sharedFrom.authorAvatar">
                 <img *ngIf="post.sharedFrom.authorAvatar; else sharedInitial" [src]="post.sharedFrom.authorAvatar" alt="" />
@@ -75,6 +77,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
                 <span class="post-author">{{ post.sharedFrom.authorName }}</span>
                 <span class="post-time">{{ post.sharedFrom.createdAt | date: 'medium' }}</span>
               </div>
+              <span class="material-icons shared-open">open_in_new</span>
             </div>
             <p>{{ post.sharedFrom.content }}</p>
           </div>
@@ -203,9 +206,12 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 
     .shared-card {
       margin-top: 12px; background: var(--background); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px;
+      border-radius: 8px; padding: 12px; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
     }
+    .shared-card:hover { background: var(--surface-hover); border-color: var(--primary); }
     .shared-card p { font-size: var(--font-14); color: var(--text-primary); line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+    .shared-open { color: var(--text-muted); font-size: var(--font-18); }
 
     .post-stats { display: flex; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: var(--font-13); color: var(--text-muted); }
 
@@ -255,6 +261,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 export class TimelineComponent implements OnInit {
   auth = inject(AuthService);
   private postService = inject(PostService);
+  private router = inject(Router);
 
   posts: (Post & { showComments?: boolean; newComment?: string; replyToCommentId?: string })[] = [];
   newPostContent = '';
@@ -270,6 +277,10 @@ export class TimelineComponent implements OnInit {
 
   async load(): Promise<void> {
     this.posts = (await this.postService.getTimeline().toPromise()) || [];
+  }
+
+  openShared(original: Post): void {
+    if (original?.id) this.router.navigate(['/posts', original.id]);
   }
 
   async publish(): Promise<void> {
