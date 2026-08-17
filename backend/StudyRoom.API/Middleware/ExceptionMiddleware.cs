@@ -37,19 +37,29 @@ public class ExceptionMiddleware
             ? exception.InnerException
             : exception;
 
-        context.Response.StatusCode = effective switch
-        {
-            UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
-            KeyNotFoundException => (int)HttpStatusCode.NotFound,
-            InvalidOperationException => (int)HttpStatusCode.BadRequest,
-            ArgumentException => (int)HttpStatusCode.BadRequest,
-            _ => (int)HttpStatusCode.InternalServerError
-        };
+        var known = effective is UnauthorizedAccessException
+            or KeyNotFoundException
+            or InvalidOperationException
+            or ArgumentException;
+
+        // Only surface the message for expected business errors. Anything else
+        // (DB failures, crashes, etc.) gets a generic message; the full detail
+        // is already logged in InvokeAsync.
+        var statusCode = known
+            ? effective switch
+            {
+                UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
+                KeyNotFoundException => (int)HttpStatusCode.NotFound,
+                _ => (int)HttpStatusCode.BadRequest
+            }
+            : (int)HttpStatusCode.InternalServerError;
+
+        context.Response.StatusCode = statusCode;
 
         var response = new
         {
-            error = effective.Message,
-            statusCode = context.Response.StatusCode
+            error = known ? effective.Message : "An unexpected error occurred.",
+            statusCode
         };
 
         var json = JsonSerializer.Serialize(response);

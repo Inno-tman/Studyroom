@@ -1,6 +1,9 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StudyRoom.API.Authentication;
@@ -14,6 +17,15 @@ using StudyRoom.API.Services;
 Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    // Render terminates TLS and forwards the client IP; required for correct
+    // rate limiting and scheme detection behind the proxy.
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -60,6 +72,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = (context, _) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        return new ValueTask(context.HttpContext.Response.WriteAsync("""{"error":"Too many requests. Please try again in a minute."}"""));
+    };
+    // Auth endpoints are anonymous, so limit them per client IP to slow brute force.
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+});
 
 builder.Services.AddCors(options =>
 {
@@ -143,7 +174,24 @@ builder.Services.AddHostedService<StaleDirectMessageNotifier>();
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
+
+// Basic security headers on every API response.
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
+    await next();
+});
+
 app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseRateLimiter();
 
 app.UseCors("AllowFrontend");
 

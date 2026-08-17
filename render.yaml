@@ -43,6 +43,22 @@ services:
         value: https://studyroom-api-qzvh.onrender.com/hubs/studyroom
       - key: GOOGLE_CLIENT_ID
         value: 328699849312-4hcd0ksoqaacutvotm9ejpigbu329ki6.apps.googleusercontent.com
+    headers:
+      - path: /**
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /**
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /**
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /**
+        name: Permissions-Policy
+        value: camera=(self), microphone=(self), geolocation=()
+      - path: /**
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self' https://accounts.google.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self' https://studyroom-api-qzvh.onrender.com wss://studyroom-api-qzvh.onrender.com https://accounts.google.com https://api.groq.com https://generativelanguage.googleapis.com https://www.googleapis.com https://i.ytimg.com wss://*.livekit.cloud https://*.livekit.cloud; worker-src 'self' blob:; manifest-src 'self'"
 
 databases:
   - name: studyroom-db
