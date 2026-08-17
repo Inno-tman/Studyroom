@@ -29,7 +29,8 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
       <div class="yt-mini-info">
         <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
         <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
-        <span class="yt-mini-err" *ngIf="player.error()">Playback failed</span>
+        <span class="yt-mini-err" *ngIf="player.error()">Playback failed — tap the video or try another one</span>
+        <span class="yt-mini-hint" *ngIf="player.hint()">{{ player.hint() }}</span>
       </div>
       <button class="yt-mini-ctl" [class.active]="player.shuffle()" (click)="player.toggleShuffle()"
               title="Shuffle">
@@ -80,6 +81,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     }
     .yt-mini-channel { font-size: var(--font-12, 12px); opacity: 0.65; }
     .yt-mini-err { font-size: var(--font-12, 12px); color: #ff8080; }
+    .yt-mini-hint { font-size: var(--font-12, 12px); color: #ffd479; }
     .yt-mini-ctl {
       position: relative; border: none; background: transparent; color: inherit; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
@@ -144,6 +146,7 @@ export class YoutubePlayerComponent {
   private currentId = '';
   private pendingId = '';
   private ytInstance?: any;
+  private mutedStart = false;
 
   @ViewChild('playerHost', { read: ElementRef })
   set hostRef(el: ElementRef<HTMLElement> | undefined) {
@@ -164,12 +167,16 @@ export class YoutubePlayerComponent {
   private async loadVideo(id: string): Promise<void> {
     if (!id || this.currentId === id) return;
     this.currentId = id;
+    console.log('[yt] load', id);
     this.player.setPlaying(false);
     this.player.setError(false);
+    this.player.setHint('Loading player…');
     try {
       await this.player.ensureApi();
-    } catch {
+    } catch (err) {
+      console.error('[yt] api failed', err);
       this.player.setError(true);
+      this.player.setHint('Could not load the YouTube player. Is YouTube blocked?');
       return;
     }
     if (!this.hostEl) {
@@ -181,7 +188,10 @@ export class YoutubePlayerComponent {
 
   private buildPlayer(id: string): void {
     const w = window as any;
-    if (!w.YT?.Player || !this.hostEl) return;
+    if (!w.YT?.Player || !this.hostEl) {
+      console.error('[yt] build skipped', { hasYt: !!w.YT?.Player, hasHost: !!this.hostEl });
+      return;
+    }
     try { this.ytInstance?.destroy(); } catch { }
     this.ytInstance = undefined;
     let player: any;
@@ -193,25 +203,47 @@ export class YoutubePlayerComponent {
         playerVars: { rel: 0, playsinline: 1, controls: 1 },
         events: {
           onReady: () => {
+            console.log('[yt] ready', id);
             this.player.setPlayer(player);
             this.ytInstance = player;
             this.player.setError(false);
-            try { player.playVideo(); } catch { }
+            this.player.setHint('Starting…');
+            const ifr = player.getIframe?.();
+            if (ifr) ifr.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
+            try {
+              this.mutedStart = true;
+              player.mute();
+              player.playVideo();
+            } catch { }
+            setTimeout(() => {
+              if (!this.player.playing()) this.player.setHint('Tap the video ▶ to play');
+            }, 2500);
           },
           onStateChange: (e: any) => {
-            if (e.data === 1) this.player.setPlaying(true);
-            else if (e.data === 0) {
+            console.log('[yt] state', e.data);
+            if (e.data === 1) {
+              this.player.setPlaying(true);
+              this.player.setHint('');
+              if (this.mutedStart) {
+                this.mutedStart = false;
+                try { player.unMute(); } catch { }
+              }
+            } else if (e.data === 0) {
               this.player.setPlaying(false);
               this.player.next();
             } else if (e.data === 2) this.player.setPlaying(false);
           },
-          onError: () => {
+          onError: (e: any) => {
+            console.error('[yt] error', e?.data);
             this.player.setError(true);
             this.player.setPlaying(false);
+            this.player.setHint('');
           }
         }
       });
-    } catch {
+      console.log('[yt] player created', id);
+    } catch (err) {
+      console.error('[yt] create failed', err);
       this.player.setError(true);
       this.player.setPlaying(false);
     }

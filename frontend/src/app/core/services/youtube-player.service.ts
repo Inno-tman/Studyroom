@@ -13,6 +13,7 @@ export class YoutubePlayerService {
   readonly channel = signal('');
   readonly playing = signal(false);
   readonly error = signal(false);
+  readonly hint = signal('');
   readonly queue = signal<PlaylistItem[]>([]);
   readonly queueIndex = signal(-1);
   readonly shuffle = signal(false);
@@ -112,6 +113,7 @@ export class YoutubePlayerService {
     this.channel.set('');
     this.playing.set(false);
     this.error.set(false);
+    this.hint.set('');
     this.player = undefined;
   }
 
@@ -133,6 +135,10 @@ export class YoutubePlayerService {
 
   setError(v: boolean): void {
     this.error.set(v);
+  }
+
+  setHint(v: string): void {
+    this.hint.set(v);
   }
 
   ensureApi(): Promise<void> {
@@ -165,6 +171,7 @@ export class YoutubePlayerService {
       this.channel.set(q[i].channel || '');
       this.playing.set(false);
       this.error.set(false);
+      this.hint.set('');
     }
   }
 
