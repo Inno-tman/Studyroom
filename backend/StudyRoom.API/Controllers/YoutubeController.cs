@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -50,6 +52,57 @@ public class YoutubeController : ControllerBase
             .ToList() ?? new List<object>();
 
         return Ok(new { configured = true, items });
+    }
+
+    /// <summary>
+    /// Resolves a direct audio-stream URL for a video via yt-dlp so the app can play
+    /// background audio (screen off / app backgrounded) without YouTube's iframe.
+    /// </summary>
+    [HttpGet("audio")]
+    public async Task<IActionResult> Audio([FromQuery] string id, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(id) || !Regex.IsMatch(id, "^[A-Za-z0-9_-]{11}$"))
+            return BadRequest(new { error = "Invalid video id." });
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "yt-dlp",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        psi.ArgumentList.Add("-f");
+        psi.ArgumentList.Add("bestaudio[ext=m4a]/bestaudio/best");
+        psi.ArgumentList.Add("-g");
+        psi.ArgumentList.Add("--no-playlist");
+        psi.ArgumentList.Add("--no-warnings");
+        psi.ArgumentList.Add($"https://www.youtube.com/watch?v={id}");
+
+        using var proc = new Process { StartInfo = psi };
+        if (!proc.Start())
+            return StatusCode(502, new { error = "yt-dlp is not available on the server." });
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        try
+        {
+            var outputTask = proc.StandardOutput.ReadToEndAsync(timeout.Token);
+            var errorTask = proc.StandardError.ReadToEndAsync(timeout.Token);
+            await proc.WaitForExitAsync(timeout.Token);
+
+            var url = (await outputTask).Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim();
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                var err = (await errorTask).Trim();
+                return StatusCode(502, new { error = "Could not resolve an audio stream for this video." + (err.Length > 0 ? " " + err.Split('\n').Last().Trim() : "") });
+            }
+            return Ok(new { url });
+        }
+        catch (OperationCanceledException)
+        {
+            try { proc.Kill(entireProcessTree: true); } catch { }
+            return StatusCode(504, new { error = "Timed out resolving the audio stream." });
+        }
     }
 }
 

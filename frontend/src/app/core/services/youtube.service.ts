@@ -25,4 +25,11 @@ export class YoutubeService {
       params: { q: query, max: String(max) }
     });
   }
+
+  /** Resolves a direct audio-stream URL for a video (for background playback). */
+  audio(id: string): Observable<{ url: string; error?: string }> {
+    return this.http.get<{ url: string; error?: string }>(`${environment.apiUrl}/youtube/audio`, {
+      params: { id }
+    });
+  }
 }

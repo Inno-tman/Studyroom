@@ -95,6 +95,9 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 
           <div class="yt-results" *ngIf="ytResults.length > 0">
             <div class="yt-result" *ngFor="let r of ytResults">
+              <button class="yt-result-add yt-result-audio" title="Play as audio (keeps playing with screen off)" (click)="playYoutube(r, true)">
+                <span class="material-icons">headphones</span>
+              </button>
               <button class="yt-result-add" title="Add to queue" (click)="enqueue(r)">
                 <span class="material-icons">playlist_add</span>
               </button>
@@ -285,6 +288,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     }
     .yt-result-add:hover { border-color: var(--primary); color: var(--primary); }
     .yt-result-add .material-icons { font-size: 18px; }
+    .yt-result-audio { right: 44px; }
     .yt-result img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; background: #000; }
     .yt-no-thumb { width: 100%; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 36px; background: var(--surface); border-radius: 8px; }
     .yt-result-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -402,12 +406,15 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  playYoutube(result: YoutubeSearchResult): void {
-    this.youtubePlayer.playNow({ id: result.id, title: result.title, channel: result.channel });
+  playYoutube(result: YoutubeSearchResult, audio = false): void {
+    this.youtubePlayer.playNow(
+      { id: result.id, title: result.title, channel: result.channel, thumbnail: result.thumbnail },
+      { audio }
+    );
   }
 
   enqueue(result: YoutubeSearchResult): void {
-    this.youtubePlayer.enqueue({ id: result.id, title: result.title, channel: result.channel });
+    this.youtubePlayer.enqueue({ id: result.id, title: result.title, channel: result.channel, thumbnail: result.thumbnail });
   }
 
   private extractYouTubeId(url: string): string {
