@@ -1,6 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { filter } from 'rxjs';
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { ProfileReminderComponent } from './shared/components/profile-reminder/profile-reminder.component';
 import { CommandPaletteComponent } from './shared/components/command-palette/command-palette.component';
@@ -24,22 +23,9 @@ import { YoutubePlayerComponent } from './shared/components/youtube-player/youtu
       <app-command-palette />
       <app-presence-dock />
       <app-call-overlay />
-      <app-youtube-player *ngIf="showPlayer()" />
+      <app-youtube-player />
     </div>
   `,
   styles: [``]
 })
-export class AppComponent {
-  private readonly router = inject(Router);
-  showPlayer = signal(false);
-
-  constructor() {
-    this.router.events.pipe(
-      filter((e): e is NavigationEnd => e instanceof NavigationEnd)
-    ).subscribe(() => {
-      const url = this.router.url;
-      const isAuthScreen = url.startsWith('/login') || url.startsWith('/register');
-      this.showPlayer.set(!isAuthScreen);
-    });
-  }
-}
+export class AppComponent {}
