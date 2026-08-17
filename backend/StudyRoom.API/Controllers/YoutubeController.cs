@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using StudyRoom.API.Models;
@@ -6,6 +7,7 @@ namespace StudyRoom.API.Controllers;
 
 [ApiController]
 [Route("api/youtube")]
+[Authorize]
 public class YoutubeController : ControllerBase
 {
     private readonly IHttpClientFactory _http;

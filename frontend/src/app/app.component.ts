@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { ProfileReminderComponent } from './shared/components/profile-reminder/profile-reminder.component';
@@ -6,6 +6,7 @@ import { CommandPaletteComponent } from './shared/components/command-palette/com
 import { PresenceDockComponent } from './shared/components/presence-dock/presence-dock.component';
 import { CallOverlayComponent } from './shared/components/call-overlay/call-overlay.component';
 import { YoutubePlayerComponent } from './shared/components/youtube-player/youtube-player.component';
+import { AuthService } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -23,9 +24,11 @@ import { YoutubePlayerComponent } from './shared/components/youtube-player/youtu
       <app-command-palette />
       <app-presence-dock />
       <app-call-overlay />
-      <app-youtube-player />
+      <app-youtube-player *ngIf="auth.currentUser()" />
     </div>
   `,
   styles: [``]
 })
-export class AppComponent {}
+export class AppComponent {
+  readonly auth = inject(AuthService);
+}
