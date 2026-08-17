@@ -120,7 +120,7 @@ import { NotificationService } from '../../../core/services/notification.service
       color: white;
     }
 
-    .nav-item .material-icons { font-size: var(--font-22); }
+    .nav-item .material-icons { font-size: var(--font-22); transform: translateY(2px); }
 
     .badge {
       position: absolute;
