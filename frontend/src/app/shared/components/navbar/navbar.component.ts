@@ -183,7 +183,7 @@ import { NotificationService } from '../../../core/services/notification.service
     .logout-btn .material-icons { font-size: var(--font-20); }
 
     @media (max-width: 768px) {
-      .navbar { padding: 0 10px; gap: 8px; }
+      .navbar { padding: env(safe-area-inset-top) 10px 0; gap: 8px; }
       .logo-text { display: none; }
       .navbar-nav { justify-content: flex-start; }
     }
