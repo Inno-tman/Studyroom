@@ -1,13 +1,20 @@
 import { Component, ElementRef, effect, inject, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { YoutubePlayerService } from '../../../core/services/youtube-player.service';
+import { YoutubeService, YoutubeSearchResult } from '../../../core/services/youtube.service';
 
 @Component({
   selector: 'app-youtube-player',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="yt-player" *ngIf="player.videoId() || showQueue" [class.collapsed]="minimized">
+    <div class="yt-player" [class.collapsed]="minimized">
+      <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Study player">
+        <span class="material-icons">{{ player.playing() ? 'pause' : (player.videoId() ? 'play_arrow' : 'queue_music') }}</span>
+        <span class="yt-pill-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
+      </button>
+
       <div class="yt-queue" *ngIf="showQueue">
         <div class="yt-queue-head">
           <span>Up next ({{ player.queue().length }})</span>
@@ -34,17 +41,59 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
                 title="Remove from queue">close</span>
         </button>
         <div class="yt-queue-empty" *ngIf="player.queue().length === 0">
-          Queue is empty — add videos from the dashboard search.
+          Queue is empty — search for music below.
         </div>
       </div>
 
-      <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Show player">
-        <span class="material-icons">{{ player.playing() ? 'pause' : 'play_arrow' }}</span>
-        <span class="yt-pill-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
-      </button>
+      <div class="yt-search" *ngIf="showSearch">
+        <div class="yt-queue-head">
+          <span>Find study music</span>
+          <button class="yt-queue-ctl" (click)="showSearch = false" title="Close">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="yt-search-row">
+          <input [(ngModel)]="ytQuery" (keyup.enter)="searchYoutube()" placeholder="Songs, lo-fi, focus…" />
+          <button class="yt-search-go" [disabled]="!ytQuery.trim() || ytLoading" (click)="searchYoutube()" title="Search">
+            <span class="material-icons">{{ ytLoading ? 'hourglass_top' : 'search' }}</span>
+          </button>
+        </div>
+        <div class="yt-search-hint" *ngIf="!ytConfigured && !ytLoading && ytResults.length === 0">
+          Search needs a YouTube API key — set <code>YOUTUBE_API_KEY</code> on the server.
+        </div>
+        <div class="yt-search-err" *ngIf="ytError">{{ ytError }}</div>
+        <div class="yt-search-results" *ngIf="ytResults.length > 0">
+          <div class="yt-search-result" *ngFor="let r of ytResults">
+            <button class="yt-search-play" (click)="playYoutube(r); showSearch = false">
+              <img *ngIf="r.thumbnail; else noThumb" [src]="r.thumbnail" alt="" loading="lazy" />
+              <ng-template #noThumb><span class="yt-search-no-thumb material-icons">play_circle</span></ng-template>
+              <div class="yt-search-info">
+                <span class="yt-search-title">{{ r.title }}</span>
+                <span class="yt-search-channel">{{ r.channel }}</span>
+              </div>
+            </button>
+            <button class="yt-search-add" title="Add to queue" (click)="enqueue(r)">
+              <span class="material-icons">playlist_add</span>
+            </button>
+          </div>
+        </div>
+        <div class="yt-search-row yt-search-link">
+          <input [(ngModel)]="youtubeUrl" (keyup.enter)="playLink()" placeholder="…or paste a YouTube link" />
+          <button class="yt-search-go" [disabled]="!youtubeUrl.trim()" (click)="playLink()" title="Play">
+            <span class="material-icons">play_arrow</span>
+          </button>
+        </div>
+      </div>
 
       <div class="yt-mini">
-        <div class="yt-mini-video" #playerHost></div>
+        <div class="yt-mini-video" *ngIf="player.videoId()">
+          <div #playerHost></div>
+        </div>
+        <div class="yt-mini-video yt-mini-empty" *ngIf="!player.videoId()">
+          <span class="material-icons yt-mini-empty-icon">music_note</span>
+          <span class="yt-mini-empty-text">Search YouTube for study music</span>
+          <button class="yt-mini-empty-btn" (click)="openSearch()">Find music</button>
+        </div>
         <div class="yt-mini-info">
           <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
           <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
@@ -65,14 +114,17 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
           <button class="yt-mini-ctl" (click)="player.next()" title="Next">
             <span class="material-icons">skip_next</span>
           </button>
-          <button class="yt-mini-ctl" (click)="showQueue = !showQueue" title="Queue">
+          <button class="yt-mini-ctl" [class.active]="showQueue" (click)="toggleQueue()" title="Queue">
             <span class="material-icons">queue_music</span>
             <span class="yt-mini-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
+          </button>
+          <button class="yt-mini-ctl" [class.active]="showSearch" (click)="toggleSearch()" title="Search music">
+            <span class="material-icons">search</span>
           </button>
           <button class="yt-mini-ctl yt-minimize-btn" (click)="minimize()" title="Minimize player">
             <span class="material-icons">keyboard_arrow_down</span>
           </button>
-          <button class="yt-mini-ctl" (click)="player.close(); showQueue = false" title="Close">
+          <button class="yt-mini-ctl" (click)="player.close(); showQueue = false; showSearch = false" title="Close">
             <span class="material-icons">close</span>
           </button>
         </div>
@@ -193,6 +245,81 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     .yt-queue-rm:hover { opacity: 1; background: rgba(255,255,255,0.1); }
     .yt-queue-empty { font-size: var(--font-12, 12px); opacity: 0.7; padding: 8px 2px; }
 
+    .yt-search {
+      position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 1;
+      background: var(--surface-2, #1e1f26); color: var(--text-1, #e8e8ec);
+      border: 1px solid var(--line, rgba(255,255,255,0.09));
+      border-radius: 14px; padding: 12px; max-height: 420px; overflow: auto;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .yt-search-row { display: flex; gap: 6px; }
+    .yt-search-row input {
+      flex: 1; min-width: 0; padding: 9px 12px; border-radius: 8px;
+      border: 1px solid var(--line, rgba(255,255,255,0.12));
+      background: rgba(255,255,255,0.05); color: inherit; font-size: var(--font-13, 13px); outline: none;
+    }
+    .yt-search-row input:focus { border-color: var(--accent, #7d8cff); }
+    .yt-search-go {
+      border: none; border-radius: 8px; background: var(--accent, #7d8cff); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      width: 38px; flex: none; cursor: pointer;
+    }
+    .yt-search-go:disabled { opacity: 0.5; cursor: not-allowed; }
+    .yt-search-go .material-icons { font-size: 20px; }
+    .yt-search-hint { font-size: var(--font-12, 12px); opacity: 0.75; line-height: 1.4; }
+    .yt-search-hint code {
+      background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 5px;
+      font-family: ui-monospace, monospace; font-size: var(--font-11, 11px);
+    }
+    .yt-search-err { font-size: var(--font-12, 12px); color: #ff8080; }
+    .yt-search-results { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; }
+    .yt-search-result {
+      position: relative; display: flex; gap: 8px; align-items: center;
+      border-radius: 10px; background: rgba(255,255,255,0.04); overflow: hidden;
+    }
+    .yt-search-play {
+      flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+      background: transparent; border: none; color: inherit; padding: 6px; cursor: pointer; text-align: left;
+    }
+    .yt-search-play img, .yt-search-no-thumb {
+      width: 56px; height: 36px; border-radius: 6px; object-fit: cover; flex: none; background: #000;
+    }
+    .yt-search-no-thumb {
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 20px;
+    }
+    .yt-search-info { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .yt-search-title {
+      font-size: var(--font-12, 12px); font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .yt-search-channel {
+      font-size: var(--font-11, 11px); opacity: 0.6;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .yt-search-add {
+      flex: none; margin-right: 6px; width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: transparent; color: inherit; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .yt-search-add:hover { background: rgba(255,255,255,0.1); }
+    .yt-search-add .material-icons { font-size: 18px; }
+    .yt-search-link { margin-top: 2px; }
+
+    .yt-mini-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      background: linear-gradient(135deg, #20232b, #131419);
+      color: var(--text-1, #e8e8ec);
+    }
+    .yt-mini-empty-icon { font-size: 30px; opacity: 0.5; }
+    .yt-mini-empty-text { font-size: var(--font-12, 12px); opacity: 0.7; text-align: center; }
+    .yt-mini-empty-btn {
+      margin-top: 4px; padding: 6px 12px; border: none; border-radius: 999px;
+      background: var(--accent, #7d8cff); color: #fff; font-size: var(--font-12, 12px);
+      font-weight: 600; cursor: pointer;
+    }
+
     @media (max-width: 640px) {
       .yt-player {
         left: 50%; transform: translateX(-50%);
@@ -200,17 +327,26 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
         width: min(320px, calc(100vw - 16px));
       }
       .yt-pill { left: 50%; transform: translateX(-50%); }
-      .yt-mini-ctl { width: 38px; height: 38px; }
+      .yt-mini-ctl { width: 34px; height: 38px; }
       .yt-mini-play { width: 42px; height: 42px; }
-      .yt-queue { max-height: 50vh; }
+      .yt-queue, .yt-search { max-height: 50vh; }
+      .yt-search-results { max-height: 32vh; }
     }
     `
   ]
 })
 export class YoutubePlayerComponent implements OnInit, OnDestroy {
   readonly player = inject(YoutubePlayerService);
+  private readonly youtubeService = inject(YoutubeService);
   showQueue = false;
-  minimized = false;
+  showSearch = false;
+  minimized = true;
+  ytQuery = '';
+  youtubeUrl = '';
+  ytResults: YoutubeSearchResult[] = [];
+  ytLoading = false;
+  ytError = '';
+  ytConfigured = true;
 
   private hostEl?: HTMLElement;
   private currentId = '';
@@ -272,7 +408,71 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
 
   minimize(): void {
     this.showQueue = false;
+    this.showSearch = false;
     this.minimized = true;
+  }
+
+  toggleQueue(): void {
+    this.showSearch = false;
+    this.showQueue = !this.showQueue;
+  }
+
+  toggleSearch(): void {
+    this.showQueue = false;
+    this.showSearch = !this.showSearch;
+  }
+
+  openSearch(): void {
+    this.showQueue = false;
+    this.showSearch = true;
+  }
+
+  playLink(): void {
+    const id = this.extractYouTubeId(this.youtubeUrl);
+    if (!id) return;
+    this.player.playNow({ id });
+    this.youtubeUrl = '';
+    this.showSearch = false;
+  }
+
+  async searchYoutube(): Promise<void> {
+    const q = this.ytQuery.trim();
+    if (!q) return;
+    this.ytLoading = true;
+    this.ytError = '';
+    try {
+      const resp = await this.youtubeService.search(q).toPromise();
+      this.ytConfigured = resp?.configured !== false;
+      this.ytResults = resp?.items ?? [];
+      if (!this.ytConfigured) this.ytError = '';
+    } catch {
+      this.ytError = 'Search failed. Try again.';
+      this.ytResults = [];
+    } finally {
+      this.ytLoading = false;
+    }
+  }
+
+  playYoutube(result: YoutubeSearchResult): void {
+    this.player.playNow({ id: result.id, title: result.title, channel: result.channel });
+  }
+
+  enqueue(result: YoutubeSearchResult): void {
+    this.player.enqueue({ id: result.id, title: result.title, channel: result.channel });
+  }
+
+  private extractYouTubeId(url: string): string {
+    const clean = url.trim();
+    const patterns = [
+      /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/,
+      /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/
+    ];
+    for (const p of patterns) {
+      const m = clean.match(p);
+      if (m) return m[1];
+    }
+    if (/^[A-Za-z0-9_-]{11}$/.test(clean)) return clean;
+    return '';
   }
 
   private async loadVideo(id: string): Promise<void> {
