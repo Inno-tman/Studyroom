@@ -45,7 +45,10 @@ public class YoutubeController : ControllerBase
                 id = i.Id!.VideoId,
                 title = i.Snippet?.Title ?? "Untitled",
                 channel = i.Snippet?.ChannelTitle ?? "",
-                thumbnail = i.Snippet?.Thumbnails?.Default?.Url ?? ""
+                thumbnail = i.Snippet?.Thumbnails?.Medium?.Url
+                    ?? i.Snippet?.Thumbnails?.High?.Url
+                    ?? i.Snippet?.Thumbnails?.Default?.Url
+                    ?? ""
             })
             .ToList() ?? new List<object>();
 
@@ -79,6 +82,8 @@ public class YoutubeSnippet
 public class YoutubeThumbnails
 {
     public YoutubeThumbnail? Default { get; set; }
+    public YoutubeThumbnail? Medium { get; set; }
+    public YoutubeThumbnail? High { get; set; }
 }
 
 public class YoutubeThumbnail

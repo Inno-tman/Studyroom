@@ -62,20 +62,26 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
           Search needs a YouTube API key — set <code>YOUTUBE_API_KEY</code> on the server.
         </div>
         <div class="yt-search-err" *ngIf="ytError">{{ ytError }}</div>
+        <div class="yt-search-status" *ngIf="ytLoading">Searching…</div>
         <div class="yt-search-results" *ngIf="ytResults.length > 0">
           <div class="yt-search-result" *ngFor="let r of ytResults">
-            <button class="yt-search-play" (click)="playYoutube(r); showSearch = false">
-              <img *ngIf="r.thumbnail; else noThumb" [src]="r.thumbnail" alt="" loading="lazy" />
-              <ng-template #noThumb><span class="yt-search-no-thumb material-icons">play_circle</span></ng-template>
-              <div class="yt-search-info">
+            <button class="yt-search-play" (click)="playYoutube(r); showSearch = false" title="Play">
+              <span class="yt-search-thumb">
+                <img *ngIf="r.thumbnail" [src]="r.thumbnail" alt="" loading="lazy" draggable="false" />
+                <span class="yt-search-thumb-icon material-icons">play_circle</span>
+              </span>
+              <span class="yt-search-info">
                 <span class="yt-search-title">{{ r.title }}</span>
                 <span class="yt-search-channel">{{ r.channel }}</span>
-              </div>
+              </span>
             </button>
             <button class="yt-search-add" title="Add to queue" (click)="enqueue(r)">
               <span class="material-icons">playlist_add</span>
             </button>
           </div>
+        </div>
+        <div class="yt-search-empty" *ngIf="!ytLoading && ytConfigured && ytQuery.trim() && ytResults.length === 0">
+          No results for “{{ ytQuery }}” — try different keywords.
         </div>
         <div class="yt-search-row yt-search-link">
           <input [(ngModel)]="youtubeUrl" (keyup.enter)="playLink()" placeholder="…or paste a YouTube link" />
@@ -273,38 +279,54 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
       font-family: ui-monospace, monospace; font-size: var(--font-11, 11px);
     }
     .yt-search-err { font-size: var(--font-12, 12px); color: #ff8080; }
-    .yt-search-results { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; }
+    .yt-search-status { font-size: var(--font-12, 12px); opacity: 0.7; }
+    .yt-search-empty { font-size: var(--font-12, 12px); opacity: 0.7; line-height: 1.4; }
+    .yt-search-results {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 2px;
+    }
     .yt-search-result {
-      position: relative; display: flex; gap: 8px; align-items: center;
-      border-radius: 10px; background: rgba(255,255,255,0.04); overflow: hidden;
+      display: flex; align-items: center; gap: 8px;
+      border-radius: 12px; background: rgba(255,255,255,0.06);
+      padding: 6px 6px 6px 6px;
+      transition: background 0.15s;
     }
+    .yt-search-result:hover { background: rgba(255,255,255,0.12); }
     .yt-search-play {
-      flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
-      background: transparent; border: none; color: inherit; padding: 6px; cursor: pointer; text-align: left;
+      flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+      background: transparent; border: none; color: inherit;
+      padding: 4px 0; cursor: pointer; text-align: left;
     }
-    .yt-search-play img, .yt-search-no-thumb {
-      width: 56px; height: 36px; border-radius: 6px; object-fit: cover; flex: none; background: #000;
+    .yt-search-thumb {
+      position: relative; width: 72px; height: 45px; flex: none;
+      border-radius: 8px; overflow: hidden; background: #000;
     }
-    .yt-search-no-thumb {
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text-muted); font-size: 20px;
+    .yt-search-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .yt-search-thumb-icon {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.28);
     }
-    .yt-search-info { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .yt-search-info {
+      min-width: 0; display: flex; flex-direction: column; gap: 3px;
+    }
     .yt-search-title {
-      font-size: var(--font-12, 12px); font-weight: 600;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: var(--font-13, 13px); font-weight: 600; line-height: 1.35;
+      color: var(--text-1, #e8e8ec);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .yt-search-channel {
       font-size: var(--font-11, 11px); opacity: 0.6;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .yt-search-add {
-      flex: none; margin-right: 6px; width: 30px; height: 30px; border-radius: 50%;
+      flex: none; width: 34px; height: 34px; border-radius: 50%;
       border: none; background: transparent; color: inherit; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
     }
-    .yt-search-add:hover { background: rgba(255,255,255,0.1); }
-    .yt-search-add .material-icons { font-size: 18px; }
+    .yt-search-add:hover { background: rgba(255,255,255,0.12); }
+    .yt-search-add .material-icons { font-size: 20px; }
     .yt-search-link { margin-top: 2px; }
 
     .yt-mini-empty {
@@ -330,7 +352,6 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
       .yt-mini-ctl { width: 34px; height: 38px; }
       .yt-mini-play { width: 42px; height: 42px; }
       .yt-queue, .yt-search { max-height: 50vh; }
-      .yt-search-results { max-height: 32vh; }
     }
     `
   ]
