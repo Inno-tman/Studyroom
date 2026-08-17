@@ -9,8 +9,12 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="yt-player" [class.collapsed]="minimized">
-      <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Study player">
+    <div class="yt-player" [class.collapsed]="minimized"
+         [class.dragged]="dragged" [class.dragging]="dragging"
+         [style.left.px]="dragLeft" [style.top.px]="dragTop"
+         (pointerdown)="onDragStart($event)" (pointermove)="onDragMove($event)"
+         (pointerup)="onDragEnd()" (pointercancel)="onDragEnd()">
+      <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Study player — drag to move">
         <span class="material-icons">{{ player.playing() ? 'pause' : (player.videoId() ? 'play_arrow' : 'queue_music') }}</span>
         <span class="yt-pill-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
       </button>
@@ -101,7 +105,10 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
           <button class="yt-mini-empty-btn" (click)="openSearch()">Find music</button>
         </div>
         <div class="yt-mini-info">
-          <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
+          <div class="yt-mini-title-row">
+            <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
+            <span class="yt-mini-grip material-icons" title="Drag to move">drag_indicator</span>
+          </div>
           <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
           <span class="yt-mini-err" *ngIf="player.error()">Playback failed — tap the video or try another one</span>
           <span class="yt-mini-hint" *ngIf="player.hint()">{{ player.hint() }}</span>
@@ -154,14 +161,19 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
     .yt-player.collapsed .yt-mini {
       opacity: 0; transform: translateY(10px); visibility: hidden; pointer-events: none;
     }
+    .yt-player.dragging { touch-action: none; user-select: none; cursor: grabbing; }
+    .yt-player.dragged { bottom: auto; transform: none; }
+    .yt-player.dragged .yt-pill { left: 0; transform: none; }
     .yt-pill {
       position: absolute; left: 0; bottom: 0; z-index: 2;
       width: 44px; height: 44px; border-radius: 50%;
-      background: var(--accent, #7d8cff); color: #fff; border: none; cursor: pointer;
+      background: var(--accent, #7d8cff); color: #fff; border: none; cursor: grab;
       display: flex; align-items: center; justify-content: center;
       box-shadow: 0 8px 24px rgba(0,0,0,0.45);
       animation: ytPulse 2.2s ease-in-out infinite;
+      touch-action: none;
     }
+    .yt-pill:active { cursor: grabbing; }
     .yt-pill .material-icons { font-size: 24px; }
     .yt-pill-badge {
       position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px;
@@ -181,11 +193,19 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
     .yt-mini-video iframe { width: 100%; height: 100%; border: none; display: block; }
     .yt-mini-info {
       min-width: 0; display: flex; flex-direction: column; line-height: 1.25;
+      cursor: grab;
+    }
+    .yt-mini-info:active { cursor: grabbing; }
+    .yt-mini-title-row {
+      display: flex; align-items: center; gap: 6px; min-width: 0;
     }
     .yt-mini-title {
+      flex: 1; min-width: 0;
       font-size: var(--font-13, 13px); font-weight: 600;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    .yt-mini-grip { flex: none; font-size: 18px; opacity: 0.5; cursor: grab; }
+    .yt-mini-grip:hover { opacity: 1; }
     .yt-mini-channel { font-size: var(--font-12, 12px); opacity: 0.65; }
     .yt-mini-err { font-size: var(--font-12, 12px); color: #ff8080; }
     .yt-mini-hint { font-size: var(--font-12, 12px); color: #ffd479; }
@@ -359,6 +379,7 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
 export class YoutubePlayerComponent implements OnInit, OnDestroy {
   readonly player = inject(YoutubePlayerService);
   private readonly youtubeService = inject(YoutubeService);
+  private readonly el = inject(ElementRef<HTMLElement>);
   showQueue = false;
   showSearch = false;
   minimized = true;
@@ -368,6 +389,16 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
   ytLoading = false;
   ytError = '';
   ytConfigured = true;
+
+  dragging = false;
+  dragged = false;
+  dragLeft?: number;
+  dragTop?: number;
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private dragOrigLeft = 0;
+  private dragOrigTop = 0;
+  private static readonly POS_KEY = 'ytPlayerPos';
 
   private hostEl?: HTMLElement;
   private currentId = '';
@@ -386,6 +417,7 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.restorePos();
     document.addEventListener('visibilitychange', this.handleVisibility);
   }
 
@@ -431,6 +463,53 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
     this.showQueue = false;
     this.showSearch = false;
     this.minimized = true;
+  }
+
+  private restorePos(): void {
+    try {
+      const raw = localStorage.getItem(YoutubePlayerComponent.POS_KEY);
+      if (!raw) return;
+      const pos = JSON.parse(raw);
+      if (typeof pos?.left === 'number' && typeof pos?.top === 'number') {
+        this.dragLeft = pos.left;
+        this.dragTop = pos.top;
+        this.dragged = true;
+      }
+    } catch { }
+  }
+
+  onDragStart(e: PointerEvent): void {
+    const target = e.target as HTMLElement;
+    if (target.closest('.yt-queue, .yt-search')) return;
+    if (target.closest('button, input, textarea, a, iframe') && !target.closest('.yt-pill')) return;
+    const rect = this.el.nativeElement.getBoundingClientRect();
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.dragOrigLeft = rect.left;
+    this.dragOrigTop = rect.top;
+    this.dragging = true;
+    this.dragged = true;
+    try { this.el.nativeElement.setPointerCapture(e.pointerId); } catch { }
+    e.preventDefault();
+  }
+
+  onDragMove(e: PointerEvent): void {
+    if (!this.dragging) return;
+    const surf = this.el.nativeElement.querySelector('.yt-mini, .yt-pill') as HTMLElement | null;
+    const w = surf?.offsetWidth ?? 260;
+    const h = surf?.offsetHeight ?? 44;
+    const left = Math.min(Math.max(this.dragOrigLeft + (e.clientX - this.dragStartX), 4), window.innerWidth - w - 4);
+    const top = Math.min(Math.max(this.dragOrigTop + (e.clientY - this.dragStartY), 4), window.innerHeight - h - 4);
+    this.dragLeft = Math.max(left, 0);
+    this.dragTop = Math.max(top, 0);
+  }
+
+  onDragEnd(): void {
+    if (!this.dragging) return;
+    this.dragging = false;
+    try {
+      localStorage.setItem(YoutubePlayerComponent.POS_KEY, JSON.stringify({ left: this.dragLeft, top: this.dragTop }));
+    } catch { }
   }
 
   toggleQueue(): void {
