@@ -1,8 +1,6 @@
 import { Component, ElementRef, effect, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
 import { YoutubePlayerService } from '../../../core/services/youtube-player.service';
-import { YoutubeService } from '../../../core/services/youtube.service';
 
 @Component({
   selector: 'app-youtube-player',
@@ -46,20 +44,7 @@ import { YoutubeService } from '../../../core/services/youtube.service';
       </button>
 
       <div class="yt-mini">
-        <div class="yt-mini-video" *ngIf="!player.audioMode()">
-          <div #playerHost></div>
-          <button class="yt-mode-btn" (click)="toggleAudioMode()" title="Play as audio (keeps playing with screen off)">
-            <span class="material-icons">headphones</span>
-          </button>
-        </div>
-        <div class="yt-mini-video yt-mini-audio" *ngIf="player.audioMode()">
-          <img class="yt-mini-thumb" *ngIf="player.thumbnail()" [src]="player.thumbnail()" alt="" />
-          <div class="yt-eq" [class.playing]="player.playing()"><span></span><span></span><span></span></div>
-          <button class="yt-mode-btn" (click)="toggleAudioMode()" title="Switch to video">
-            <span class="material-icons">videocam</span>
-          </button>
-        </div>
-        <audio #audioEl playsinline webkit-playsinline></audio>
+        <div class="yt-mini-video" #playerHost></div>
         <div class="yt-mini-info">
           <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
           <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
@@ -136,37 +121,6 @@ import { YoutubeService } from '../../../core/services/youtube.service';
       border-radius: 10px; overflow: hidden; background: #000;
     }
     .yt-mini-video iframe { width: 100%; height: 100%; border: none; display: block; }
-    .yt-mode-btn {
-      position: absolute; top: 6px; right: 6px; z-index: 3;
-      width: 30px; height: 30px; border-radius: 50%;
-      background: rgba(0,0,0,0.55); color: #fff; border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s;
-    }
-    .yt-mode-btn:hover { background: rgba(0,0,0,0.75); }
-    .yt-mode-btn .material-icons { font-size: 17px; }
-    .yt-mini-audio {
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #20232b, #131419);
-    }
-    .yt-mini-thumb {
-      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.75;
-    }
-    .yt-eq {
-      position: absolute; left: 10px; bottom: 10px; z-index: 2;
-      display: flex; align-items: flex-end; gap: 3px; height: 18px;
-    }
-    .yt-eq span {
-      width: 3px; border-radius: 2px; background: var(--accent, #7d8cff);
-      height: 6px; opacity: 0.55;
-    }
-    .yt-eq.playing span { animation: ytEq 1s ease-in-out infinite; }
-    .yt-eq.playing span:nth-child(2) { animation-delay: 0.2s; }
-    .yt-eq.playing span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes ytEq {
-      0%, 100% { height: 6px; opacity: 0.55; }
-      50% { height: 18px; opacity: 1; }
-    }
     .yt-mini-info {
       min-width: 0; display: flex; flex-direction: column; line-height: 1.25;
     }
@@ -255,12 +209,10 @@ import { YoutubeService } from '../../../core/services/youtube.service';
 })
 export class YoutubePlayerComponent {
   readonly player = inject(YoutubePlayerService);
-  private readonly youtubeService = inject(YoutubeService);
   showQueue = false;
   minimized = false;
 
   private hostEl?: HTMLElement;
-  private audioEl?: HTMLAudioElement;
   private currentId = '';
   private pendingId = '';
   private ytInstance?: any;
@@ -275,28 +227,10 @@ export class YoutubePlayerComponent {
     }
   }
 
-  @ViewChild('audioEl', { read: ElementRef })
-  set audioRef(el: ElementRef<HTMLAudioElement> | undefined) {
-    const audio = el?.nativeElement ?? undefined;
-    this.audioEl = audio;
-    this.player.setAudioElement(audio);
-    if (audio) {
-      audio.onended = () => this.player.next();
-      audio.onplay = () => this.player.setPlaying(true);
-      audio.onpause = () => this.player.setPlaying(false);
-      audio.onerror = () => {
-        this.player.setError(true);
-        this.player.setPlaying(false);
-        this.player.setHint('');
-      };
-    }
-  }
-
   constructor() {
     effect(() => {
       const id = this.player.videoId();
       if (id) void this.loadVideo(id);
-      else this.stopAudio();
     }, { allowSignalWrites: true });
   }
 
@@ -305,26 +239,13 @@ export class YoutubePlayerComponent {
     this.minimized = true;
   }
 
-  async toggleAudioMode(): Promise<void> {
-    const id = this.player.videoId();
-    if (!id) return;
-    this.player.setAudioMode(!this.player.audioMode());
-    this.currentId = '';
-    this.pendingId = '';
-    await this.loadVideo(id);
-  }
-
   private async loadVideo(id: string): Promise<void> {
     if (!id || this.currentId === id) return;
     this.currentId = id;
-    console.log('[yt] load', id, 'audio:', this.player.audioMode());
+    console.log('[yt] load', id);
     this.player.setPlaying(false);
     this.player.setError(false);
-    this.player.setHint(this.player.audioMode() ? 'Preparing audio…' : 'Loading player…');
-    if (this.player.audioMode()) {
-      await this.loadAudio(id);
-      return;
-    }
+    this.player.setHint('Loading player…');
     try {
       await this.player.ensureApi();
     } catch (err) {
@@ -338,61 +259,6 @@ export class YoutubePlayerComponent {
       return;
     }
     this.buildPlayer(id);
-  }
-
-  private async loadAudio(id: string): Promise<void> {
-    try { this.ytInstance?.destroy(); } catch { }
-    this.ytInstance = undefined;
-    try {
-      const resp = await firstValueFrom(this.youtubeService.audio(id));
-      if (this.player.videoId() !== id) return;
-      if (!resp?.url) throw new Error(resp?.error || 'no stream');
-      if (!this.audioEl) throw new Error('no audio element');
-      this.audioEl.src = resp.url;
-      this.audioEl.load();
-      const p = this.audioEl.play();
-      if (p) p.catch(() => this.player.setHint('Tap play ▶ to start audio'));
-      this.updateMediaSession();
-    } catch (err) {
-      console.error('[yt] audio failed', err);
-      this.player.setError(true);
-      this.player.setPlaying(false);
-      this.player.setHint('');
-    }
-  }
-
-  private stopAudio(): void {
-    if (this.audioEl) {
-      try { this.audioEl.pause(); } catch { }
-      this.audioEl.removeAttribute('src');
-      this.audioEl.load();
-    }
-    this.clearMediaSession();
-  }
-
-  private updateMediaSession(): void {
-    const w = navigator as any;
-    if (!w.mediaSession) return;
-    try {
-      w.mediaSession.metadata = new w.MediaMetadata({
-        title: this.player.title() || 'YouTube',
-        artist: this.player.channel() || 'StudyRoom',
-        album: 'StudyRoom'
-      });
-      if (this.player.thumbnail()) {
-        w.mediaSession.metadata.artwork = [{ src: this.player.thumbnail(), sizes: '120x120' }];
-      }
-      w.mediaSession.setActionHandler('play', () => this.player.togglePlay());
-      w.mediaSession.setActionHandler('pause', () => this.player.togglePlay());
-      w.mediaSession.setActionHandler('nexttrack', () => this.player.next());
-      w.mediaSession.setActionHandler('previoustrack', () => this.player.prev());
-    } catch { }
-  }
-
-  private clearMediaSession(): void {
-    const w = navigator as any;
-    if (!w.mediaSession) return;
-    try { w.mediaSession.metadata = null; } catch { }
   }
 
   private buildPlayer(id: string): void {

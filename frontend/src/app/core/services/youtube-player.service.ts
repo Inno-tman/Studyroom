@@ -4,7 +4,6 @@ export interface PlaylistItem {
   id: string;
   title?: string;
   channel?: string;
-  thumbnail?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -12,18 +11,15 @@ export class YoutubePlayerService {
   readonly videoId = signal('');
   readonly title = signal('');
   readonly channel = signal('');
-  readonly thumbnail = signal('');
   readonly playing = signal(false);
   readonly error = signal(false);
   readonly hint = signal('');
-  readonly audioMode = signal(false);
   readonly queue = signal<PlaylistItem[]>([]);
   readonly queueIndex = signal(-1);
   readonly shuffle = signal(false);
 
   private readonly KEY = 'studyroom.youtube';
   private player?: any;
-  private audioEl?: HTMLAudioElement;
   private apiReady?: Promise<void>;
 
   constructor() {
@@ -31,7 +27,7 @@ export class YoutubePlayerService {
   }
 
   /** Plays an item immediately, adding it to the queue. */
-  playNow(item: PlaylistItem, opts?: { audio?: boolean }): void {
+  playNow(item: PlaylistItem): void {
     const idx = this.queue().findIndex((q) => q.id === item.id);
     if (idx >= 0) {
       this.queueIndex.set(idx);
@@ -39,7 +35,6 @@ export class YoutubePlayerService {
       this.queue.update((q) => [...q, item]);
       this.queueIndex.set(this.queue().length - 1);
     }
-    if (opts?.audio) this.audioMode.set(true);
     this.saveState();
     this.loadCurrent();
   }
@@ -52,12 +47,6 @@ export class YoutubePlayerService {
       this.loadCurrent();
     }
     this.saveState();
-  }
-
-  currentItem(): PlaylistItem | null {
-    const q = this.queue();
-    const i = this.queueIndex();
-    return i >= 0 && i < q.length ? q[i] : null;
   }
 
   next(): void {
@@ -122,29 +111,14 @@ export class YoutubePlayerService {
     this.videoId.set('');
     this.title.set('');
     this.channel.set('');
-    this.thumbnail.set('');
     this.playing.set(false);
     this.error.set(false);
     this.hint.set('');
     this.player = undefined;
   }
 
-  setAudioMode(v: boolean): void {
-    this.audioMode.set(v);
-  }
-
-  setAudioElement(el: HTMLAudioElement | undefined): void {
-    this.audioEl = el;
-  }
-
   togglePlay(): void {
     try {
-      if (this.audioMode()) {
-        if (!this.audioEl) return;
-        if (this.playing()) this.audioEl.pause();
-        else void this.audioEl.play().catch(() => { });
-        return;
-      }
       if (!this.player) return;
       if (this.playing()) this.player.pauseVideo();
       else this.player.playVideo();
@@ -192,11 +166,9 @@ export class YoutubePlayerService {
     const q = this.queue();
     const i = this.queueIndex();
     if (i >= 0 && i < q.length) {
-      const item = q[i];
-      this.videoId.set(item.id);
-      this.title.set(item.title || '');
-      this.channel.set(item.channel || '');
-      this.thumbnail.set(item.thumbnail || '');
+      this.videoId.set(q[i].id);
+      this.title.set(q[i].title || '');
+      this.channel.set(q[i].channel || '');
       this.playing.set(false);
       this.error.set(false);
       this.hint.set('');
