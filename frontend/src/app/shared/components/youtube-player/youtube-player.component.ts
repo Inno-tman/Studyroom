@@ -1,4 +1,4 @@
-import { Component, ElementRef, effect, inject, ViewChild } from '@angular/core';
+import { Component, ElementRef, effect, inject, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { YoutubePlayerService } from '../../../core/services/youtube-player.service';
 
@@ -207,7 +207,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     `
   ]
 })
-export class YoutubePlayerComponent {
+export class YoutubePlayerComponent implements OnInit, OnDestroy {
   readonly player = inject(YoutubePlayerService);
   showQueue = false;
   minimized = false;
@@ -217,6 +217,7 @@ export class YoutubePlayerComponent {
   private pendingId = '';
   private ytInstance?: any;
   private mutedStart = false;
+  private wakeLock?: any;
 
   @ViewChild('playerHost', { read: ElementRef })
   set hostRef(el: ElementRef<HTMLElement> | undefined) {
@@ -227,10 +228,45 @@ export class YoutubePlayerComponent {
     }
   }
 
+  ngOnInit(): void {
+    document.addEventListener('visibilitychange', this.handleVisibility);
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('visibilitychange', this.handleVisibility);
+    this.releaseWakeLock();
+  }
+
+  private handleVisibility = (): void => {
+    if (document.visibilityState === 'visible' && this.player.playing()) {
+      void this.acquireWakeLock();
+    }
+  };
+
+  /** Keeps the device screen awake while a video is playing. */
+  private async acquireWakeLock(): Promise<void> {
+    const nav = navigator as any;
+    if (!nav.wakeLock) return;
+    try {
+      this.wakeLock = await nav.wakeLock.request('screen');
+      this.wakeLock?.addEventListener?.('release', () => {
+        if (this.player.playing() && document.visibilityState === 'visible') {
+          void this.acquireWakeLock();
+        }
+      });
+    } catch { }
+  }
+
+  private releaseWakeLock(): void {
+    try { this.wakeLock?.release(); } catch { }
+    this.wakeLock = undefined;
+  }
+
   constructor() {
     effect(() => {
       const id = this.player.videoId();
       if (id) void this.loadVideo(id);
+      else this.releaseWakeLock();
     }, { allowSignalWrites: true });
   }
 
@@ -299,19 +335,25 @@ export class YoutubePlayerComponent {
             if (e.data === 1) {
               this.player.setPlaying(true);
               this.player.setHint('');
+              void this.acquireWakeLock();
               if (this.mutedStart) {
                 this.mutedStart = false;
                 try { player.unMute(); } catch { }
               }
             } else if (e.data === 0) {
               this.player.setPlaying(false);
+              this.releaseWakeLock();
               this.player.next();
-            } else if (e.data === 2) this.player.setPlaying(false);
+            } else if (e.data === 2) {
+              this.player.setPlaying(false);
+              this.releaseWakeLock();
+            }
           },
           onError: (e: any) => {
             console.error('[yt] error', e?.data);
             this.player.setError(true);
             this.player.setPlaying(false);
+            this.releaseWakeLock();
             this.player.setHint('');
           }
         }
