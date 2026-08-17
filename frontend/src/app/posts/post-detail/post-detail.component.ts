@@ -76,7 +76,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
             <span class="material-icons">comment</span>
             Comment
           </button>
-          <button class="action-btn" (click)="share()">
+          <button class="action-btn" (click)="openShare()">
             <span class="material-icons">share</span>
             Share
           </button>
@@ -133,6 +133,28 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
               (keyup.enter)="comment()"
             />
             <button class="btn-primary small" (click)="comment()" [disabled]="!newComment.trim()">Post</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dialog-backdrop" *ngIf="showShareDialog" (click)="closeShare()">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Share post</h3>
+            <button class="dialog-close" (click)="closeShare()"><span class="material-icons">close</span></button>
+          </div>
+          <div class="dialog-body">
+            <label class="field">Add a caption
+              <textarea
+                rows="3"
+                [(ngModel)]="shareCaption"
+                placeholder="Say something about this post…"
+                maxlength="5000"
+              ></textarea>
+            </label>
+            <button class="btn-primary dialog-submit" (click)="confirmShare()" [disabled]="sharing">
+              {{ sharing ? 'Sharing…' : 'Share' }}
+            </button>
           </div>
         </div>
       </div>
@@ -210,6 +232,33 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
     }
     .comment-input input:focus { outline: none; border-color: var(--primary); }
     .btn-primary.small { padding: 6px 14px; }
+
+    /* ── Share dialog ────────────────────────────────────────── */
+    .dialog-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1300;
+    }
+    .dialog {
+      width: 440px; max-width: 92vw; max-height: 85vh; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .dialog-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; border-bottom: 1px solid var(--border);
+    }
+    .dialog-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .dialog-close { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
+    .dialog-close:hover { color: var(--text-primary); }
+    .dialog-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); }
+    .dialog-body textarea {
+      padding: 10px 12px; background: var(--background); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-primary); font-size: var(--font-14);
+      font-family: inherit; resize: none; outline: none;
+    }
+    .dialog-body textarea:focus { border-color: var(--primary); }
+    .dialog-submit { width: 100%; padding: 12px; justify-content: center; }
   `]
 })
 export class PostDetailComponent implements OnInit {
@@ -223,6 +272,10 @@ export class PostDetailComponent implements OnInit {
   showComments = false;
   newComment = '';
   replyToCommentId?: string;
+
+  showShareDialog = false;
+  shareCaption = '';
+  sharing = false;
 
   async ngOnInit(): Promise<void> {
     const id = this.route.snapshot.paramMap.get('id');
@@ -272,11 +325,26 @@ export class PostDetailComponent implements OnInit {
     await this.reload();
   }
 
-  async share(): Promise<void> {
+  openShare(): void {
+    this.showShareDialog = true;
+    this.shareCaption = '';
+  }
+
+  closeShare(): void {
+    this.showShareDialog = false;
+    this.shareCaption = '';
+  }
+
+  async confirmShare(): Promise<void> {
     if (!this.post) return;
-    const confirmed = confirm('Share this post to your timeline?');
-    if (!confirmed) return;
-    await this.postService.createPost('', undefined, this.post.id).toPromise();
+    this.sharing = true;
+    try {
+      await this.postService.createPost(this.shareCaption.trim(), undefined, this.post.id).toPromise();
+    } finally {
+      this.sharing = false;
+      this.showShareDialog = false;
+      this.shareCaption = '';
+    }
   }
 
   async remove(): Promise<void> {
