@@ -15,10 +15,10 @@ EXPOSE 443
 ENV ASPNETCORE_URLS=http://+:80
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl && \
-    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
-    chmod +x /usr/local/bin/yt-dlp && \
-    apt-get purge -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl python3 python3-pip && \
+    (curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod +x /usr/local/bin/yt-dlp) || \
+    pip3 install --break-system-packages --no-cache-dir yt-dlp ; \
+    apt-get purge -y curl python3-pip && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /publish .
 

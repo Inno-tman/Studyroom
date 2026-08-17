@@ -353,11 +353,12 @@ export class YoutubePlayerComponent {
       const p = this.audioEl.play();
       if (p) p.catch(() => this.player.setHint('Tap play ▶ to start audio'));
       this.updateMediaSession();
-    } catch (err) {
+    } catch (err: any) {
       console.error('[yt] audio failed', err);
       this.player.setError(true);
       this.player.setPlaying(false);
-      this.player.setHint('');
+      const serverMsg = err?.error?.error;
+      this.player.setHint(typeof serverMsg === 'string' && serverMsg ? serverMsg : '');
     }
   }
 

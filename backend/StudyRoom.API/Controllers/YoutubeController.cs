@@ -80,7 +80,7 @@ public class YoutubeController : ControllerBase
 
         using var proc = new Process { StartInfo = psi };
         if (!proc.Start())
-            return StatusCode(502, new { error = "yt-dlp is not available on the server." });
+            return StatusCode(502, new { error = "yt-dlp is not available on the server.", ytdlp = YtdlpStatus() });
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(30));
@@ -94,7 +94,8 @@ public class YoutubeController : ControllerBase
             if (string.IsNullOrWhiteSpace(url))
             {
                 var err = (await errorTask).Trim();
-                return StatusCode(502, new { error = "Could not resolve an audio stream for this video." + (err.Length > 0 ? " " + err.Split('\n').Last().Trim() : "") });
+                var lastLine = err.Split('\n').LastOrDefault()?.Trim() ?? "";
+                return StatusCode(502, new { error = "Could not resolve an audio stream for this video.", ytdlp = YtdlpStatus(), stderr = lastLine });
             }
             return Ok(new { url });
         }
@@ -102,6 +103,26 @@ public class YoutubeController : ControllerBase
         {
             try { proc.Kill(entireProcessTree: true); } catch { }
             return StatusCode(504, new { error = "Timed out resolving the audio stream." });
+        }
+    }
+
+    private static string YtdlpStatus()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo { FileName = "yt-dlp", RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+            psi.ArgumentList.Add("--version");
+            using var p = Process.Start(psi);
+            if (p == null) return "missing";
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            var errTask = p.StandardError.ReadToEndAsync();
+            p.WaitForExit();
+            var v = outTask.Result.Trim();
+            return string.IsNullOrWhiteSpace(v) ? "missing" : v;
+        }
+        catch
+        {
+            return "missing";
         }
     }
 }
