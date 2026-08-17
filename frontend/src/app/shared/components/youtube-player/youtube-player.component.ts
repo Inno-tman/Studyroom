@@ -7,80 +7,90 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="yt-queue" *ngIf="showQueue">
-      <div class="yt-queue-head">
-        <span>Up next ({{ player.queue().length }})</span>
-        <div class="yt-queue-actions">
-          <button class="yt-queue-ctl" [class.active]="player.shuffle()" (click)="player.toggleShuffle()" title="Shuffle">
+    <div class="yt-player" *ngIf="player.videoId() || showQueue">
+      <div class="yt-queue" *ngIf="showQueue">
+        <div class="yt-queue-head">
+          <span>Up next ({{ player.queue().length }})</span>
+          <div class="yt-queue-actions">
+            <button class="yt-queue-ctl" [class.active]="player.shuffle()" (click)="player.toggleShuffle()" title="Shuffle">
+              <span class="material-icons">shuffle</span>
+            </button>
+            <button class="yt-queue-ctl" (click)="player.prev()" title="Previous">
+              <span class="material-icons">skip_previous</span>
+            </button>
+            <button class="yt-queue-ctl" (click)="player.clearQueue()" title="Clear queue">
+              <span class="material-icons">delete_sweep</span>
+            </button>
+            <button class="yt-queue-ctl" (click)="showQueue = false" title="Close">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+        </div>
+        <button class="yt-queue-item" *ngFor="let item of player.queue(); let i = index"
+                (click)="player.jump(i)" [class.active]="i === player.queueIndex()">
+          <span class="material-icons yt-queue-play">music_video</span>
+          <span class="yt-queue-title">{{ item.title || 'YouTube' }}</span>
+          <span class="yt-queue-rm material-icons" (click)="$event.stopPropagation(); player.remove(i)"
+                title="Remove from queue">close</span>
+        </button>
+        <div class="yt-queue-empty" *ngIf="player.queue().length === 0">
+          Queue is empty — add videos from the dashboard search.
+        </div>
+      </div>
+
+      <div class="yt-mini" *ngIf="player.videoId()">
+        <div class="yt-mini-video" #playerHost></div>
+        <div class="yt-mini-info">
+          <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
+          <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
+          <span class="yt-mini-err" *ngIf="player.error()">Playback failed — tap the video or try another one</span>
+          <span class="yt-mini-hint" *ngIf="player.hint()">{{ player.hint() }}</span>
+        </div>
+        <div class="yt-mini-controls">
+          <button class="yt-mini-ctl" [class.active]="player.shuffle()" (click)="player.toggleShuffle()" title="Shuffle">
             <span class="material-icons">shuffle</span>
           </button>
-          <button class="yt-queue-ctl" (click)="player.prev()" title="Previous">
+          <button class="yt-mini-ctl" (click)="player.prev()" title="Previous">
             <span class="material-icons">skip_previous</span>
           </button>
-          <button class="yt-queue-ctl" (click)="player.clearQueue()" title="Clear queue">
-            <span class="material-icons">delete_sweep</span>
+          <button class="yt-mini-ctl yt-mini-play" (click)="player.togglePlay()"
+                  [title]="player.playing() ? 'Pause' : 'Play'">
+            <span class="material-icons">{{ player.playing() ? 'pause' : 'play_arrow' }}</span>
           </button>
-          <button class="yt-queue-ctl" (click)="showQueue = false" title="Close">
+          <button class="yt-mini-ctl" (click)="player.next()" title="Next">
+            <span class="material-icons">skip_next</span>
+          </button>
+          <button class="yt-mini-ctl" (click)="showQueue = !showQueue" title="Queue">
+            <span class="material-icons">queue_music</span>
+            <span class="yt-mini-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
+          </button>
+          <button class="yt-mini-ctl" (click)="player.close(); showQueue = false" title="Close">
             <span class="material-icons">close</span>
           </button>
         </div>
       </div>
-      <button class="yt-queue-item" *ngFor="let item of player.queue(); let i = index"
-              (click)="player.jump(i)" [class.active]="i === player.queueIndex()">
-        <span class="material-icons yt-queue-play">music_video</span>
-        <span class="yt-queue-title">{{ item.title || 'YouTube' }}</span>
-        <span class="yt-queue-rm material-icons" (click)="$event.stopPropagation(); player.remove(i)"
-              title="Remove from queue">close</span>
-      </button>
-      <div class="yt-queue-empty" *ngIf="player.queue().length === 0">
-        Queue is empty — add videos from the dashboard search.
-      </div>
-    </div>
-
-    <div class="yt-mini" *ngIf="player.videoId()">
-      <div class="yt-mini-video" #playerHost></div>
-      <div class="yt-mini-info">
-        <span class="yt-mini-title">{{ player.title() || 'YouTube' }}</span>
-        <span class="yt-mini-channel" *ngIf="player.channel()">{{ player.channel() }}</span>
-        <span class="yt-mini-err" *ngIf="player.error()">Playback failed — tap the video or try another one</span>
-        <span class="yt-mini-hint" *ngIf="player.hint()">{{ player.hint() }}</span>
-      </div>
-      <button class="yt-mini-ctl yt-mini-play" (click)="player.togglePlay()"
-              [title]="player.playing() ? 'Pause' : 'Play'">
-        <span class="material-icons">{{ player.playing() ? 'pause' : 'play_arrow' }}</span>
-      </button>
-      <button class="yt-mini-ctl" (click)="player.next()" title="Next">
-        <span class="material-icons">skip_next</span>
-      </button>
-      <button class="yt-mini-ctl" (click)="showQueue = !showQueue" title="Queue">
-        <span class="material-icons">queue_music</span>
-        <span class="yt-mini-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
-      </button>
-      <button class="yt-mini-ctl" (click)="player.close(); showQueue = false" title="Close player">
-        <span class="material-icons">close</span>
-      </button>
     </div>
   `,
   styles: [
     `
-    .yt-mini-video {
-      width: 120px; height: 68px; border-radius: 8px; overflow: hidden; flex: none;
-      background: #000; margin-right: 8px;
-    }
-    .yt-mini-video iframe { width: 100%; height: 100%; border: none; display: block; }
-    .yt-mini {
+    .yt-player {
       position: fixed; left: 16px; bottom: 16px; z-index: 1200;
-      display: flex; align-items: center; gap: 2px;
+      width: 260px;
+    }
+    .yt-mini {
+      display: flex; flex-direction: column; gap: 7px;
       background: var(--surface-2, #1e1f26); color: var(--text-1, #e8e8ec);
       border: 1px solid var(--line, rgba(255,255,255,0.09));
-      border-radius: 14px; padding: 8px 10px;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
-      max-width: min(560px, calc(100vw - 32px));
-      overflow: hidden;
+      border-radius: 16px; padding: 10px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.45);
     }
+    .yt-mini-video {
+      position: relative; width: 100%; aspect-ratio: 16 / 9;
+      border-radius: 10px; overflow: hidden; background: #000;
+    }
+    .yt-mini-video iframe { width: 100%; height: 100%; border: none; display: block; }
     .yt-mini-info {
-      min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; line-height: 1.2;
-      margin-right: 6px;
+      min-width: 0; display: flex; flex-direction: column; line-height: 1.25;
     }
     .yt-mini-title {
       font-size: var(--font-13, 13px); font-weight: 600;
@@ -89,28 +99,35 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     .yt-mini-channel { font-size: var(--font-12, 12px); opacity: 0.65; }
     .yt-mini-err { font-size: var(--font-12, 12px); color: #ff8080; }
     .yt-mini-hint { font-size: var(--font-12, 12px); color: #ffd479; }
+    .yt-mini-controls {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 2px;
+    }
     .yt-mini-ctl {
       position: relative; border: none; background: transparent; color: inherit; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      width: 36px; height: 36px; border-radius: 10px; flex: none;
+      width: 34px; height: 34px; border-radius: 10px; flex: none;
       transition: background 0.15s, color 0.15s;
     }
     .yt-mini-ctl:hover { background: rgba(255,255,255,0.08); }
     .yt-mini-ctl.active { color: var(--accent, #7d8cff); }
-    .yt-mini-ctl .material-icons { font-size: 24px; }
-    .yt-mini-play { background: var(--accent, #7d8cff); color: #fff; }
+    .yt-mini-ctl .material-icons { font-size: 22px; }
+    .yt-mini-play {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--accent, #7d8cff); color: #fff;
+    }
     .yt-mini-play:hover { background: var(--accent, #7d8cff); }
+    .yt-mini-play .material-icons { font-size: 28px; }
     .yt-mini-badge {
-      position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px;
+      position: absolute; top: 0; right: 0; min-width: 14px; height: 14px;
       padding: 0 3px; border-radius: 999px; background: var(--accent, #7d8cff); color: #fff;
       font-size: 10px; line-height: 14px; text-align: center; font-weight: 700;
     }
     .yt-queue {
-      position: fixed; left: 16px; bottom: 76px; z-index: 1201;
-      width: min(380px, calc(100vw - 32px));
+      position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 1;
       background: var(--surface-2, #1e1f26); color: var(--text-1, #e8e8ec);
       border: 1px solid var(--line, rgba(255,255,255,0.09));
-      border-radius: 14px; padding: 12px; max-height: 320px; overflow: auto;
+      border-radius: 14px; padding: 12px; max-height: 340px; overflow: auto;
       box-shadow: 0 12px 40px rgba(0,0,0,0.4);
     }
     .yt-queue-head {
@@ -121,7 +138,7 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     .yt-queue-ctl {
       border: none; background: transparent; color: inherit; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      width: 36px; height: 36px; border-radius: 8px; transition: background 0.15s, color 0.15s;
+      width: 34px; height: 34px; border-radius: 8px; transition: background 0.15s, color 0.15s;
     }
     .yt-queue-ctl:hover { background: rgba(255,255,255,0.08); }
     .yt-queue-ctl.active { color: var(--accent, #7d8cff); }
@@ -145,23 +162,14 @@ import { YoutubePlayerService } from '../../../core/services/youtube-player.serv
     .yt-queue-empty { font-size: var(--font-12, 12px); opacity: 0.7; padding: 8px 2px; }
 
     @media (max-width: 640px) {
-      .yt-mini {
-        left: 0; right: 0; bottom: 0; max-width: none;
-        border-radius: 16px 16px 0 0;
-        border-left: none; border-right: none; border-bottom: none;
-        padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      .yt-player {
+        left: 50%; transform: translateX(-50%);
+        bottom: calc(8px + env(safe-area-inset-bottom));
+        width: min(320px, calc(100vw - 16px));
       }
-      .yt-mini-video { width: 64px; height: 36px; }
       .yt-mini-ctl { width: 40px; height: 40px; }
-      .yt-queue {
-        left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom));
-        width: auto; border-radius: 16px 16px 0 0; max-height: 55vh;
-        padding-bottom: calc(12px + env(safe-area-inset-bottom));
-      }
-    }
-    @media (max-width: 400px) {
-      .yt-mini-video { width: 48px; height: 27px; }
-      .yt-queue { bottom: calc(48px + env(safe-area-inset-bottom)); }
+      .yt-mini-play { width: 44px; height: 44px; }
+      .yt-queue { max-height: 50vh; }
     }
     `
   ]
