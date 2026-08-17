@@ -103,6 +103,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .messages-layout {
       display: flex;
       height: calc(100vh - 140px);
+      height: calc(100dvh - 140px);
       min-height: 400px;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -219,6 +220,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       .messages-layout {
         flex-direction: column;
         height: calc(100vh - 32px);
+        height: calc(100dvh - 32px);
         border: none; border-radius: 0; min-height: 0;
       }
       .conversations { width: 100%; border-right: none; flex: 1 1 auto; height: 100%; overflow-y: auto; }

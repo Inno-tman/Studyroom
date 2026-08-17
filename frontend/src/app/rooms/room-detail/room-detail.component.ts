@@ -612,7 +612,7 @@ const TABS: RoomTab[] = [
 
       .next-meeting { margin: 0 12px 12px; border-radius: 14px; }
 
-      .tab-body { min-height: 0; height: calc(100vh - 190px); margin: 0 12px 84px; border-radius: 14px; }
+      .tab-body { min-height: 0; height: calc(100vh - 190px); height: calc(100dvh - 190px); margin: 0 12px 84px; border-radius: 14px; }
       .tab-body-bottom-pad { margin-bottom: 84px; }
       .tab-pane { border-radius: 14px; height: 100%; }
 

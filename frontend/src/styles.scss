@@ -181,6 +181,7 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -189,16 +190,18 @@ html, body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  height: 100vh;
+  min-height: 0;
   padding-top: calc(var(--navbar-height) + env(safe-area-inset-top));
   overflow: hidden;
 }
 
 .main-content {
   flex: 1;
+  min-height: 0;
   margin-left: 0;
   margin-right: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px;
 }
 
