@@ -151,9 +151,11 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
       box-shadow: 0 12px 32px rgba(0,0,0,0.45);
       transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
     }
+    .yt-player.collapsed { pointer-events: none; }
     .yt-player.collapsed .yt-mini {
       opacity: 0; transform: translateY(10px); visibility: hidden; pointer-events: none;
     }
+    .yt-player.collapsed .yt-pill { pointer-events: auto; }
     .yt-pill {
       position: absolute; left: 0; bottom: 0; z-index: 2;
       width: 44px; height: 44px; border-radius: 50%;
