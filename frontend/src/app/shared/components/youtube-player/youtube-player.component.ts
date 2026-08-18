@@ -342,10 +342,17 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
       font-weight: 600; cursor: pointer;
     }
 
+    @media (max-width: 900px) {
+      .yt-player {
+        left: 16px;
+        bottom: calc(84px + env(safe-area-inset-bottom));
+      }
+    }
+
     @media (max-width: 640px) {
       .yt-player {
         left: 50%; transform: translateX(-50%);
-        bottom: calc(8px + env(safe-area-inset-bottom));
+        bottom: calc(84px + env(safe-area-inset-bottom));
         width: min(320px, calc(100vw - 16px));
       }
       .yt-pill { left: 50%; transform: translateX(-50%); }
