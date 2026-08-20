@@ -643,7 +643,7 @@ const TABS: RoomTab[] = [
       }
       .tab-item {
         flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
-        padding: 2px 0 4px; background: none; border: none; cursor: pointer;
+        padding: 2px 0 0; background: none; border: none; cursor: pointer;
         color: var(--text-muted); transition: color 0.15s; position: relative;
       }
       .tab-item .material-icons { font-size: 18px; margin-bottom: 1px; }
