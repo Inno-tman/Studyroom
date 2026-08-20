@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
@@ -87,6 +88,16 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    // Search/query endpoints are authenticated, so limit per user to prevent catalog scraping.
+    options.AddPolicy("search", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+            ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));
