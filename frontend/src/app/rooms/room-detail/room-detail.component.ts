@@ -639,11 +639,11 @@ const TABS: RoomTab[] = [
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 1150;
         display: flex; background: var(--surface);
         border-top: 1px solid var(--border);
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-bottom: calc(env(safe-area-inset-bottom) - 14px);
       }
       .tab-item {
         flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
-        padding: 5px 0 7px; background: none; border: none; cursor: pointer;
+        padding: 2px 0 4px; background: none; border: none; cursor: pointer;
         color: var(--text-muted); transition: color 0.15s; position: relative;
       }
       .tab-item .material-icons { font-size: 18px; margin-bottom: 1px; }
