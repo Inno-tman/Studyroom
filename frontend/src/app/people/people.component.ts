@@ -185,7 +185,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     </div>
   `,
   styles: [`
-    .people-page { max-width: 900px; }
+    .people-page { max-width: 900px; margin: 0 auto; }
 
     .page-header { margin-bottom: 24px; }
     .page-header h1 { font-size: var(--font-24); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }

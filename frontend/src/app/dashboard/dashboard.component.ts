@@ -125,7 +125,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     </div>
   `,
   styles: [`
-    .dashboard { max-width: 1200px; }
+    .dashboard { max-width: 1200px; margin: 0 auto; }
 
     /* Hero header card */
     .hero-card {

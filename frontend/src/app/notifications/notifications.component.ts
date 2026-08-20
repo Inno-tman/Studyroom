@@ -50,7 +50,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     </div>
   `,
   styles: [`
-    .notifications-page { max-width: 760px; }
+    .notifications-page { max-width: 760px; margin: 0 auto; }
 
     .page-header-row {
       display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;

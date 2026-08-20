@@ -42,7 +42,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     </div>
   `,
   styles: [`
-    .settings-page { max-width: 1000px; }
+    .settings-page { max-width: 1000px; margin: 0 auto; }
 
     .settings-layout {
       display: flex;

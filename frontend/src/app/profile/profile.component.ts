@@ -61,7 +61,7 @@ import { UserStats } from '../shared/models/stats.model';
     </div>
   `,
   styles: [`
-    .profile { max-width: 800px; }
+    .profile { max-width: 800px; margin: 0 auto; }
 
     .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; display: flex; align-items: center; gap: 24px; margin-bottom: 32px; }
 

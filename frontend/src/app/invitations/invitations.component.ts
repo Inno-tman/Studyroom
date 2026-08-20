@@ -43,7 +43,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     </div>
   `,
   styles: [`
-    .invitations-page { max-width: 800px; }
+    .invitations-page { max-width: 800px; margin: 0 auto; }
 
     .invite-list { display: flex; flex-direction: column; gap: 12px; }
 

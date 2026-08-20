@@ -98,7 +98,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     </div>
   `,
   styles: [`
-    .messages-page { max-width: 1100px; }
+    .messages-page { max-width: 1100px; margin: 0 auto; }
 
     .messages-layout {
       display: flex;

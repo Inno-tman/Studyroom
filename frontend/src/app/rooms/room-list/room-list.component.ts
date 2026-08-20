@@ -77,7 +77,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
     </div>
   `,
   styles: [`
-    .browse-rooms { max-width: 1200px; }
+    .browse-rooms { max-width: 1200px; margin: 0 auto; }
 
     /* Hero header card */
     .hero-card {
