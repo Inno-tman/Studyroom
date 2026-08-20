@@ -53,13 +53,16 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
           </button>
         </div>
         <div class="yt-search-row">
-          <input [(ngModel)]="ytQuery" (keyup.enter)="searchYoutube()" placeholder="Songs, lo-fi, focus…" />
+          <input [(ngModel)]="ytQuery" (ngModelChange)="onQueryChange()" (keyup.enter)="searchYoutube()" placeholder="Songs, lo-fi, focus…" />
           <button class="yt-search-go" [disabled]="!ytQuery.trim() || ytLoading" (click)="searchYoutube()" title="Search">
             <span class="material-icons">{{ ytLoading ? 'hourglass_top' : 'search' }}</span>
           </button>
         </div>
         <div class="yt-search-hint" *ngIf="!ytConfigured && !ytLoading && ytResults.length === 0">
           Search needs a YouTube API key — set <code>YOUTUBE_API_KEY</code> on the server.
+        </div>
+        <div class="yt-search-hint" *ngIf="ytConfigured && !ytQuery.trim() && ytResults.length === 0 && !ytLoading">
+          Start typing to search automatically.
         </div>
         <div class="yt-search-err" *ngIf="ytError">{{ ytError }}</div>
         <div class="yt-search-status" *ngIf="ytLoading">Searching…</div>
@@ -377,6 +380,8 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
   ytLoading = false;
   ytError = '';
   ytConfigured = true;
+  private debounceTimer: any;
+  private lastSearched = '';
 
   private hostEl?: HTMLElement;
   private currentId = '';
@@ -399,6 +404,7 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.debounceTimer) { clearTimeout(this.debounceTimer); this.debounceTimer = undefined; }
     document.removeEventListener('visibilitychange', this.handleVisibility);
     this.releaseWakeLock();
   }
@@ -465,9 +471,21 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
     this.showSearch = false;
   }
 
+  onQueryChange(): void {
+    if (this.debounceTimer) { clearTimeout(this.debounceTimer); this.debounceTimer = undefined; }
+    if (!this.ytQuery.trim()) {
+      this.ytResults = [];
+      this.ytError = '';
+      return;
+    }
+    this.debounceTimer = setTimeout(() => void this.searchYoutube(), 700);
+  }
+
   async searchYoutube(): Promise<void> {
+    if (this.debounceTimer) { clearTimeout(this.debounceTimer); this.debounceTimer = undefined; }
     const q = this.ytQuery.trim();
-    if (!q) return;
+    if (!q || q === this.lastSearched) return;
+    this.lastSearched = q;
     this.ytLoading = true;
     this.ytError = '';
     try {
