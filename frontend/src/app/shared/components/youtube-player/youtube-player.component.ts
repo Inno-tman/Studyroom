@@ -446,7 +446,6 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
   }
 
   closePlayer(): void {
-    this.player.close();
     this.minimize();
   }
 
