@@ -16,7 +16,7 @@
   --sidebar-width: 260px;
   --header-height: 64px;
   --navbar-height: 56px;
-  --fab-bottom: calc(16px + max(env(safe-area-inset-bottom), 14px));
+  --fab-bottom: calc(17px + max(env(safe-area-inset-bottom), 14px));
 }
 
 [data-theme="light"] {
