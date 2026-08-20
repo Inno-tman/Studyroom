@@ -1,6 +1,7 @@
-import { Component, ElementRef, effect, inject, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { Component, ElementRef, effect, inject, OnInit, OnDestroy, ViewChild, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, NavigationEnd } from '@angular/router';
 import { YoutubePlayerService } from '../../../core/services/youtube-player.service';
 import { YoutubeService, YoutubeSearchResult } from '../../../core/services/youtube.service';
 
@@ -9,7 +10,7 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="yt-player" [class.collapsed]="minimized">
+    <div class="yt-player" [class.collapsed]="minimized" [class.in-room]="inRoom()">
       <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Study player">
         <span class="material-icons">{{ player.playing() ? 'pause' : (player.videoId() ? 'play_arrow' : 'queue_music') }}</span>
         <span class="yt-pill-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
@@ -147,7 +148,7 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
       display: flex; flex-direction: column; gap: 7px;
       background: var(--surface-2, #1e1f26); color: var(--text-1, #e8e8ec);
       border: 1px solid var(--line, rgba(255,255,255,0.09));
-      border-radius: 16px; padding: 10px;
+      border-radius: 16px; padding: 10px 10px 6px;
       box-shadow: 0 12px 32px rgba(0,0,0,0.45);
       transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
     }
@@ -347,6 +348,9 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
     @media (max-width: 900px) {
       .yt-player {
         left: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom));
+      }
+      .yt-player.in-room {
         bottom: var(--fab-bottom);
       }
     }
@@ -354,8 +358,11 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
     @media (max-width: 640px) {
       .yt-player {
         left: 50%; transform: translateX(-50%);
-        bottom: var(--fab-bottom);
+        bottom: calc(16px + env(safe-area-inset-bottom));
         width: min(320px, calc(100vw - 16px));
+      }
+      .yt-player.in-room {
+        bottom: var(--fab-bottom);
       }
       .yt-pill { left: 50%; transform: translateX(-50%); }
       .yt-mini-ctl { width: 34px; height: 38px; }
@@ -368,6 +375,8 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
 export class YoutubePlayerComponent implements OnInit, OnDestroy {
   readonly player = inject(YoutubePlayerService);
   private readonly youtubeService = inject(YoutubeService);
+  private readonly router = inject(Router);
+  readonly inRoom = signal(false);
   showQueue = false;
   showSearch = false;
   minimized = true;
@@ -432,6 +441,11 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
   }
 
   constructor() {
+    this.router.events.subscribe(e => {
+      if (e instanceof NavigationEnd) {
+        this.inRoom.set(e.urlAfterRedirects.startsWith('/rooms/'));
+      }
+    });
     effect(() => {
       const id = this.player.videoId();
       if (id) void this.loadVideo(id);
