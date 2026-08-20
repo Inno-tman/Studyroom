@@ -130,10 +130,7 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
           <button class="yt-mini-ctl" [class.active]="showSearch" (click)="toggleSearch()" title="Search music">
             <span class="material-icons">search</span>
           </button>
-          <button class="yt-mini-ctl yt-minimize-btn" (click)="minimize()" title="Minimize player">
-            <span class="material-icons">keyboard_arrow_down</span>
-          </button>
-          <button class="yt-mini-ctl" (click)="player.close(); showQueue = false; showSearch = false" title="Close">
+          <button class="yt-mini-ctl" (click)="closePlayer()" title="Close player">
             <span class="material-icons">close</span>
           </button>
         </div>
@@ -446,6 +443,11 @@ export class YoutubePlayerComponent implements OnInit, OnDestroy {
     this.showQueue = false;
     this.showSearch = false;
     this.minimized = true;
+  }
+
+  closePlayer(): void {
+    this.player.close();
+    this.minimize();
   }
 
   toggleQueue(): void {
