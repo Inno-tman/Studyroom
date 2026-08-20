@@ -625,7 +625,7 @@ const TABS: RoomTab[] = [
 
       /* Floating call button */
       .call-fab {
-        position: fixed; right: 16px; bottom: 92px; z-index: 1100;
+        position: fixed; right: 16px; bottom: var(--fab-bottom); z-index: 1100;
         display: flex; align-items: center; gap: 6px;
         padding: 14px 18px; background: var(--success); color: white;
         border: none; border-radius: 28px; box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
@@ -642,12 +642,12 @@ const TABS: RoomTab[] = [
         padding-bottom: env(safe-area-inset-bottom);
       }
       .tab-item {
-        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
-        padding: 8px 0 10px; background: none; border: none; cursor: pointer;
+        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+        padding: 5px 0 7px; background: none; border: none; cursor: pointer;
         color: var(--text-muted); transition: color 0.15s; position: relative;
       }
-      .tab-item .material-icons { font-size: var(--font-22); margin-bottom: 2px; }
-      .tab-label { font-size: var(--font-10); font-weight: 600; }
+      .tab-item .material-icons { font-size: 18px; margin-bottom: 1px; }
+      .tab-label { font-size: 9px; font-weight: 600; }
       .tab-item.active { color: var(--accent); }
       .tab-item-badge {
         position: absolute; top: 4px; left: 50%; transform: translateX(6px);
