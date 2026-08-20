@@ -647,7 +647,7 @@ const TABS: RoomTab[] = [
         color: var(--text-muted); transition: color 0.15s; position: relative;
       }
       .tab-item .material-icons { font-size: 18px; margin-bottom: 1px; }
-      .tab-label { font-size: 9px; font-weight: 600; }
+      .tab-label { font-size: 9px; line-height: 1; font-weight: 600; }
       .tab-item.active { color: var(--accent); }
       .tab-item-badge {
         position: absolute; top: 4px; left: 50%; transform: translateX(6px);
