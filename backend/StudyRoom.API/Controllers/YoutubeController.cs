@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -45,8 +46,8 @@ public class YoutubeController : ControllerBase
             .Select<YoutubeSearchItem, object>(i => new
             {
                 id = i.Id!.VideoId,
-                title = i.Snippet?.Title ?? "Untitled",
-                channel = i.Snippet?.ChannelTitle ?? "",
+                title = Decode(i.Snippet?.Title ?? "Untitled"),
+                channel = Decode(i.Snippet?.ChannelTitle ?? ""),
                 thumbnail = i.Snippet?.Thumbnails?.Medium?.Url
                     ?? i.Snippet?.Thumbnails?.High?.Url
                     ?? i.Snippet?.Thumbnails?.Default?.Url
@@ -56,6 +57,8 @@ public class YoutubeController : ControllerBase
 
         return Ok(new { configured = true, items });
     }
+
+    private static string Decode(string value) => WebUtility.HtmlDecode(value);
 }
 
 public class YoutubeSearchResponse

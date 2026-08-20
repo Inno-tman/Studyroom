@@ -39,13 +39,9 @@ export class YoutubePlayerService {
     this.loadCurrent();
   }
 
-  /** Adds an item to the end of the queue (starts playing it if nothing is). */
+  /** Adds an item to the end of the queue without starting playback. */
   enqueue(item: PlaylistItem): void {
     this.queue.update((q) => [...q, item]);
-    if (this.queueIndex() < 0) {
-      this.queueIndex.set(this.queue().length - 1);
-      this.loadCurrent();
-    }
     this.saveState();
   }
 
@@ -108,6 +104,7 @@ export class YoutubePlayerService {
   }
 
   close(): void {
+    try { this.player?.stopVideo?.(); } catch { }
     this.videoId.set('');
     this.title.set('');
     this.channel.set('');
@@ -204,8 +201,9 @@ export class YoutubePlayerService {
           this.queueIndex.set(0);
         }
       }
-      const i = this.queueIndex();
-      if (i >= 0 && i < this.queue().length) this.loadCurrent();
+      // Never auto-resume playback after a page refresh: keep the queue, but
+      // clear the active index so no video loads or plays on its own.
+      this.queueIndex.set(-1);
     } catch { }
   }
 }
