@@ -157,9 +157,13 @@ The full research process:
 
         messages.Add(new DTOs.AI.PreviousMessageDto { Role = "user", Content = userMessage });
 
+        var model = _settings.Model;
+        if (string.IsNullOrWhiteSpace(model) || !model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase))
+            model = "gemini-2.0-flash";
+
         try
         {
-            return await CallGemini(systemPrompt, messages, subject);
+            return await CallGemini(systemPrompt, messages, subject, model);
         }
         catch (OperationCanceledException)
         {
@@ -174,9 +178,9 @@ The full research process:
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "AI provider request failed (provider={Provider}, model={Model}).", _settings.Provider, _settings.Model);
+            _logger.LogWarning(ex, "AI provider request failed (provider={Provider}, model={Model}).", _settings.Provider, model);
             var detail = ex.Message.Contains("404")
-                ? $"the model '{_settings.Model}' was not found for provider '{_settings.Provider}'. Check the AiSettings__Model / AiSettings__Provider configuration."
+                ? $"the model '{model}' was not found for provider '{_settings.Provider}'. Check the AiSettings__Model / AiSettings__Provider configuration."
                 : ex.Message;
             return new AcademicResponseDto
             {
@@ -189,7 +193,7 @@ The full research process:
     }
 
     /// <summary>Gemini API (Google AI Studio free tier). Uses the v1beta generateContent endpoint.</summary>
-    private async Task<AcademicResponseDto> CallGemini(string systemPrompt, List<DTOs.AI.PreviousMessageDto> messages, string? subject)
+    private async Task<AcademicResponseDto> CallGemini(string systemPrompt, List<DTOs.AI.PreviousMessageDto> messages, string? subject, string model)
     {
         var apiKey = _settings.ApiKey;
         if (string.IsNullOrEmpty(apiKey))
@@ -206,12 +210,6 @@ The full research process:
                 ErrorMessage = "AI is not configured yet. Add a Gemini API key to enable the tutor."
             };
         }
-
-        // We are Gemini-only. If a stale/non-Gemini model name leaked in from config
-        // (e.g. an old Groq model like llama-3.3-70b-versatile), fall back to a valid Gemini model.
-        var model = _settings.Model;
-        if (string.IsNullOrWhiteSpace(model) || !model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase))
-            model = "gemini-2.0-flash";
 
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(apiKey)}";
 
