@@ -146,7 +146,7 @@ const TABS: RoomTab[] = [
             <div class="mobile-panel-title">
               <span class="material-icons">auto_awesome</span> AI Assistant
             </div>
-            <app-ai-chat-panel [subject]="room?.subject || ''" [notesContext]="notesContext" />
+            <app-ai-chat-panel [subject]="room?.subject || ''" [notesContext]="notesContext" [roomId]="room?.id || ''" />
           </div>
 
           <div *ngIf="activeTab === 'meet'" class="tab-pane meet-pane">

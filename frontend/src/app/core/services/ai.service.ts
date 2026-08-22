@@ -75,12 +75,15 @@ export class AIService {
     return this.http.post<AcademicResponse>(`${environment.apiUrl}/ai/ask`, query);
   }
 
-  createConversation(subject?: string, researchMode = false, phase?: string): Observable<{ id: string }> {
-    return this.http.post<{ id: string }>(`${environment.apiUrl}/ai/conversations`, { subject, researchMode, phase });
+  createConversation(subject?: string, researchMode = false, phase?: string, roomId?: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${environment.apiUrl}/ai/conversations`, { subject, researchMode, phase, roomId });
   }
 
-  getConversations(limit = 20): Observable<ConversationSummary[]> {
-    return this.http.get<ConversationSummary[]>(`${environment.apiUrl}/ai/conversations?limit=${limit}`);
+  getConversations(limit = 20, roomId?: string): Observable<ConversationSummary[]> {
+    const url = roomId
+      ? `${environment.apiUrl}/ai/conversations?limit=${limit}&roomId=${encodeURIComponent(roomId)}`
+      : `${environment.apiUrl}/ai/conversations?limit=${limit}`;
+    return this.http.get<ConversationSummary[]>(url);
   }
 
   getConversation(id: string): Observable<ConversationDetail> {

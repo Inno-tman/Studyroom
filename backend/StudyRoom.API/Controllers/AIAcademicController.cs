@@ -52,14 +52,14 @@ public class AIAcademicController : ControllerBase
     [HttpPost("conversations")]
     public async Task<IActionResult> CreateConversation([FromBody] CreateConversationDto dto)
     {
-        var conv = await _convRepo.CreateConversationAsync(UserId, null, dto.Subject, dto.ResearchMode, dto.Phase);
+        var conv = await _convRepo.CreateConversationAsync(UserId, dto.RoomId, dto.Subject, dto.ResearchMode, dto.Phase);
         return Ok(new { conv.Id, conv.Subject, conv.IsResearchMode, conv.CurrentPhase, conv.CreatedAt });
     }
 
     [HttpGet("conversations")]
-    public async Task<IActionResult> GetConversations([FromQuery] int limit = 20)
+    public async Task<IActionResult> GetConversations([FromQuery] int limit = 20, [FromQuery] string? roomId = null)
     {
-        var convs = await _convRepo.GetUserConversationsAsync(UserId, limit);
+        var convs = await _convRepo.GetUserConversationsAsync(UserId, limit, roomId);
         var result = convs.Select(c => new
         {
             c.Id, c.Subject, c.IsResearchMode, c.CurrentPhase, c.CreatedAt, c.UpdatedAt,
@@ -107,4 +107,5 @@ public class CreateConversationDto
     public string? Subject { get; set; }
     public bool ResearchMode { get; set; }
     public string? Phase { get; set; }
+    public string? RoomId { get; set; }
 }

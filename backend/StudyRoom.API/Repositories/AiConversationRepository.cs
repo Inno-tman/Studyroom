@@ -43,10 +43,16 @@ public class AiConversationRepository : IAiConversationRepository
         return msg;
     }
 
-    public async Task<List<AiConversation>> GetUserConversationsAsync(Guid userId, int limit = 10)
+    public async Task<List<AiConversation>> GetUserConversationsAsync(Guid userId, int limit = 10, string? roomId = null)
     {
-        return await _db.AiConversations
-            .Where(c => c.UserId == userId)
+        var query = _db.AiConversations.Where(c => c.UserId == userId);
+
+        if (roomId != null)
+            query = query.Where(c => c.RoomId == roomId);
+        else
+            query = query.Where(c => c.RoomId == null);
+
+        return await query
             .OrderByDescending(c => c.UpdatedAt)
             .Take(limit)
             .ToListAsync();

@@ -1,4 +1,4 @@
-import { AfterViewChecked, Component, ElementRef, Input, ViewChild, inject, OnInit } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, Input, ViewChild, inject, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AIService, AcademicResponse, PaperReference, ResearchPhase, ConversationSummary } from '../../core/services/ai.service';
@@ -277,10 +277,11 @@ interface ChatMessage {
     .edit-cancel:hover { border-color: var(--text-muted); }
   `]
 })
-export class AiChatPanelComponent implements OnInit, AfterViewChecked {
+export class AiChatPanelComponent implements OnInit, AfterViewChecked, OnChanges {
   @Input() subject = '';
   @Input() notesContext = '';
   @Input() showHeader = true;
+  @Input() roomId = '';
 
   private aiService = inject(AIService);
   private docService = inject(DocumentService);
@@ -306,6 +307,19 @@ export class AiChatPanelComponent implements OnInit, AfterViewChecked {
     await this.loadConversations();
     if (this.conversations.length > 0) {
       await this.loadConversation(this.conversations[0].id);
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['roomId'] && !changes['roomId'].firstChange) {
+      this.messages = [];
+      this.currentConvId = '';
+      this.currentPhaseName = '';
+      this.currentOutline = [];
+      this.showSidebar = false;
+      this.loadConversations().then(() => {
+        if (this.conversations.length > 0) this.loadConversation(this.conversations[0].id);
+      });
     }
   }
 
@@ -343,7 +357,7 @@ export class AiChatPanelComponent implements OnInit, AfterViewChecked {
     this.currentOutline = [];
     this.question = '';
     try {
-      const conv = await this.aiService.createConversation(this.subject || undefined, this.researchMode, this.currentPhaseName || undefined).toPromise();
+      const conv = await this.aiService.createConversation(this.subject || undefined, this.researchMode, this.currentPhaseName || undefined, this.roomId || undefined).toPromise();
       if (conv) {
         this.currentConvId = conv.id;
         await this.loadConversations();
@@ -353,7 +367,7 @@ export class AiChatPanelComponent implements OnInit, AfterViewChecked {
 
   async loadConversations() {
     try {
-      this.conversations = await this.aiService.getConversations(50).toPromise() || [];
+      this.conversations = await this.aiService.getConversations(50, this.roomId || undefined).toPromise() || [];
     } catch {}
   }
 
