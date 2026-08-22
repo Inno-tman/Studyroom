@@ -1,4 +1,4 @@
-import { Component, Input, inject, OnInit } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, Input, ViewChild, inject, OnInit } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AIService, AcademicResponse, PaperReference, ResearchPhase, ConversationSummary } from '../../core/services/ai.service';
@@ -169,7 +169,7 @@ interface ChatMessage {
     .mode-toggle .material-icons { font-size: var(--font-16); vertical-align: middle; }
     .mode-toggle.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
 
-    .layout { display: flex; flex: 1; overflow: hidden; }
+    .layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
     .sidebar { width: 220px; border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; flex-shrink: 0; }
     .sidebar-title { padding: 10px 12px; font-size: var(--font-11); font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .conv-list { display: flex; flex-direction: column; }
@@ -185,7 +185,7 @@ interface ChatMessage {
     .conv-del:hover { background: rgba(255, 80, 80, 0.1); color: #ff5050; }
     .conv-empty { padding: 16px; text-align: center; font-size: var(--font-12); color: var(--text-muted); }
 
-    .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
     .research-progress { display: flex; gap: 1px; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
     .phase { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: var(--font-10); color: var(--text-muted); white-space: nowrap; }
     .phase.active { background: rgba(56, 189, 248, 0.1); color: var(--accent); }
@@ -193,7 +193,7 @@ interface ChatMessage {
     .phase-dot { font-size: var(--font-8); display: inline-flex; align-items: center; }
     .dot-icon { font-size: var(--font-10); }
 
-    .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .messages { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
     .welcome { text-align: center; padding: 40px 16px; }
     .welcome-icon { font-size: var(--font-40); margin-bottom: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
     .welcome-icon .material-icons { font-size: var(--font-40); }
@@ -277,7 +277,7 @@ interface ChatMessage {
     .edit-cancel:hover { border-color: var(--text-muted); }
   `]
 })
-export class AiChatPanelComponent implements OnInit {
+export class AiChatPanelComponent implements OnInit, AfterViewChecked {
   @Input() subject = '';
   @Input() notesContext = '';
 
@@ -298,11 +298,36 @@ export class AiChatPanelComponent implements OnInit {
   editingIndex = -1;
   editText = '';
 
+  @ViewChild('messageContainer') private messageContainer?: ElementRef<HTMLElement>;
+  private pendingScroll = false;
+
   async ngOnInit() {
     await this.loadConversations();
     if (this.conversations.length > 0) {
       await this.loadConversation(this.conversations[0].id);
     }
+  }
+
+  ngAfterViewChecked() {
+    if (this.pendingScroll) {
+      this.scrollToBottom();
+      this.pendingScroll = false;
+    }
+  }
+
+  private scrollToBottom() {
+    const el = this.messageContainer?.nativeElement;
+    if (el) el.scrollTop = el.scrollHeight;
+  }
+
+  private isNearBottom(): boolean {
+    const el = this.messageContainer?.nativeElement;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  }
+
+  private requestScroll() {
+    if (this.isNearBottom()) this.pendingScroll = true;
   }
 
   toggleMode() {
@@ -344,6 +369,7 @@ export class AiChatPanelComponent implements OnInit {
           createdAt: new Date(m.createdAt)
         }));
         this.showSidebar = false;
+        this.requestScroll();
       }
     } catch {}
   }
@@ -354,6 +380,7 @@ export class AiChatPanelComponent implements OnInit {
     const q = this.question;
     this.question = '';
     this.loading = true;
+    this.requestScroll();
 
     if (!this.currentConvId) await this.newConversation();
 
@@ -362,6 +389,7 @@ export class AiChatPanelComponent implements OnInit {
 
     const userMsg: ChatMessage = { role: 'user', content: q, createdAt: new Date() };
     this.messages.push(userMsg);
+    this.requestScroll();
 
     const timeout = setTimeout(() => {
       this.loading = false;
@@ -374,6 +402,7 @@ export class AiChatPanelComponent implements OnInit {
         isError: true,
         errorMessage: 'The server took too long to respond. Groq may be experiencing high load.'
       });
+      this.requestScroll();
     }, 120000);
 
     try {
@@ -407,6 +436,7 @@ export class AiChatPanelComponent implements OnInit {
           isError: response.isError,
           errorMessage: response.errorMessage
         });
+        this.requestScroll();
       }
     } catch (e: any) {
       clearTimeout(timeout);
@@ -417,6 +447,7 @@ export class AiChatPanelComponent implements OnInit {
         isError: true,
         errorMessage: e?.message || 'Network error'
       });
+      this.requestScroll();
     } finally {
       clearTimeout(timeout);
       this.loading = false;
