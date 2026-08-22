@@ -459,7 +459,7 @@ const TABS: RoomTab[] = [
     .notes-pane { height: 600px; }
     .notes-pane ::ng-deep app-notes-editor { flex: 1; display: flex; flex-direction: column; }
     .ai-pane { height: 600px; }
-    .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; display: flex; flex-direction: column; height: 100%; }
+    .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .focus-pane { padding: 16px; }
 
     /* ── Chat ───────────────────────────────────────────────── */
@@ -619,8 +619,8 @@ const TABS: RoomTab[] = [
       .mobile-panel-title { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
       .mobile-panel-title .material-icons { font-size: var(--font-18); color: var(--accent); }
 
-      .notes-pane ::ng-deep app-notes-editor { flex: 1; display: flex; flex-direction: column; height: 100%; }
-      .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; display: flex; flex-direction: column; height: 100%; }
+      .notes-pane ::ng-deep app-notes-editor { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+      .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .meetings-panel, .meetings-empty { margin-bottom: 0; border-radius: 14px; }
 
       /* Floating call button */

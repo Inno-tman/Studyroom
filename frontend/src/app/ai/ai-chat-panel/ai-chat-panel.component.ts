@@ -156,7 +156,7 @@ interface ChatMessage {
     </div>
   `,
   styles: [`
-    .ai-panel { display: flex; flex-direction: column; height: 100%; background: var(--background); }
+    .ai-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--background); }
     .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
     .header-left { display: flex; align-items: center; gap: 10px; }
     .header-left h2 { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 6px; }
@@ -245,7 +245,7 @@ interface ChatMessage {
     .typing-dot:nth-child(3) { animation-delay: 0.4s; }
     @keyframes pulse { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
 
-    .chat-input { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .chat-input { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; position: sticky; bottom: 0; z-index: 2; }
     .chat-input input { flex: 1; padding: 10px 14px; background: var(--background); border: 1px solid var(--border); border-radius: 24px; color: var(--text-primary); font-size: var(--font-13); outline: none; transition: border-color 0.15s; }
     .chat-input input:focus { border-color: var(--accent); }
     .chat-input input::placeholder { color: var(--text-muted); }
