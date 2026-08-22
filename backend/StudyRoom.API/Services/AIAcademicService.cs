@@ -9,7 +9,7 @@ public class AiSettings
 {
     public string Provider { get; set; } = "gemini";
     public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "gemini-2.5-flash-lite";
+    public string Model { get; set; } = "gemini-2.0-flash";
     public int MaxTokens { get; set; } = 800;
 }
 
