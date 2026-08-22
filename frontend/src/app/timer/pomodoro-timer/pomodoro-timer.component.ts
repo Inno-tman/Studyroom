@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, OnDestroy, inject } from '@angular/core';
 import { NgIf, NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { TimerService, TimerState } from '../../core/services/timer.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { SettingsService } from '../../core/services/settings.service';
@@ -9,48 +10,78 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-pomodoro-timer',
   standalone: true,
-  imports: [NgIf, NgClass],
+  imports: [NgIf, NgClass, FormsModule],
   template: `
     <div class="timer-card">
-      <div class="timer-mode">
-        <button
-          [class.active]="!state.isBreak"
-          (click)="switchMode('focus')"
-          class="mode-btn"
-        >Focus</button>
-        <button
-          [class.active]="state.isBreak"
-          (click)="switchMode('break')"
-          class="mode-btn"
-        >Break</button>
+      <div class="timer-header">
+        <div class="phase" [class.break]="state.isBreak" [class.long]="state.isLongBreak">
+          <span class="material-icons">{{ state.isBreak ? (state.isLongBreak ? 'spa' : 'free_breakfast') : 'psychology' }}</span>
+          {{ phaseLabel }}
+        </div>
+        <div class="counter" title="Focus sessions completed">
+          <span class="material-icons">local_fire_department</span> {{ state.completedSessions }}
+        </div>
       </div>
 
       <div class="timer-display" [class.break-mode]="state.isBreak">
         {{ formatTime(state.remainingSeconds) }}
       </div>
 
+      <div class="timer-mode">
+        <button [class.active]="!state.isBreak" (click)="switchMode('focus')" class="mode-btn">Focus</button>
+        <button [class.active]="state.isBreak" (click)="switchMode('break')" class="mode-btn">Break</button>
+      </div>
+
       <div class="timer-controls">
-        <button *ngIf="!state.isRunning" class="control-btn primary" (click)="startTimer()">
+        <button *ngIf="!state.isRunning" class="control-btn primary" (click)="startTimer()" aria-label="Start">
           <span class="material-icons">play_arrow</span>
         </button>
-        <button *ngIf="state.isRunning && !state.isPaused" class="control-btn" (click)="pauseTimer()">
+        <button *ngIf="state.isRunning && !state.isPaused" class="control-btn" (click)="pauseTimer()" aria-label="Pause">
           <span class="material-icons">pause</span>
         </button>
-        <button *ngIf="state.isRunning && state.isPaused" class="control-btn primary" (click)="resumeTimer()">
+        <button *ngIf="state.isRunning && state.isPaused" class="control-btn primary" (click)="resumeTimer()" aria-label="Resume">
           <span class="material-icons">play_arrow</span>
         </button>
-        <button class="control-btn" (click)="resetTimer()">
+        <button *ngIf="state.isRunning" class="control-btn" (click)="skip()" aria-label="Skip phase">
+          <span class="material-icons">skip_next</span>
+        </button>
+        <button class="control-btn" (click)="resetTimer()" aria-label="Reset">
           <span class="material-icons">stop</span>
         </button>
       </div>
 
+      <div class="timer-options" *ngIf="isIdle">
+        <label class="dur">Focus
+          <input type="number" min="1" max="240" [(ngModel)]="focusMin" (change)="onFocusChange()" />
+        </label>
+        <label class="dur">Break
+          <input type="number" min="1" max="120" [(ngModel)]="breakMin" (change)="onBreakChange()" />
+        </label>
+        <label class="dur">Long
+          <input type="number" min="1" max="120" [(ngModel)]="longBreakMin" (change)="onLongBreakChange()" />
+        </label>
+      </div>
+
+      <label class="auto-toggle">
+        <input type="checkbox" [(ngModel)]="autoStart" (change)="onAutoStartChange()" />
+        Auto-start next session
+      </label>
+
       <div class="timer-info" *ngIf="state.sessionCompleted && !state.isRunning">
-        Session completed! Great work!
+        {{ state.isBreak ? 'Break' : 'Session' }} completed! Great work!
       </div>
     </div>
   `,
   styles: [`
     .timer-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center; }
+
+    .timer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .phase { display: flex; align-items: center; gap: 6px; font-size: var(--font-13); font-weight: 700; color: var(--primary); letter-spacing: 0.3px; }
+    .phase.break { color: var(--success); }
+    .phase.long { color: var(--accent, var(--primary)); }
+    .phase .material-icons { font-size: var(--font-20); }
+    .counter { display: flex; align-items: center; gap: 4px; font-size: var(--font-13); font-weight: 700; color: var(--text-secondary); }
+    .counter .material-icons { font-size: var(--font-18); color: #f97316; }
 
     .timer-mode { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
 
@@ -69,6 +100,14 @@ import { Subscription } from 'rxjs';
     .control-btn.primary:hover { background: var(--primary-hover); }
     .control-btn .material-icons { font-size: var(--font-24); }
 
+    .timer-options { display: flex; justify-content: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .dur { display: flex; flex-direction: column; font-size: var(--font-11); font-weight: 600; color: var(--text-muted); gap: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .dur input { width: 64px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); color: var(--text-primary); font-size: var(--font-14); text-align: center; }
+    .dur input:focus { outline: none; border-color: var(--primary); }
+
+    .auto-toggle { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; font-size: var(--font-12); color: var(--text-secondary); cursor: pointer; }
+    .auto-toggle input { accent-color: var(--primary); }
+
     .timer-info { margin-top: 12px; font-size: var(--font-13); font-weight: 600; color: var(--success); }
   `]
 })
@@ -80,58 +119,78 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   private notificationService = inject(NotificationService);
 
   state: TimerState = {
-    isRunning: false, isPaused: false, isBreak: false,
+    isRunning: false, isPaused: false, isBreak: false, isLongBreak: false,
     remainingSeconds: 25 * 60, focusDuration: 25, breakDuration: 5,
-    sessionCompleted: false
+    longBreakDuration: 15, completedSessions: 0, sessionCompleted: false
   };
+
+  focusMin = 25;
+  breakMin = 5;
+  longBreakMin = 15;
+  autoStart = true;
 
   private subscriptions: Subscription[] = [];
   private isSynced = false;
-  private wasCompleted = false;
+  private wasRunning = false;
   private wasBreak = false;
+  private wasCompleted = false;
+
+  get phaseLabel(): string {
+    if (this.state.isBreak) return this.state.isLongBreak ? 'Long Break' : 'Break';
+    return 'Focus';
+  }
+
+  get isIdle(): boolean {
+    return !this.state.isRunning && !this.state.isPaused;
+  }
 
   async ngOnInit() {
     const study = this.settings.study();
-    this.timerService.setFocusDuration(study.focusDuration);
-    this.timerService.setBreakDuration(study.breakDuration);
+    this.focusMin = study.focusDuration;
+    this.breakMin = study.breakDuration;
+    this.longBreakMin = study.longBreakDuration;
+    this.autoStart = study.autoStartNextSession;
 
     this.subscriptions.push(
       this.timerService.state$.subscribe(s => {
         const justCompleted = s.sessionCompleted && !this.wasCompleted;
         const wasBreak = this.wasBreak;
+        // A focus session begins on idle->focus or break->focus transitions.
+        const focusBegan = s.isRunning && !s.isBreak && (this.wasBreak || !this.wasRunning);
+
         this.state = s;
-        this.wasCompleted = s.sessionCompleted;
+        this.wasRunning = s.isRunning;
         this.wasBreak = s.isBreak;
-        if (justCompleted && this.settings.prefs().pomodoroComplete) {
-          this.notificationService.playSound();
+        this.wasCompleted = s.sessionCompleted;
+
+        // Each focus session (manual or auto-started) creates a StudySession so
+        // study time + streak are counted.
+        if (focusBegan) {
+          this.isSynced = true;
+          this.signalR.startTimer(this.roomId, s.focusDuration).catch(() => {});
         }
-        // Persist a completed focus session so stats/streak stay accurate.
-        // Break completion is intentionally ignored (it doesn't create a study session).
+        // Persist completion of a focus session -> updates stats read model.
         if (justCompleted && !wasBreak) {
           this.signalR.timerCompleted(this.roomId).catch(() => {});
         }
-      })
-    );
-
-    this.subscriptions.push(
+        // Chime + desktop notification on every phase completion.
+        if (justCompleted && this.settings.prefs().pomodoroComplete) {
+          const label = wasBreak ? (s.isLongBreak ? 'Long break' : 'Break') : 'Focus session';
+          const body = wasBreak ? 'Time to get back to focus.' : 'Nice work! Take a breather.';
+          this.notificationService.notify(`${label} complete`, body);
+        }
+      }),
       this.signalR.timerStarted$.subscribe(async data => {
         if (data.roomId === this.roomId && !this.isSynced) {
           this.isSynced = true;
-          this.timerService.setFocusDuration(data.durationMinutes);
           this.timerService.start();
         }
-      })
-    );
-
-    this.subscriptions.push(
+      }),
       this.signalR.timerPaused$.subscribe(data => {
         if (data.roomId === this.roomId) {
           this.timerService.pause();
         }
-      })
-    );
-
-    this.subscriptions.push(
+      }),
       this.signalR.timerReset$.subscribe(data => {
         if (data.roomId === this.roomId) {
           this.timerService.reset();
@@ -141,10 +200,9 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     );
   }
 
-  async startTimer() {
+  startTimer() {
     this.isSynced = true;
     this.timerService.start();
-    await this.signalR.startTimer(this.roomId, this.state.focusDuration);
   }
 
   async pauseTimer() {
@@ -152,7 +210,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     await this.signalR.pauseTimer(this.roomId);
   }
 
-  async resumeTimer() {
+  resumeTimer() {
     this.timerService.start();
   }
 
@@ -162,15 +220,54 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     await this.signalR.resetTimer(this.roomId);
   }
 
+  skip() {
+    this.timerService.skip();
+  }
+
   switchMode(mode: 'focus' | 'break') {
-    if (this.state.isRunning) return;
     if (mode === 'break') {
-      this.isSynced = true;
-      this.timerService.startBreak();
+      // Switching to a break is allowed at any time (stops a running focus if needed).
+      if (!this.state.isBreak) {
+        this.isSynced = true;
+        this.timerService.startBreak();
+      }
+    } else {
+      // Back to focus: stop any running/paused timer and return to idle focus.
+      if (this.state.isBreak || this.state.isRunning) {
+        this.isSynced = false;
+        this.timerService.reset();
+      }
     }
-    if (this.state.isBreak && mode === 'focus') {
-      this.timerService.reset();
-    }
+  }
+
+  onFocusChange() {
+    const v = this.clamp(this.focusMin, 1, 240);
+    this.focusMin = v;
+    this.settings.updateStudy({ focusDuration: v });
+    this.timerService.setFocusDuration(v);
+  }
+
+  onBreakChange() {
+    const v = this.clamp(this.breakMin, 1, 120);
+    this.breakMin = v;
+    this.settings.updateStudy({ breakDuration: v });
+    this.timerService.setBreakDuration(v);
+  }
+
+  onLongBreakChange() {
+    const v = this.clamp(this.longBreakMin, 1, 120);
+    this.longBreakMin = v;
+    this.settings.updateStudy({ longBreakDuration: v });
+    this.timerService.setLongBreakDuration(v);
+  }
+
+  onAutoStartChange() {
+    this.settings.updateStudy({ autoStartNextSession: this.autoStart });
+  }
+
+  private clamp(v: number, min: number, max: number): number {
+    const n = Math.floor(Number(v) || min);
+    return Math.min(max, Math.max(min, n));
   }
 
   formatTime(seconds: number): string {

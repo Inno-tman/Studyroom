@@ -130,6 +130,12 @@ async markRead(id: string): Promise<void> {
     } catch { }
   }
 
+  /** End-of-session chime + optional desktop notification. */
+  notify(title: string, body: string): void {
+    this.playSound();
+    this.showDesktopNotification(title, body);
+  }
+
   private handleRealtimeNotification(n: NotificationItem): void {
     const me = this.auth.currentUser()?.id;
     if (n.actorId && n.actorId === me) return;

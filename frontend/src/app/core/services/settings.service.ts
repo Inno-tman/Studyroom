@@ -29,6 +29,8 @@ export interface NotificationPrefs {
 export interface StudyPrefs {
   focusDuration: number;
   breakDuration: number;
+  longBreakDuration: number;
+  longBreakInterval: number;
   dailyStudyGoalMinutes: number;
   autoStartNextSession: boolean;
 }
@@ -151,6 +153,8 @@ export class SettingsService {
     const defaults: StudyPrefs = {
       focusDuration: 25,
       breakDuration: 5,
+      longBreakDuration: 15,
+      longBreakInterval: 4,
       dailyStudyGoalMinutes: 120,
       autoStartNextSession: true
     };
