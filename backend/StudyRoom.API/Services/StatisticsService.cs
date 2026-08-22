@@ -5,23 +5,27 @@ namespace StudyRoom.API.Services;
 
 public class StatisticsService : IStatisticsService
 {
-    private readonly IStudySessionRepository _sessionRepo;
+    private readonly IUserStatsRepository _statsRepo;
 
-    public StatisticsService(IStudySessionRepository sessionRepo) => _sessionRepo = sessionRepo;
+    public StatisticsService(IUserStatsRepository statsRepo) => _statsRepo = statsRepo;
 
     public async Task<UserStatsDto> GetUserStatsAsync(Guid userId)
     {
-        var totalMinutes = await _sessionRepo.GetTotalStudyMinutesAsync(userId);
-        var sessionsCompleted = await _sessionRepo.GetSessionsCompletedAsync(userId);
-        var streak = await _sessionRepo.GetCurrentStreakAsync(userId);
-        var weeklyMinutes = await _sessionRepo.GetWeeklyStudyMinutesAsync(userId);
+        var stats = await _statsRepo.GetAsync(userId);
+
+        // Read-model is cheap (single row). Recompute only when the stored
+        // snapshot is stale (day rolled over) so streak/weekly stay correct.
+        if (stats == null || stats.UpdatedAt.Date != DateTime.UtcNow.Date)
+        {
+            stats = await _statsRepo.RefreshAsync(userId);
+        }
 
         return new UserStatsDto
         {
-            TotalStudyHours = totalMinutes / 60,
-            SessionsCompleted = sessionsCompleted,
-            DailyStreak = streak,
-            WeeklyStudyMinutes = weeklyMinutes
+            TotalStudyHours = stats.TotalStudyMinutes / 60,
+            SessionsCompleted = stats.SessionsCompleted,
+            DailyStreak = stats.DailyStreak,
+            WeeklyStudyMinutes = stats.WeeklyStudyMinutes
         };
     }
 }

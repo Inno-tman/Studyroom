@@ -16,6 +16,12 @@ public class StudySessionRepository : IStudySessionRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task UpdateAsync(StudySession session)
+    {
+        _context.Entry(session).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<List<StudySession>> GetByUserIdAsync(Guid userId) =>
         await _context.StudySessions
             .Where(s => s.UserId == userId)

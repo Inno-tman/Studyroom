@@ -17,6 +17,7 @@ public class StudyRoomHub : Hub
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IDirectMessageRepository _dmRepo;
     private readonly IUserRepository _userRepo;
+    private readonly IUserStatsRepository _statsRepo;
 
     // Room-scoped: connectionId -> roomId
     private static readonly Dictionary<string, string> _onlineUsers = new();
@@ -33,13 +34,15 @@ public class StudyRoomHub : Hub
         IRoomRepository roomRepo,
         IStudySessionRepository sessionRepo,
         IDirectMessageRepository dmRepo,
-        IUserRepository userRepo)
+        IUserRepository userRepo,
+        IUserStatsRepository statsRepo)
     {
         _messageRepo = messageRepo;
         _roomRepo = roomRepo;
         _sessionRepo = sessionRepo;
         _dmRepo = dmRepo;
         _userRepo = userRepo;
+        _statsRepo = statsRepo;
     }
 
     private Guid UserId => Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -474,6 +477,8 @@ public class StudyRoomHub : Hub
         if (latest != null)
         {
             latest.Completed = true;
+            await _sessionRepo.UpdateAsync(latest);
+            await _statsRepo.RefreshAsync(UserId);
         }
     }
 

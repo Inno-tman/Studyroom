@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Note> Notes => Set<Note>();
     public DbSet<StudySession> StudySessions => Set<StudySession>();
+    public DbSet<UserStats> UserStats => Set<UserStats>();
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiMessage> AiMessages => Set<AiMessage>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
