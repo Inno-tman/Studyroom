@@ -23,7 +23,10 @@ import { AiChatPanelComponent } from '../../../ai/ai-chat-panel/ai-chat-panel.co
   styles: [`
     .assistant-overlay {
       position: fixed;
-      inset: 0;
+      top: calc(var(--navbar-height) + env(safe-area-inset-top));
+      left: 0;
+      right: 0;
+      bottom: 0;
       background: rgba(0, 0, 0, 0.55);
       display: flex;
       align-items: center;
