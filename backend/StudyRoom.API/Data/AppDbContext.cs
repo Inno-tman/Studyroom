@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostComment> PostComments => Set<PostComment>();
     public DbSet<PostReaction> PostReactions => Set<PostReaction>();
+    public DbSet<PostStats> PostStats => Set<PostStats>();
     public DbSet<RoomInvitation> RoomInvitations => Set<RoomInvitation>();
     public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
     public DbSet<Notification> Notifications => Set<Notification>();

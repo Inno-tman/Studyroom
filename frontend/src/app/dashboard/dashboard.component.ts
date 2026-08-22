@@ -4,6 +4,7 @@ import { NgFor, NgIf, DatePipe, NgClass } from '@angular/common';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
 import { StatisticsService } from '../core/services/statistics.service';
+import { SignalRService } from '../core/services/signalr.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
@@ -208,6 +209,7 @@ export class DashboardComponent implements OnInit {
   auth = inject(AuthService);
   private roomService = inject(RoomService);
   private statsService = inject(StatisticsService);
+  private signalR = inject(SignalRService);
   private router = inject(Router);
 
   myRooms: Room[] = [];
@@ -229,6 +231,14 @@ export class DashboardComponent implements OnInit {
     } catch { } finally {
       this.loading = false;
     }
+
+    // Keep the streak / study totals fresh when a focus session completes.
+    this.signalR.timerCompleted$.subscribe(async () => {
+      try {
+        const refreshed = await this.statsService.getStats().toPromise();
+        if (refreshed) this.stats = refreshed;
+      } catch { }
+    });
   }
 
   navigateToRoom(id: string) {

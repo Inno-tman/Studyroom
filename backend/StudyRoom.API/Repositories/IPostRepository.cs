@@ -14,5 +14,6 @@ public interface IPostRepository
     Task<PostReaction> AddReactionAsync(PostReaction reaction);
     Task<PostReaction?> GetReactionAsync(Guid postId, Guid userId);
     Task DeleteReactionAsync(PostReaction reaction);
+    Task<HashSet<Guid>> GetLikedPostIdsAsync(Guid userId, List<Guid> postIds);
     Task DeleteAsync(Post post);
 }

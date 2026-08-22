@@ -18,6 +18,9 @@ export class SignalRService {
   private timerPausedSubject = new Subject<any>();
   private timerResetSubject = new Subject<any>();
   private timerCompletedSubject = new Subject<any>();
+  private postCreatedSubject = new Subject<any>();
+  private postStatsChangedSubject = new Subject<any>();
+  private postDeletedSubject = new Subject<any>();
   private notesUpdatedSubject = new Subject<any>();
   private directMessageSubject = new Subject<DirectMessage>();
   private notificationSubject = new Subject<NotificationItem>();
@@ -39,6 +42,9 @@ export class SignalRService {
   timerPaused$ = this.timerPausedSubject.asObservable();
   timerReset$ = this.timerResetSubject.asObservable();
   timerCompleted$ = this.timerCompletedSubject.asObservable();
+  postCreated$ = this.postCreatedSubject.asObservable();
+  postStatsChanged$ = this.postStatsChangedSubject.asObservable();
+  postDeleted$ = this.postDeletedSubject.asObservable();
   notesUpdated$ = this.notesUpdatedSubject.asObservable();
   directMessage$ = this.directMessageSubject.asObservable();
   notification$ = this.notificationSubject.asObservable();
@@ -88,6 +94,9 @@ export class SignalRService {
     this.hubConnection.on('TimerPaused', (data: any) => this.timerPausedSubject.next(data));
     this.hubConnection.on('TimerReset', (data: any) => this.timerResetSubject.next(data));
     this.hubConnection.on('TimerCompleted', (data: any) => this.timerCompletedSubject.next(data));
+    this.hubConnection.on('PostCreated', (data: any) => this.postCreatedSubject.next(data));
+    this.hubConnection.on('PostStatsChanged', (data: any) => this.postStatsChangedSubject.next(data));
+    this.hubConnection.on('PostDeleted', (data: any) => this.postDeletedSubject.next(data));
     this.hubConnection.on('NotesUpdated', (data: any) => this.notesUpdatedSubject.next(data));
     this.hubConnection.on('ReceiveDirectMessage', (msg: DirectMessage) => this.directMessageSubject.next(msg));
     this.hubConnection.on('ReceiveNotification', (notification: NotificationItem) => this.notificationSubject.next(notification));

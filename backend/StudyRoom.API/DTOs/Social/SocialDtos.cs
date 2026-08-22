@@ -33,6 +33,7 @@ public class PostDto
     public string AuthorName { get; set; } = string.Empty;
     public string? AuthorAvatar { get; set; }
     public Guid AuthorId { get; set; }
+    public Guid? RoomId { get; set; }
     public DateTime CreatedAt { get; set; }
     public int CommentCount { get; set; }
     public int ReactionCount { get; set; }
@@ -40,6 +41,13 @@ public class PostDto
     public bool IsMine { get; set; }
     public PostDto? SharedFrom { get; set; }
     public List<CommentDto> Comments { get; set; } = new();
+}
+
+public class PostStatsDto
+{
+    public Guid PostId { get; set; }
+    public int ReactionCount { get; set; }
+    public int CommentCount { get; set; }
 }
 
 public class CommentDto

@@ -29,6 +29,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
@@ -123,6 +124,7 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<INotesRepository, NotesRepository>();
 builder.Services.AddScoped<IStudySessionRepository, StudySessionRepository>();
 builder.Services.AddScoped<IUserStatsRepository, UserStatsRepository>();
+builder.Services.AddScoped<IPostStatsRepository, PostStatsRepository>();
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IRoomInvitationRepository, RoomInvitationRepository>();
@@ -329,6 +331,25 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_PostReactions_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_PostReactions_PostId_UserId" ON "PostReactions" ("PostId", "UserId");
+
+        CREATE TABLE IF NOT EXISTS "PostStats" (
+            "PostId" uuid NOT NULL,
+            "CommentCount" integer NOT NULL DEFAULT 0,
+            "ReactionCount" integer NOT NULL DEFAULT 0,
+            "UpdatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_PostStats" PRIMARY KEY ("PostId"),
+            CONSTRAINT "FK_PostStats_Posts_PostId" FOREIGN KEY ("PostId") REFERENCES "Posts" ("Id") ON DELETE CASCADE
+        );
+
+        -- Seed the read model from existing write data (idempotent).
+        INSERT INTO "PostStats" ("PostId", "CommentCount", "ReactionCount", "UpdatedAt")
+        SELECT
+            p."Id",
+            (SELECT COUNT(*) FROM "PostComments" c WHERE c."PostId" = p."Id"),
+            (SELECT COUNT(*) FROM "PostReactions" r WHERE r."PostId" = p."Id"),
+            NOW()
+        FROM "Posts" p
+        WHERE NOT EXISTS (SELECT 1 FROM "PostStats" s WHERE s."PostId" = p."Id");
 
         CREATE TABLE IF NOT EXISTS "RoomInvitations" (
             "Id" uuid NOT NULL,

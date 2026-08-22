@@ -15,8 +15,7 @@ public class PostRepository : IPostRepository
             .Include(p => p.Author)
             .Include(p => p.SharedPost)!.ThenInclude(sp => sp!.Author)
             .Include(p => p.Comments).ThenInclude(c => c.Author)
-            .Include(p => p.Comments).ThenInclude(c => c.Replies).ThenInclude(r => r.Author)
-            .Include(p => p.Reactions);
+            .Include(p => p.Comments).ThenInclude(c => c.Replies).ThenInclude(r => r.Author);
 
     public async Task<Post?> GetByIdAsync(Guid id) =>
         await BaseQuery().FirstOrDefaultAsync(p => p.Id == id);
@@ -82,5 +81,18 @@ public class PostRepository : IPostRepository
     {
         _context.Posts.Remove(post);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<HashSet<Guid>> GetLikedPostIdsAsync(Guid userId, List<Guid> postIds)
+    {
+        if (postIds.Count == 0)
+            return new HashSet<Guid>();
+
+        var liked = await _context.PostReactions
+            .Where(r => r.UserId == userId && postIds.Contains(r.PostId))
+            .Select(r => r.PostId)
+            .ToListAsync();
+
+        return liked.ToHashSet();
     }
 }

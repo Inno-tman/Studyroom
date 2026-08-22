@@ -88,6 +88,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   private subscriptions: Subscription[] = [];
   private isSynced = false;
   private wasCompleted = false;
+  private wasBreak = false;
 
   async ngOnInit() {
     const study = this.settings.study();
@@ -97,10 +98,17 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.timerService.state$.subscribe(s => {
         const justCompleted = s.sessionCompleted && !this.wasCompleted;
+        const wasBreak = this.wasBreak;
         this.state = s;
         this.wasCompleted = s.sessionCompleted;
+        this.wasBreak = s.isBreak;
         if (justCompleted && this.settings.prefs().pomodoroComplete) {
           this.notificationService.playSound();
+        }
+        // Persist a completed focus session so stats/streak stay accurate.
+        // Break completion is intentionally ignored (it doesn't create a study session).
+        if (justCompleted && !wasBreak) {
+          this.signalR.timerCompleted(this.roomId).catch(() => {});
         }
       })
     );

@@ -40,12 +40,19 @@ export interface Post {
   authorName: string;
   authorAvatar?: string;
   createdAt: string;
+  roomId?: string;
   commentCount: number;
   reactionCount: number;
   likedByMe: boolean;
   isMine: boolean;
   sharedFrom?: Post;
   comments: Comment[];
+}
+
+export interface PostStatsUpdate {
+  postId: string;
+  reactionCount: number;
+  commentCount: number;
 }
 
 export interface DirectMessage {

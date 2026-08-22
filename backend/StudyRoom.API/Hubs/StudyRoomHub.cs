@@ -473,7 +473,7 @@ public class StudyRoomHub : Hub
         });
 
         var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-        var latest = sessions.FirstOrDefault();
+        var latest = sessions.FirstOrDefault(s => !s.Completed);
         if (latest != null)
         {
             latest.Completed = true;
