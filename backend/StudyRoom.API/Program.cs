@@ -246,6 +246,8 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE INDEX IF NOT EXISTS "IX_AiConversations_UserId" ON "AiConversations" ("UserId");
         CREATE INDEX IF NOT EXISTS "IX_AiConversations_CreatedAt" ON "AiConversations" ("CreatedAt");
+        ALTER TABLE "AiConversations" ADD COLUMN IF NOT EXISTS "RoomId" text NULL;
+        ALTER TABLE "AiConversations" ADD COLUMN IF NOT EXISTS "UserId" uuid NULL;
 
         CREATE TABLE IF NOT EXISTS "AiMessages" (
             "Id" uuid NOT NULL,
