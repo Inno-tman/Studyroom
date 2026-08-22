@@ -191,7 +191,11 @@ The full research process:
     /// <summary>Gemini API (Google AI Studio free tier). Uses the v1beta generateContent endpoint.</summary>
     private async Task<AcademicResponseDto> CallGemini(string systemPrompt, List<DTOs.AI.PreviousMessageDto> messages, string? subject)
     {
-        if (string.IsNullOrEmpty(_settings.ApiKey))
+        var apiKey = _settings.ApiKey;
+        if (string.IsNullOrEmpty(apiKey))
+            apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+
+        if (string.IsNullOrEmpty(apiKey))
         {
             _logger.LogWarning("Gemini API key is not configured.");
             return new AcademicResponseDto
@@ -209,7 +213,7 @@ The full research process:
         if (string.IsNullOrWhiteSpace(model) || !model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase))
             model = "gemini-2.0-flash";
 
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(_settings.ApiKey)}";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(apiKey)}";
 
         // Gemini requires alternating user/model roles, so merge consecutive same-role messages.
         var contents = new List<Dictionary<string, object>>();
