@@ -203,7 +203,12 @@ The full research process:
             };
         }
 
+        // We are Gemini-only. If a stale/non-Gemini model name leaked in from config
+        // (e.g. an old Groq model like llama-3.3-70b-versatile), fall back to a valid Gemini model.
         var model = _settings.Model;
+        if (string.IsNullOrWhiteSpace(model) || !model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase))
+            model = "gemini-2.0-flash";
+
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(_settings.ApiKey)}";
 
         // Gemini requires alternating user/model roles, so merge consecutive same-role messages.
