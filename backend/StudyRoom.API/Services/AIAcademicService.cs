@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -11,7 +10,6 @@ public class AiSettings
     public string Provider { get; set; } = "gemini";
     public string ApiKey { get; set; } = string.Empty;
     public string Model { get; set; } = "gemini-2.5-flash-lite";
-    public string Endpoint { get; set; } = "https://api.groq.com/openai/v1/chat/completions";
     public int MaxTokens { get; set; } = 800;
 }
 
@@ -161,10 +159,7 @@ The full research process:
 
         try
         {
-            if (_settings.Provider.Equals("gemini", StringComparison.OrdinalIgnoreCase))
-                return await CallGemini(systemPrompt, messages, subject);
-
-            return await CallOpenAiCompatible(systemPrompt, messages, subject);
+            return await CallGemini(systemPrompt, messages, subject);
         }
         catch (OperationCanceledException)
         {
@@ -179,13 +174,16 @@ The full research process:
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "AI provider request failed.");
+            _logger.LogWarning(ex, "AI provider request failed (provider={Provider}, model={Model}).", _settings.Provider, _settings.Model);
+            var detail = ex.Message.Contains("404")
+                ? $"the model '{_settings.Model}' was not found for provider '{_settings.Provider}'. Check the AiSettings__Model / AiSettings__Provider configuration."
+                : ex.Message;
             return new AcademicResponseDto
             {
                 Answer = GenerateFallbackResponse(userMessage, subject),
                 Subject = subject,
                 IsError = true,
-                ErrorMessage = $"AI service error: {ex.Message}"
+                ErrorMessage = $"AI service error: {detail}"
             };
         }
     }
@@ -269,67 +267,6 @@ The full research process:
             .GetProperty("content")
             .GetProperty("parts")[0]
             .GetProperty("text")
-            .GetString() ?? "I'm sorry, I couldn't generate a response.";
-
-        return new AcademicResponseDto
-        {
-            Answer = answer,
-            Subject = subject,
-            CreatedAt = DateTime.UtcNow
-        };
-    }
-
-    /// <summary>OpenAI-compatible chat completions (e.g. Groq).</summary>
-    private async Task<AcademicResponseDto> CallOpenAiCompatible(string systemPrompt, List<DTOs.AI.PreviousMessageDto> messages, string? subject)
-    {
-        var chat = new List<object>
-        {
-            new { role = "system", content = systemPrompt }
-        };
-        foreach (var msg in messages)
-        {
-            chat.Add(new { role = msg.Role, content = msg.Content });
-        }
-
-        var payload = new
-        {
-            model = _settings.Model,
-            messages = chat.ToArray(),
-            max_tokens = _settings.MaxTokens,
-            temperature = 0.3
-        };
-
-        var json = JsonSerializer.Serialize(payload);
-        var request = new HttpRequestMessage(HttpMethod.Post, _settings.Endpoint)
-        {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
-        };
-        if (!string.IsNullOrEmpty(_settings.ApiKey))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-
-        var response = await _http.SendAsync(request);
-
-        if ((int)response.StatusCode == 429)
-        {
-            _logger.LogWarning("AI provider rate limited (429).");
-            return new AcademicResponseDto
-            {
-                Answer = GenerateFallbackResponse(messages.LastOrDefault()?.Content ?? "", subject),
-                Subject = subject,
-                IsError = true,
-                ErrorMessage = "AI service is rate limited. Please wait 30 seconds and try again."
-            };
-        }
-
-        response.EnsureSuccessStatusCode();
-
-        var responseJson = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(responseJson);
-
-        var answer = doc.RootElement
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
             .GetString() ?? "I'm sorry, I couldn't generate a response.";
 
         return new AcademicResponseDto

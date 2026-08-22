@@ -25,6 +25,7 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
 
       if (!auth.getRefreshToken()) {
         console.warn('[jwt] 401 but no refresh token stored', { url: req.url, hadToken: !!token });
+        auth.logout();
         return throwError(() => err);
       }
       if (refreshFailed) {

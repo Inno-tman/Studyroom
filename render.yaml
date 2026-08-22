@@ -22,10 +22,10 @@ services:
         value: "1440"
       - key: Cors__Origins__0
         value: https://studyroom-m9nx.onrender.com
-      - key: AiSettings__Endpoint
-        value: https://api.groq.com/openai/v1/chat/completions
+      - key: AiSettings__Provider
+        value: gemini
       - key: AiSettings__Model
-        value: llama-3.3-70b-versatile
+        value: gemini-2.5-flash-lite
       - key: AiSettings__ApiKey
         sync: false
       - key: Google__ClientId
