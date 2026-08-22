@@ -9,7 +9,7 @@ public class AiSettings
 {
     public string Provider { get; set; } = "gemini";
     public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "gemini-2.0-flash";
+    public string Model { get; set; } = "gemini-2.5-flash";
     public int MaxTokens { get; set; } = 800;
 }
 
@@ -157,39 +157,65 @@ The full research process:
 
         messages.Add(new DTOs.AI.PreviousMessageDto { Role = "user", Content = userMessage });
 
-        var model = _settings.Model;
-        if (string.IsNullOrWhiteSpace(model) || !model.StartsWith("gemini", StringComparison.OrdinalIgnoreCase))
-            model = "gemini-2.0-flash";
+        var preferred = _settings.Model;
+        if (string.IsNullOrWhiteSpace(preferred) || !preferred.StartsWith("gemini", StringComparison.OrdinalIgnoreCase))
+            preferred = "gemini-2.5-flash";
 
-        try
+        // Gemini periodically retires models (e.g. gemini-2.0-flash was shut down in 2026).
+        // Try the configured/preferred model first, then fall back through known-good ones.
+        var candidates = new List<string> { preferred };
+        foreach (var m in new[] { "gemini-2.5-flash", "gemini-2.5-pro", "gemini-3-flash-preview", "gemini-3.6-flash", "gemini-1.5-flash" })
+            if (!candidates.Contains(m))
+                candidates.Add(m);
+
+        Exception? lastError = null;
+        foreach (var model in candidates)
         {
-            return await CallGemini(systemPrompt, messages, subject, model);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogWarning("AI provider request timed out (35s).");
-            return new AcademicResponseDto
+            try
             {
-                Answer = GenerateFallbackResponse(userMessage, subject),
-                Subject = subject,
-                IsError = true,
-                ErrorMessage = "AI service timed out. Please try again."
-            };
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "AI provider request failed (provider={Provider}, model={Model}).", _settings.Provider, model);
-            var detail = ex.Message.Contains("404")
-                ? $"the model '{model}' was not found for provider '{_settings.Provider}'. Check the AiSettings__Model / AiSettings__Provider configuration."
-                : ex.Message;
-            return new AcademicResponseDto
+                return await CallGemini(systemPrompt, messages, subject, model);
+            }
+            catch (OperationCanceledException)
             {
-                Answer = GenerateFallbackResponse(userMessage, subject),
-                Subject = subject,
-                IsError = true,
-                ErrorMessage = $"AI service error: {detail}"
-            };
+                _logger.LogWarning("AI provider request timed out (35s).");
+                return new AcademicResponseDto
+                {
+                    Answer = GenerateFallbackResponse(userMessage, subject),
+                    Subject = subject,
+                    IsError = true,
+                    ErrorMessage = "AI service timed out. Please try again."
+                };
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+            {
+                lastError = ex;
+                _logger.LogWarning("Gemini model {Model} unavailable, trying next candidate.", model);
+                continue;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "AI provider request failed (provider={Provider}, model={Model}).", _settings.Provider, model);
+                var detail = ex.Message.Contains("404")
+                    ? $"the model '{model}' was not found for provider '{_settings.Provider}'. Check the AiSettings__Model / AiSettings__Provider configuration."
+                    : ex.Message;
+                return new AcademicResponseDto
+                {
+                    Answer = GenerateFallbackResponse(userMessage, subject),
+                    Subject = subject,
+                    IsError = true,
+                    ErrorMessage = $"AI service error: {detail}"
+                };
+            }
         }
+
+        _logger.LogWarning(lastError, "All Gemini model candidates failed.");
+        return new AcademicResponseDto
+        {
+            Answer = GenerateFallbackResponse(userMessage, subject),
+            Subject = subject,
+            IsError = true,
+            ErrorMessage = "AI model is currently unavailable. Please try again later."
+        };
     }
 
     /// <summary>Gemini API (Google AI Studio free tier). Uses the v1beta generateContent endpoint.</summary>
