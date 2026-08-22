@@ -3,6 +3,7 @@ import { NgIf } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AssistantService } from '../../../core/services/assistant.service';
 
 @Component({
   selector: 'app-navbar',
@@ -48,6 +49,9 @@ import { NotificationService } from '../../../core/services/notification.service
       </div>
 
       <div class="navbar-right">
+        <button class="assistant-btn" (click)="assistant.toggle()" title="AI Assistant" aria-label="Open AI Assistant">
+          <span class="material-icons">smart_toy</span>
+        </button>
         <a routerLink="/profile" class="avatar" [class.has-image]="auth.currentUser()?.avatarUrl" title="Profile">
           <img *ngIf="auth.currentUser()?.avatarUrl; else navbarInitial" [src]="auth.currentUser()?.avatarUrl" alt="" />
           <ng-template #navbarInitial>{{ auth.currentUser()?.username?.charAt(0)?.toUpperCase() }}</ng-template>
@@ -146,6 +150,23 @@ import { NotificationService } from '../../../core/services/notification.service
       flex-shrink: 0;
     }
 
+    .assistant-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--accent);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .assistant-btn:hover { background: rgba(56, 189, 248, 0.12); border-color: var(--accent); }
+    .assistant-btn .material-icons { font-size: var(--font-20); }
+
     .avatar {
       width: 34px;
       height: 34px;
@@ -192,4 +213,5 @@ import { NotificationService } from '../../../core/services/notification.service
 export class NavbarComponent {
   auth = inject(AuthService);
   notificationService = inject(NotificationService);
+  assistant = inject(AssistantService);
 }

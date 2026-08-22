@@ -22,7 +22,7 @@ interface ChatMessage {
   imports: [NgFor, NgIf, DatePipe, FormsModule],
   template: `
     <div class="ai-panel">
-      <div class="panel-header">
+      <div class="panel-header" *ngIf="showHeader">
         <div class="header-left">
           <button class="sidebar-toggle" (click)="showSidebar = !showSidebar" title="Conversation history">
             <span class="material-icons">{{ showSidebar ? 'close' : 'menu' }}</span>
@@ -280,6 +280,7 @@ interface ChatMessage {
 export class AiChatPanelComponent implements OnInit, AfterViewChecked {
   @Input() subject = '';
   @Input() notesContext = '';
+  @Input() showHeader = true;
 
   private aiService = inject(AIService);
   private docService = inject(DocumentService);

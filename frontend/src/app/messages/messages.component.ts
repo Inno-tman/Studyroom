@@ -7,12 +7,13 @@ import { SignalRService } from '../core/services/signalr.service';
 import { DirectMessageService } from '../core/services/direct-message.service';
 import { NotificationService } from '../core/services/notification.service';
 import { CallService } from '../core/services/call.service';
+import { AiChatPanelComponent } from '../ai/ai-chat-panel/ai-chat-panel.component';
 import { Conversation, DirectMessage } from '../shared/models/social.model';
 
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule],
+  imports: [NgFor, NgIf, DatePipe, FormsModule, AiChatPanelComponent],
   template: `
     <div class="messages-page">
       <div class="page-header">
@@ -20,12 +21,29 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
       </div>
 
       <div class="messages-layout">
-        <div class="conversations" [class.mobile-hidden]="isMobile && activeUser">
+        <div class="conversations" [class.mobile-hidden]="isMobile && (activeUser || activeAssistant)">
+          <button
+            class="convo-item assistant-pin"
+            [class.active]="activeAssistant"
+            (click)="openAssistant()"
+          >
+            <div class="avatar assistant-avatar">
+              <span class="material-icons">smart_toy</span>
+            </div>
+            <div class="convo-info">
+              <div class="convo-top">
+                <span class="convo-name">AI Assistant</span>
+                <span class="pin-tag">Pinned</span>
+              </div>
+              <span class="convo-last">Ask me anything about your studies</span>
+            </div>
+          </button>
+
           <div *ngIf="conversations.length === 0" class="empty">No conversations yet. Message your friends!</div>
           <button
             *ngFor="let convo of conversations"
             class="convo-item"
-            [class.active]="convo.userId === activeUserId"
+            [class.active]="convo.userId === activeUserId && !activeAssistant"
             (click)="openConversation(convo.userId)"
           >
             <div class="avatar" [class.has-image]="convo.avatarUrl">
@@ -42,12 +60,12 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
           </button>
         </div>
 
-        <div class="chat-area" [class.mobile-open]="isMobile && activeUser">
-          <div *ngIf="!activeUser" class="chat-placeholder">
+        <div class="chat-area" [class.mobile-open]="isMobile && (activeUser || activeAssistant)">
+          <div *ngIf="!activeUser && !activeAssistant" class="chat-placeholder">
             Select a conversation to start chatting.
           </div>
 
-          <ng-container *ngIf="activeUser">
+          <ng-container *ngIf="activeUser && !activeAssistant">
             <div class="chat-header">
               <button class="back-btn" (click)="closeConversation()" aria-label="Back to conversations">
                 <span class="material-icons">arrow_back</span>
@@ -93,6 +111,21 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               </button>
             </div>
           </ng-container>
+
+          <ng-container *ngIf="activeAssistant">
+            <div class="chat-header">
+              <button class="back-btn" (click)="closeAssistant()" aria-label="Back to conversations">
+                <span class="material-icons">arrow_back</span>
+              </button>
+              <div class="avatar assistant-avatar">
+                <span class="material-icons">smart_toy</span>
+              </div>
+              <div class="chat-title-wrap">
+                <span class="chat-title">AI Assistant</span>
+              </div>
+            </div>
+            <app-ai-chat-panel [showHeader]="false" [subject]="''" />
+          </ng-container>
         </div>
       </div>
     </div>
@@ -123,6 +156,36 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
     .convo-item:hover { background: var(--surface-hover); }
     .convo-item.active { background: var(--surface-hover); border-left: 3px solid var(--primary); }
     .convo-item .avatar, .chat-header .avatar { width: 42px; height: 42px; }
+
+    .assistant-pin { border-left: 3px solid var(--accent); }
+    .assistant-pin.active { background: rgba(56, 189, 248, 0.08); border-left: 3px solid var(--accent); }
+    .assistant-avatar {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .assistant-avatar .material-icons { font-size: var(--font-22); }
+    .pin-tag {
+      margin-left: auto;
+      font-size: var(--font-9);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      padding: 1px 6px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .chat-area app-ai-chat-panel {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
 
     .convo-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .convo-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -245,6 +308,7 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages: DirectMessage[] = [];
   activeUserId = '';
   activeUser?: Conversation;
+  activeAssistant = false;
   newMessage = '';
   sending = false;
   isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
@@ -323,6 +387,17 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.activeUserId = '';
     this.activeUser = undefined;
     this.messages = [];
+  }
+
+  openAssistant(): void {
+    this.activeUserId = '';
+    this.activeUser = undefined;
+    this.messages = [];
+    this.activeAssistant = true;
+  }
+
+  closeAssistant(): void {
+    this.activeAssistant = false;
   }
 
   async send(): Promise<void> {

@@ -6,11 +6,12 @@ import { CommandPaletteComponent } from './shared/components/command-palette/com
 import { PresenceDockComponent } from './shared/components/presence-dock/presence-dock.component';
 import { CallOverlayComponent } from './shared/components/call-overlay/call-overlay.component';
 import { YoutubePlayerComponent } from './shared/components/youtube-player/youtube-player.component';
+import { GlobalAssistantComponent } from './shared/components/global-assistant/global-assistant.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, CallOverlayComponent, YoutubePlayerComponent],
+  imports: [RouterOutlet, NavbarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, CallOverlayComponent, YoutubePlayerComponent, GlobalAssistantComponent],
   template: `
     <div class="app-container">
       <app-navbar />
@@ -24,6 +25,7 @@ import { YoutubePlayerComponent } from './shared/components/youtube-player/youtu
       <app-presence-dock />
       <app-call-overlay />
       <app-youtube-player />
+      <app-global-assistant />
     </div>
   `,
   styles: [``]
