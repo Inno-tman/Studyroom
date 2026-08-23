@@ -43,7 +43,8 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       <app-loading [loading]="loading" />
       <div *ngIf="!loading && posts.length === 0" class="empty">
         <span class="material-icons">article</span>
-        No posts yet. Share something with your friends!
+        <ng-container *ngIf="!userId">No posts yet. Share something with your friends!</ng-container>
+        <ng-container *ngIf="userId">{{ userName ? (userName + ' hasn’t posted anything yet') : 'This user hasn’t posted anything yet' }}</ng-container>
       </div>
 
       <div class="posts">
@@ -316,6 +317,7 @@ export class TimelineComponent implements OnInit {
   private router = inject(Router);
 
   @Input() userId?: string;
+  @Input() userName?: string;
 
   posts: (Post & { showComments?: boolean; newComment?: string; replyToCommentId?: string })[] = [];
   newPostContent = '';

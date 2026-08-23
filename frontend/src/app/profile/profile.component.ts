@@ -76,7 +76,7 @@ interface ProfileView {
         </div>
       </div>
 
-      <app-timeline *ngIf="profile" [userId]="profile.id"></app-timeline>
+      <app-timeline *ngIf="profile" [userId]="profile.id" [userName]="profile?.displayName"></app-timeline>
     </div>
   `,
   styles: [`
