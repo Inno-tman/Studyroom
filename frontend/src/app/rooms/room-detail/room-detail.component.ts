@@ -121,38 +121,22 @@ const TABS: RoomTab[] = [
         <!-- ── Unified tab body (all devices) ────────────────── -->
         <div class="tab-body" [class.tab-body-bottom-pad]="isMobile">
           <div *ngIf="activeTab === 'chat'" class="tab-pane chat-pane">
-            <div class="panel-header">
-              <h2>Chat</h2>
-              <span class="online-count">{{ onlineUsers.length }} online</span>
-            </div>
             <ng-container *ngTemplateOutlet="chatBody" />
           </div>
 
           <div *ngIf="activeTab === 'focus'" class="tab-pane focus-pane">
-            <div class="mobile-panel-title">
-              <span class="material-icons">timer</span> Focus Timer
-            </div>
             <app-pomodoro-timer [roomId]="roomId" />
           </div>
 
           <div *ngIf="activeTab === 'notes'" class="tab-pane notes-pane">
-            <div class="mobile-panel-title">
-              <span class="material-icons">edit_note</span> Notes
-            </div>
             <app-notes-editor [roomId]="roomId" />
           </div>
 
           <div *ngIf="activeTab === 'ai'" class="tab-pane ai-pane">
-            <div class="mobile-panel-title">
-              <span class="material-icons">auto_awesome</span> AI Assistant
-            </div>
             <app-ai-chat-panel [subject]="room?.subject || ''" [notesContext]="notesContext" [roomId]="room?.id || ''" />
           </div>
 
           <div *ngIf="activeTab === 'meet'" class="tab-pane meet-pane">
-            <div class="mobile-panel-title">
-              <span class="material-icons">videocam</span> Meetings
-            </div>
             <ng-container *ngTemplateOutlet="meetingsBody" />
           </div>
         </div>
@@ -452,7 +436,6 @@ const TABS: RoomTab[] = [
     .tab-pane .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border); }
     .tab-pane .panel-header h2 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
 
-    .online-count { font-size: var(--font-12); color: var(--success); }
 
     .chat-pane { height: 600px; }
     .chat-pane .chat-input { border-top: 1px solid var(--border); }
@@ -616,8 +599,6 @@ const TABS: RoomTab[] = [
       .tab-body-bottom-pad { margin-bottom: 84px; }
       .tab-pane { border-radius: 14px; height: 100%; }
 
-      .mobile-panel-title { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
-      .mobile-panel-title .material-icons { font-size: var(--font-18); color: var(--accent); }
 
       .notes-pane ::ng-deep app-notes-editor { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
