@@ -22,10 +22,11 @@ public class StatisticsService : IStatisticsService
 
         return new UserStatsDto
         {
-            TotalStudyHours = stats.TotalStudyMinutes / 60,
+            TotalStudyHours = Math.Round(stats.TotalStudyMinutes / 60m, 1),
             SessionsCompleted = stats.SessionsCompleted,
             DailyStreak = stats.DailyStreak,
-            WeeklyStudyMinutes = stats.WeeklyStudyMinutes
+            WeeklyStudyMinutes = stats.WeeklyStudyMinutes,
+            WeeklyStudyHours = Math.Round(stats.WeeklyStudyMinutes / 60m, 1)
         };
     }
 }

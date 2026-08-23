@@ -17,7 +17,7 @@ public class UserStatsRepository : IUserStatsRepository
     {
         var total = await _context.StudySessions
             .Where(s => s.UserId == userId && s.Completed)
-            .SumAsync(s => (int?)s.DurationMinutes) ?? 0;
+            .SumAsync(s => (decimal?)s.DurationMinutes) ?? 0;
 
         var completed = await _context.StudySessions
             .CountAsync(s => s.UserId == userId && s.Completed);
@@ -25,7 +25,7 @@ public class UserStatsRepository : IUserStatsRepository
         var weekStart = DateTime.UtcNow.AddDays(-7);
         var weekly = await _context.StudySessions
             .Where(s => s.UserId == userId && s.Completed && s.CreatedAt >= weekStart)
-            .SumAsync(s => (int?)s.DurationMinutes) ?? 0;
+            .SumAsync(s => (decimal?)s.DurationMinutes) ?? 0;
 
         var dates = await _context.StudySessions
             .Where(s => s.UserId == userId && s.Completed)

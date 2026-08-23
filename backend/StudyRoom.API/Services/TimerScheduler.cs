@@ -98,6 +98,9 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
                 var latest = sessions.FirstOrDefault(s => !s.Completed);
                 if (latest != null)
                 {
+                    var start = latest.StartedAt ?? latest.CreatedAt;
+                    var minutes = (DateTime.UtcNow - start).TotalMinutes;
+                    latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
                     latest.Completed = true;
                     await sessionRepo.UpdateAsync(latest);
                     await statsRepo.RefreshAsync(entry.UserId);

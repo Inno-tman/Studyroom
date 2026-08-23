@@ -445,6 +445,7 @@ public class StudyRoomHub : Hub
         if (existing != null)
         {
             existing.RoomId = Guid.Parse(roomId);
+            existing.StartedAt = DateTime.UtcNow;
             await _sessionRepo.UpdateAsync(existing);
         }
         else
@@ -454,6 +455,7 @@ public class StudyRoomHub : Hub
                 UserId = UserId,
                 RoomId = Guid.Parse(roomId),
                 DurationMinutes = durationMinutes,
+                StartedAt = DateTime.UtcNow,
                 Completed = false
             });
         }
@@ -484,6 +486,7 @@ public class StudyRoomHub : Hub
             pausedBy = Username
         });
 
+        await FinalizeActiveSessionAsync();
         _timerScheduler.Cancel(UserId);
     }
 
@@ -495,6 +498,7 @@ public class StudyRoomHub : Hub
             resetBy = Username
         });
 
+        await FinalizeActiveSessionAsync();
         _timerScheduler.Cancel(UserId);
     }
 
@@ -506,14 +510,27 @@ public class StudyRoomHub : Hub
             completedBy = Username
         });
 
+        await FinalizeActiveSessionAsync();
+    }
+
+    private async Task FinalizeActiveSessionAsync()
+    {
         var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
         var latest = sessions.FirstOrDefault(s => !s.Completed);
         if (latest != null)
         {
+            latest.DurationMinutes = ComputeElapsedMinutes(latest);
             latest.Completed = true;
             await _sessionRepo.UpdateAsync(latest);
             await _statsRepo.RefreshAsync(UserId);
         }
+    }
+
+    private static decimal ComputeElapsedMinutes(StudySession s)
+    {
+        var start = s.StartedAt ?? s.CreatedAt;
+        var minutes = (DateTime.UtcNow - start).TotalMinutes;
+        return Math.Round((decimal)Math.Max(0, minutes), 2);
     }
 
     public async Task UpdateNotes(string roomId, string content)

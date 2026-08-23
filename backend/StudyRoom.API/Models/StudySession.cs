@@ -13,9 +13,11 @@ public class StudySession
 
     public Guid RoomId { get; set; }
 
-    public int DurationMinutes { get; set; }
+    public decimal DurationMinutes { get; set; }
 
     public bool Completed { get; set; }
+
+    public DateTime? StartedAt { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

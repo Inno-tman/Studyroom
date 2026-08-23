@@ -28,7 +28,7 @@ public class StudySessionRepository : IStudySessionRepository
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();
 
-    public async Task<int> GetTotalStudyMinutesAsync(Guid userId) =>
+    public async Task<decimal> GetTotalStudyMinutesAsync(Guid userId) =>
         await _context.StudySessions
             .Where(s => s.UserId == userId && s.Completed)
             .SumAsync(s => s.DurationMinutes);
@@ -37,7 +37,7 @@ public class StudySessionRepository : IStudySessionRepository
         await _context.StudySessions
             .CountAsync(s => s.UserId == userId && s.Completed);
 
-    public async Task<int> GetWeeklyStudyMinutesAsync(Guid userId)
+    public async Task<decimal> GetWeeklyStudyMinutesAsync(Guid userId)
     {
         var weekStart = DateTime.UtcNow.AddDays(-7);
         return await _context.StudySessions
