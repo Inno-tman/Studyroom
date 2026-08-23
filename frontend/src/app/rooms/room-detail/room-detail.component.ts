@@ -381,6 +381,11 @@ const TABS: RoomTab[] = [
         <span class="fab-label">Call</span>
       </div>
 
+      <div class="call-fab broadcast-fab" *ngIf="isMobile && isMember && isHost && !inCall" (click)="openVideoDialog()">
+        <span class="material-icons">smart_display</span>
+        <span class="fab-label">Broadcast</span>
+      </div>
+
       <nav class="mobile-tabbar" *ngIf="isMobile && isMember">
         <button
           *ngFor="let tab of tabs"
@@ -821,6 +826,12 @@ const TABS: RoomTab[] = [
       .member-avatar { width: 34px; height: 34px; font-size: var(--font-13); }
       .invite-chip { padding: 8px 12px; }
 
+      /* Keep broadcast controls (incl. unmute) reachable on small screens */
+      .broadcast-header { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+      .broadcast-header .broadcast-title { white-space: nowrap; }
+      .broadcast-spacer { display: none; }
+      .bc-btn { flex: 0 0 auto; width: 38px; height: 38px; }
+
       .next-meeting { margin: 0 12px 12px; border-radius: 14px; }
 
       .tab-body { min-height: 0; height: calc(100vh - 190px); height: calc(100dvh - 190px); margin: 0 12px 84px; border-radius: 14px; }
@@ -842,6 +853,8 @@ const TABS: RoomTab[] = [
       }
       .call-fab:active { transform: scale(0.96); }
       .call-fab .material-icons { font-size: var(--font-20); }
+
+      .broadcast-fab { right: auto; left: 16px; background: var(--primary); box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4); }
 
       /* Bottom tab bar */
       .mobile-tabbar {
