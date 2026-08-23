@@ -125,6 +125,10 @@ builder.Services.AddScoped<INotesRepository, NotesRepository>();
 builder.Services.AddScoped<IStudySessionRepository, StudySessionRepository>();
 builder.Services.AddScoped<IUserStatsRepository, UserStatsRepository>();
 builder.Services.AddScoped<IPostStatsRepository, PostStatsRepository>();
+
+builder.Services.AddSingleton<TimerScheduler>();
+builder.Services.AddSingleton<ITimerScheduler>(sp => sp.GetRequiredService<TimerScheduler>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TimerScheduler>());
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IRoomInvitationRepository, RoomInvitationRepository>();

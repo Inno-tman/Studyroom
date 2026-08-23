@@ -18,6 +18,7 @@ public class StudyRoomHub : Hub
     private readonly IDirectMessageRepository _dmRepo;
     private readonly IUserRepository _userRepo;
     private readonly IUserStatsRepository _statsRepo;
+    private readonly ITimerScheduler _timerScheduler;
 
     // Room-scoped: connectionId -> roomId
     private static readonly Dictionary<string, string> _onlineUsers = new();
@@ -35,7 +36,8 @@ public class StudyRoomHub : Hub
         IStudySessionRepository sessionRepo,
         IDirectMessageRepository dmRepo,
         IUserRepository userRepo,
-        IUserStatsRepository statsRepo)
+        IUserStatsRepository statsRepo,
+        ITimerScheduler timerScheduler)
     {
         _messageRepo = messageRepo;
         _roomRepo = roomRepo;
@@ -43,6 +45,7 @@ public class StudyRoomHub : Hub
         _dmRepo = dmRepo;
         _userRepo = userRepo;
         _statsRepo = statsRepo;
+        _timerScheduler = timerScheduler;
     }
 
     private Guid UserId => Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -435,15 +438,42 @@ public class StudyRoomHub : Hub
             startedAt = DateTime.UtcNow
         });
 
-        var session = new StudySession
+        // Reuse an in-progress session if one exists (handles resume / auto-start of
+        // the same phase); otherwise start a fresh one.
+        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
+        var existing = sessions.FirstOrDefault(s => !s.Completed);
+        if (existing != null)
         {
-            UserId = UserId,
-            RoomId = Guid.Parse(roomId),
-            DurationMinutes = durationMinutes,
-            Completed = false
-        };
+            existing.RoomId = Guid.Parse(roomId);
+            await _sessionRepo.UpdateAsync(existing);
+        }
+        else
+        {
+            await _sessionRepo.AddAsync(new StudySession
+            {
+                UserId = UserId,
+                RoomId = Guid.Parse(roomId),
+                DurationMinutes = durationMinutes,
+                Completed = false
+            });
+        }
 
-        await _sessionRepo.AddAsync(session);
+        _timerScheduler.ScheduleFocus(UserId, Guid.Parse(roomId), durationMinutes);
+    }
+
+    public async Task StartBreak(string roomId, int durationMinutes, bool isLong)
+    {
+        await Clients.Group(GetGroupName(roomId)).SendAsync("TimerStarted", new
+        {
+            roomId,
+            durationMinutes,
+            isBreak = true,
+            isLong,
+            startedBy = Username,
+            startedAt = DateTime.UtcNow
+        });
+
+        _timerScheduler.ScheduleBreak(UserId, Guid.Parse(roomId), durationMinutes, isLong);
     }
 
     public async Task PauseTimer(string roomId)
@@ -453,6 +483,8 @@ public class StudyRoomHub : Hub
             roomId,
             pausedBy = Username
         });
+
+        _timerScheduler.Cancel(UserId);
     }
 
     public async Task ResetTimer(string roomId)
@@ -462,6 +494,8 @@ public class StudyRoomHub : Hub
             roomId,
             resetBy = Username
         });
+
+        _timerScheduler.Cancel(UserId);
     }
 
     public async Task TimerCompleted(string roomId)
