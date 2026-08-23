@@ -70,9 +70,9 @@ const TABS: RoomTab[] = [
             <span class="material-icons">link</span>
             Invite link
           </button>
-          <button *ngIf="isMember && isHost" class="btn-outline share-video-btn" (click)="openVideoDialog()">
+          <button *ngIf="isMember && isHost" class="btn-outline share-video-btn" (click)="openVideoDialog()" title="Broadcast a video">
             <span class="material-icons">smart_display</span>
-            Share Video
+            Broadcast
           </button>
           <button *ngIf="isMember" class="btn-outline-danger" (click)="leaveRoom()">Leave</button>
         </div>
@@ -398,7 +398,7 @@ const TABS: RoomTab[] = [
       <div class="dialog-backdrop" *ngIf="showVideoDialog" (click)="showVideoDialog = false">
         <div class="dialog" (click)="$event.stopPropagation()">
           <div class="dialog-header">
-            <h3>Share a YouTube video</h3>
+            <h3>Broadcast a YouTube video</h3>
             <button class="dialog-close" (click)="showVideoDialog = false"><span class="material-icons">close</span></button>
           </div>
           <div class="dialog-body">
@@ -1027,12 +1027,13 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
 
     setTimeout(() => {
       this.ytPlayerSvc.createPlayer(this.ytElementId, data.videoId, {
-        onReady: () => {
+        onReady: (event: any) => {
+          this.ytPlayer = event.target;
           const start = data.positionSeconds || 0;
           if (data.isPlaying) {
             this.ignoreState = true;
-            try { this.ytPlayer?.seekTo?.(start, true); } catch { }
-            try { this.ytPlayer?.playVideo?.(); } catch { }
+            try { this.ytPlayer.seekTo(start, true); } catch { }
+            try { this.ytPlayer.playVideo(); } catch { }
           }
         },
         onStateChange: (state: number) => {
@@ -1043,7 +1044,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
           if (state === 1) this.signalR.controlVideo(this.roomId, 'play', pos);
           else if (state === 2) this.signalR.controlVideo(this.roomId, 'pause', pos);
         }
-      }).catch(() => { });
+      }).then(p => { this.ytPlayer = p; }).catch(() => { });
     }, 60);
   }
 

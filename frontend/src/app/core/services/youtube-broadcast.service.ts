@@ -8,7 +8,7 @@ declare global {
 }
 
 export interface YouTubePlayerHandlers {
-  onReady?: () => void;
+  onReady?: (event: any) => void;
   onStateChange?: (state: number) => void;
   onError?: (error: any) => void;
 }
@@ -58,8 +58,8 @@ export class YouTubeBroadcastService {
           origin: window.location.origin
         },
         events: {
-          onReady: () => {
-            handlers.onReady?.();
+          onReady: (event: any) => {
+            handlers.onReady?.(event);
             resolve(player);
           },
           onStateChange: (event: any) => handlers.onStateChange?.(event.data),
