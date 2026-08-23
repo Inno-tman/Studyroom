@@ -740,7 +740,8 @@ const TABS: RoomTab[] = [
     .bc-stop { color: var(--error); border-color: var(--error); }
     .bc-stop:hover { background: rgba(239, 68, 68, 0.1); }
     .broadcast-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
-    .broadcast-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .yt-player { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .broadcast-stage iframe, .yt-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
     .broadcast-hint { padding: 8px 14px; margin: 0; font-size: var(--font-12); color: var(--text-muted); }
 
     .btn-outline.share-video-btn {
@@ -1042,7 +1043,12 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     this.broadcastUrl = data.url;
     this.broadcastStartedBy = data.startedBy;
 
-    setTimeout(() => {
+    const create = (attempt = 0) => {
+      const el = document.getElementById(this.ytElementId);
+      if (!el) {
+        if (attempt < 40) setTimeout(() => create(attempt + 1), 25);
+        return;
+      }
       this.ytPlayerSvc.createPlayer(this.ytElementId, data.videoId, {
         onReady: (event: any) => {
           this.ytPlayer = event.target;
@@ -1064,7 +1070,8 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
           else if (state === 2) this.signalR.controlVideo(this.roomId, 'pause', pos);
         }
       }).then(p => { this.ytPlayer = p; }).catch(() => { });
-    }, 60);
+    };
+    create();
   }
 
   hostPlay() {
