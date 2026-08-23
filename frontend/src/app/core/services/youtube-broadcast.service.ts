@@ -51,6 +51,8 @@ export class YouTubeBroadcastService {
     return new Promise<any>((resolve) => {
       const player = new window.YT.Player(elementId, {
         videoId,
+        width: '100%',
+        height: '100%',
         playerVars: {
           rel: 0,
           modestbranding: 1,

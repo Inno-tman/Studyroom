@@ -115,6 +115,11 @@ const TABS: RoomTab[] = [
           </div>
           <div class="broadcast-stage">
             <div [id]="ytElementId" class="yt-player"></div>
+            @if (showPlayOverlay) {
+              <button class="broadcast-play-overlay" type="button" (click)="userPlay()">
+                <span class="material-icons">play_arrow</span>
+              </button>
+            }
           </div>
           <p class="broadcast-hint">Open the <strong>Chat</strong> tab to comment while watching.</p>
         </div>
@@ -744,6 +749,13 @@ const TABS: RoomTab[] = [
     .broadcast-stage iframe, .yt-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
     .broadcast-hint { padding: 8px 14px; margin: 0; font-size: var(--font-12); color: var(--text-muted); }
 
+    .broadcast-play-overlay {
+      position: absolute; inset: 0; z-index: 2;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0, 0, 0, 0.45); border: 0; cursor: pointer; color: #fff;
+    }
+    .broadcast-play-overlay .material-icons { font-size: 56px; }
+
     .btn-outline.share-video-btn {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 10px 16px; background: transparent; border: 1px solid var(--border);
@@ -943,6 +955,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   ytElementId = 'room-broadcast-player';
   private ytPlayer?: any;
   broadcastMuted = true;
+  showPlayOverlay = false;
   private applyingRemote = false;
   private ignoreState = false;
   private videoSubs: any[] = [];
@@ -1033,6 +1046,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     this.broadcastVideoId = undefined;
     this.broadcastUrl = undefined;
     this.broadcastStartedBy = undefined;
+    this.showPlayOverlay = false;
     try { this.ytPlayer?.destroy?.(); } catch { }
     this.ytPlayer = undefined;
   }
@@ -1060,8 +1074,16 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
             try { this.ytPlayer.seekTo(start, true); } catch { }
             try { this.ytPlayer.playVideo(); } catch { }
           }
+          // iOS blocks muted autoplay unless it's inside a user gesture; the
+          // async onReady call stack doesn't count, so surface a tap-to-play.
+          setTimeout(() => {
+            try {
+              if ((this.ytPlayer?.getPlayerState?.() ?? -1) !== 1) this.showPlayOverlay = true;
+            } catch { this.showPlayOverlay = true; }
+          }, 700);
         },
         onStateChange: (state: number) => {
+          if (state === 1) this.showPlayOverlay = false;
           if (this.applyingRemote) return;
           if (this.ignoreState) { this.ignoreState = false; return; }
           if (!this.isHost) return;
@@ -1072,6 +1094,11 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       }).then(p => { this.ytPlayer = p; }).catch(() => { });
     };
     create();
+  }
+
+  userPlay() {
+    this.showPlayOverlay = false;
+    try { this.ytPlayer?.playVideo(); } catch { }
   }
 
   hostPlay() {
