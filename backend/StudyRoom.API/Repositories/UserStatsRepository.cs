@@ -22,7 +22,7 @@ public class UserStatsRepository : IUserStatsRepository
         var completed = await _context.StudySessions
             .CountAsync(s => s.UserId == userId && s.Completed);
 
-        var weekStart = DateTime.UtcNow.AddDays(-(int)DateTime.UtcNow.DayOfWeek);
+        var weekStart = DateTime.UtcNow.AddDays(-7);
         var weekly = await _context.StudySessions
             .Where(s => s.UserId == userId && s.Completed && s.CreatedAt >= weekStart)
             .SumAsync(s => (int?)s.DurationMinutes) ?? 0;

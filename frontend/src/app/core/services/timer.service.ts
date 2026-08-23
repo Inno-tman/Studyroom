@@ -13,6 +13,7 @@ export interface TimerState {
   longBreakDuration: number;
   completedSessions: number;
   sessionCompleted: boolean;
+  lastCompleted: 'focus' | 'break' | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -27,7 +28,8 @@ export class TimerService {
     breakDuration: 5,
     longBreakDuration: 15,
     completedSessions: 0,
-    sessionCompleted: false
+    sessionCompleted: false,
+    lastCompleted: null
   });
 
   constructor(private settings: SettingsService) {
@@ -64,7 +66,7 @@ export class TimerService {
       this.patch({ isPaused: false });
     } else {
       const seconds = state.isBreak ? this.breakSeconds(state) : state.focusDuration * 60;
-      this.patch({ isRunning: true, isPaused: false, remainingSeconds: seconds, sessionCompleted: false });
+      this.patch({ isRunning: true, isPaused: false, remainingSeconds: seconds, sessionCompleted: false, lastCompleted: null });
     }
     this.startCountdown();
   }
@@ -77,7 +79,8 @@ export class TimerService {
       isRunning: true,
       isPaused: false,
       remainingSeconds: state.focusDuration * 60,
-      sessionCompleted: false
+      sessionCompleted: false,
+      lastCompleted: null
     });
     this.startCountdown();
   }
@@ -89,7 +92,8 @@ export class TimerService {
       isRunning: true,
       isPaused: false,
       remainingSeconds: this.breakSeconds(state),
-      sessionCompleted: false
+      sessionCompleted: false,
+      lastCompleted: null
     });
     this.startCountdown();
   }
@@ -108,7 +112,8 @@ export class TimerService {
       isBreak: false,
       isLongBreak: false,
       remainingSeconds: state.focusDuration * 60,
-      sessionCompleted: false
+      sessionCompleted: false,
+      lastCompleted: null
     });
   }
 
@@ -166,21 +171,25 @@ export class TimerService {
           // A focus session finished -> maybe a long break is now due.
           const completed = state.completedSessions + 1;
           const dueLong = completed % this.settings.study().longBreakInterval === 0;
+          const nextBreakSeconds = (dueLong ? state.longBreakDuration : state.breakDuration) * 60;
           this.patch({
-            remainingSeconds: 0,
+            remainingSeconds: nextBreakSeconds,
             isBreak: true,
             isLongBreak: dueLong,
+            isRunning: false,
             sessionCompleted: true,
-            completedSessions: completed
+            completedSessions: completed,
+            lastCompleted: 'focus'
           });
           if (this.settings.study().autoStartNextSession) this.startBreak();
         } else {
           this.patch({
-            remainingSeconds: 0,
+            remainingSeconds: state.focusDuration * 60,
             isBreak: false,
             isLongBreak: false,
             isRunning: false,
-            sessionCompleted: true
+            sessionCompleted: true,
+            lastCompleted: 'break'
           });
           if (this.settings.study().autoStartNextSession) this.startFocus();
         }

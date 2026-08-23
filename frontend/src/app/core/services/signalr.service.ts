@@ -185,6 +185,10 @@ export class SignalRService {
     await this.hubConnection.invoke('StartTimer', roomId, durationMinutes);
   }
 
+  async startBreak(roomId: string, durationMinutes: number, isLong: boolean): Promise<void> {
+    await this.hubConnection.invoke('StartBreak', roomId, durationMinutes, isLong);
+  }
+
   async pauseTimer(roomId: string): Promise<void> {
     await this.hubConnection.invoke('PauseTimer', roomId);
   }

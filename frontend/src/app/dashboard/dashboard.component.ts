@@ -58,7 +58,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         </div>
         <div class="stats-strip-item">
           <span class="stat-value">{{ stats.weeklyStudyMinutes }}m</span>
-          <span class="stat-label">This Week</span>
+          <span class="stat-label">Last 7 Days</span>
         </div>
       </div>
 

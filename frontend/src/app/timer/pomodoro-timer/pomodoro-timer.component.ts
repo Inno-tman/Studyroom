@@ -68,7 +68,7 @@ import { Subscription } from 'rxjs';
       </label>
 
       <div class="timer-info" *ngIf="state.sessionCompleted && !state.isRunning">
-        {{ state.isBreak ? 'Break' : 'Session' }} completed! Great work!
+        {{ state.lastCompleted === 'break' ? 'Break' : 'Session' }} completed! Great work!
       </div>
     </div>
   `,
@@ -116,12 +116,11 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   private timerService = inject(TimerService);
   private signalR = inject(SignalRService);
   private settings = inject(SettingsService);
-  private notificationService = inject(NotificationService);
 
   state: TimerState = {
     isRunning: false, isPaused: false, isBreak: false, isLongBreak: false,
     remainingSeconds: 25 * 60, focusDuration: 25, breakDuration: 5,
-    longBreakDuration: 15, completedSessions: 0, sessionCompleted: false
+    longBreakDuration: 15, completedSessions: 0, sessionCompleted: false, lastCompleted: null
   };
 
   focusMin = 25;
@@ -163,21 +162,25 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         this.wasBreak = s.isBreak;
         this.wasCompleted = s.sessionCompleted;
 
+        // A break begins on idle->break or focus->break transitions.
+        const breakBegan = s.isRunning && s.isBreak && (!this.wasBreak || !this.wasRunning);
+
         // Each focus session (manual or auto-started) creates a StudySession so
-        // study time + streak are counted.
+        // study time + streak are counted. The backend scheduler fires the
+        // completion + chime even if this tab is closed mid-session.
         if (focusBegan) {
           this.isSynced = true;
           this.signalR.startTimer(this.roomId, s.focusDuration).catch(() => {});
         }
+        // Tell the backend scheduler when a break starts so it can fire the
+        // end-of-break notification server-side.
+        if (breakBegan) {
+          this.isSynced = true;
+          this.signalR.startBreak(this.roomId, s.isLongBreak ? s.longBreakDuration : s.breakDuration, s.isLongBreak).catch(() => {});
+        }
         // Persist completion of a focus session -> updates stats read model.
         if (justCompleted && !wasBreak) {
           this.signalR.timerCompleted(this.roomId).catch(() => {});
-        }
-        // Chime + desktop notification on every phase completion.
-        if (justCompleted && this.settings.prefs().pomodoroComplete) {
-          const label = wasBreak ? (s.isLongBreak ? 'Long break' : 'Break') : 'Focus session';
-          const body = wasBreak ? 'Time to get back to focus.' : 'Nice work! Take a breather.';
-          this.notificationService.notify(`${label} complete`, body);
         }
       }),
       this.signalR.timerStarted$.subscribe(async data => {

@@ -1,10 +1,12 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../core/services/auth.service';
 import { PostService } from '../core/services/post.service';
-import { Post } from '../shared/models/social.model';
+import { SignalRService } from '../core/services/signalr.service';
+import { Post, Comment } from '../shared/models/social.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
 
 @Component({

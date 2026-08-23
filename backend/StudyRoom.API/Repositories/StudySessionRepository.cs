@@ -39,7 +39,7 @@ public class StudySessionRepository : IStudySessionRepository
 
     public async Task<int> GetWeeklyStudyMinutesAsync(Guid userId)
     {
-        var weekStart = DateTime.UtcNow.AddDays(-(int)DateTime.UtcNow.DayOfWeek);
+        var weekStart = DateTime.UtcNow.AddDays(-7);
         return await _context.StudySessions
             .Where(s => s.UserId == userId && s.Completed && s.CreatedAt >= weekStart)
             .SumAsync(s => s.DurationMinutes);
