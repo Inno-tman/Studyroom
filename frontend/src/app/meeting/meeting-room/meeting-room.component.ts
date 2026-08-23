@@ -481,6 +481,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
 
   roomId = input<string>('');
   roomName = input<string>('');
+  joinCode = input<string>('');
   readonly leaveRequest = output<void>();
 
   phase = signal<Phase>('prejoin');
@@ -651,7 +652,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.joining.set(true);
     this.error.set('');
     try {
-      const resp = await this.meetingService.getLiveKitToken(this.roomId()).toPromise();
+      const resp = await this.meetingService.getLiveKitToken(this.roomId(), this.joinCode()).toPromise();
       if (!resp) throw new Error('No token response from server');
       const { url, token } = resp;
       this.phase.set('connecting');

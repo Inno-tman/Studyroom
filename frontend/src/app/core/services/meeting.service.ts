@@ -24,11 +24,12 @@ export class MeetingService {
     return this.http.delete<void>(`${environment.apiUrl}/rooms/${roomId}/meetings/${meetingId}`);
   }
 
-  /** Returns a LiveKit token + server URL for a room's meeting. */
-  getLiveKitToken(roomId: string): Observable<{ url: string; token: string }> {
+  /** Returns a LiveKit token + server URL for a room's meeting.
+   *  Members pass no code; guests use the room's join code. */
+  getLiveKitToken(roomId: string, joinCode?: string): Observable<{ url: string; token: string }> {
     return this.http.post<{ url: string; token: string }>(
       `${environment.apiUrl}/rooms/${roomId}/meetings/token`,
-      {}
+      joinCode ? { joinCode } : {}
     );
   }
 

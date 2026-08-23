@@ -1,6 +1,7 @@
 using StudyRoom.API.DTOs.Rooms;
 using StudyRoom.API.Models;
 using StudyRoom.API.Repositories;
+using System.Linq;
 
 namespace StudyRoom.API.Services;
 
@@ -133,7 +134,9 @@ public class RoomService : IRoomService
             Description = room.Description,
             Subject = room.Subject,
             IsPrivate = room.IsPrivate,
-            JoinCode = room.CreatedBy == userId ? room.JoinCode : null,
+            JoinCode = userId.HasValue && (room.CreatedBy == userId || room.Members?.Any(m => m.UserId == userId) == true)
+                ? room.JoinCode
+                : null,
             CreatedByUsername = room.Creator?.Username ?? "Unknown",
             MemberCount = room.Members?.Count ?? 0,
             CreatedAt = room.CreatedAt

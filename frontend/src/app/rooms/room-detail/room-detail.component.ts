@@ -754,6 +754,10 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   friends: Friend[] = [];
   invitingId = '';
   inCall = false;
+  guestMeeting = false;
+  guestCode: string | null = null;
+  inviteCode: string | null = null;
+  snack = '';
   meetings: Meeting[] = [];
   otherMeetings: Meeting[] = [];
   showScheduleDialog = false;
@@ -815,6 +819,48 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     this.inCall = !this.inCall;
   }
 
+  roomInviteLink(): string {
+    return `${location.origin}/rooms/${this.roomId}?code=${this.room?.joinCode ?? ''}`;
+  }
+
+  meetingLink(): string {
+    return `${location.origin}/rooms/${this.roomId}?meeting=1&code=${this.room?.joinCode ?? ''}`;
+  }
+
+  async copyRoomLink() {
+    if (!this.room?.joinCode) { this.showSnack('Join code unavailable'); return; }
+    await this.copyText(this.roomInviteLink(), 'Room invite link copied');
+  }
+
+  async copyMeetingLink() {
+    if (!this.room?.joinCode) { this.showSnack('Join code unavailable'); return; }
+    await this.copyText(this.meetingLink(), 'Meeting link copied');
+  }
+
+  async copyText(text: string, msg: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch { }
+      ta.remove();
+    }
+    this.showSnack(msg);
+  }
+
+  showSnack(msg: string) {
+    this.snack = msg;
+    setTimeout(() => { if (this.snack === msg) this.snack = ''; }, 2200);
+  }
+
+  startGuestCall() {
+    this.activeTab = 'meet';
+    this.inCall = true;
+  }
+
   isFirstOfGroup(index: number): boolean {
     if (index === 0) return true;
     const prev = this.messages[index - 1];
@@ -850,6 +896,13 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       const members = await this.roomService.getMembers(this.roomId).toPromise();
       this.members = members || [];
       this.isMember = members?.some(m => m.id === userId) || false;
+
+      const qp = this.route.snapshot.queryParamMap;
+      this.inviteCode = qp.get('code');
+      if (qp.get('meeting') === '1' && this.inviteCode) {
+        this.guestMeeting = true;
+        this.guestCode = this.inviteCode;
+      }
 
       if (this.isMember) {
         await this.loadChat();
@@ -992,7 +1045,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     this.joining = true;
     try {
       if (this.room?.isPrivate) {
-        const code = prompt('Enter join code:');
+        const code = this.inviteCode ?? prompt('Enter join code:');
         if (!code) { this.joining = false; return; }
         await this.roomService.join(this.roomId, code).toPromise();
       } else {
