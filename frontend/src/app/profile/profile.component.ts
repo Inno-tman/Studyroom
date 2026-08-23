@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { StatisticsService } from '../core/services/statistics.service';
 import { UserService } from '../core/services/user.service';
+import { TimelineComponent } from '../timeline/timeline.component';
 import { UserStats } from '../shared/models/stats.model';
 
 interface ProfileView {
@@ -24,7 +25,7 @@ interface ProfileView {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [NgIf, RouterLink],
+  imports: [NgIf, RouterLink, TimelineComponent],
   template: `
     <div class="profile">
       <div class="page-header">
@@ -74,6 +75,8 @@ interface ProfileView {
           </div>
         </div>
       </div>
+
+      <app-timeline *ngIf="profile" [userId]="profile.id"></app-timeline>
     </div>
   `,
   styles: [`

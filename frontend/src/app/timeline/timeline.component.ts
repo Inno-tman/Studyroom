@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, Input, OnInit, OnDestroy } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -16,10 +16,11 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
   template: `
     <div class="timeline">
       <div class="page-header">
-        <h1>Timeline</h1>
+        <h1 *ngIf="!userId">Timeline</h1>
+        <h1 *ngIf="userId">Posts</h1>
       </div>
 
-      <div class="composer">
+      <div class="composer" *ngIf="!userId">
         <div class="composer-header">
           <div class="avatar" [class.has-image]="auth.currentUser()?.avatarUrl">
             <img *ngIf="auth.currentUser()?.avatarUrl; else composerInitial" [src]="auth.currentUser()?.avatarUrl" alt="" />
@@ -314,6 +315,8 @@ export class TimelineComponent implements OnInit {
   private postService = inject(PostService);
   private router = inject(Router);
 
+  @Input() userId?: string;
+
   posts: (Post & { showComments?: boolean; newComment?: string; replyToCommentId?: string })[] = [];
   newPostContent = '';
   loading = true;
@@ -331,7 +334,11 @@ export class TimelineComponent implements OnInit {
   }
 
   async load(): Promise<void> {
-    this.posts = (await this.postService.getTimeline().toPromise()) || [];
+    if (this.userId) {
+      this.posts = (await this.postService.getUserPosts(this.userId).toPromise()) || [];
+    } else {
+      this.posts = (await this.postService.getTimeline().toPromise()) || [];
+    }
   }
 
   openShared(original: Post): void {
