@@ -30,6 +30,9 @@ public class StudyRoomHub : Hub
     private static readonly Dictionary<string, string> _presenceAvatar = new();
     private static readonly Dictionary<string, int> _presenceConnections = new();
 
+    // Room-scoped YouTube broadcast: roomId -> current video state
+    private static readonly Dictionary<string, RoomVideoState> _roomVideos = new();
+
     public StudyRoomHub(
         IMessageRepository messageRepo,
         IRoomRepository roomRepo,
@@ -544,6 +547,79 @@ public class StudyRoomHub : Hub
         });
     }
 
+    // ── YouTube broadcast ──────────────────────────────────
+    /// <summary>Broadcasts a YouTube video to the room. Host only.</summary>
+    public async Task BroadcastVideo(string roomId, string youtubeUrl)
+    {
+        var room = await _roomRepo.GetByIdAsync(Guid.Parse(roomId));
+        if (room == null || room.CreatedBy != UserId) return; // host only
+
+        var videoId = ParseYouTubeId(youtubeUrl);
+        if (string.IsNullOrEmpty(videoId)) return;
+
+        var state = new RoomVideoState
+        {
+            VideoId = videoId,
+            Url = youtubeUrl,
+            StartedBy = Username,
+            IsPlaying = true,
+            PositionSeconds = 0,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _roomVideos[roomId] = state;
+
+        await Clients.Group(GetGroupName(roomId)).SendAsync("VideoBroadcast", new
+        {
+            roomId,
+            videoId,
+            url = youtubeUrl,
+            startedBy = Username,
+            isPlaying = true,
+            positionSeconds = 0,
+            startedAt = state.UpdatedAt
+        });
+    }
+
+    /// <summary>Syncs play/pause/seek from the host to all viewers. Host only.</summary>
+    public async Task ControlVideo(string roomId, string action, double positionSeconds)
+    {
+        var room = await _roomRepo.GetByIdAsync(Guid.Parse(roomId));
+        if (room == null || room.CreatedBy != UserId) return; // host only
+        if (!_roomVideos.TryGetValue(roomId, out var state)) return;
+
+        state.IsPlaying = action != "pause";
+        state.PositionSeconds = positionSeconds;
+        state.UpdatedAt = DateTime.UtcNow;
+
+        await Clients.Group(GetGroupName(roomId)).SendAsync("VideoControl", new
+        {
+            roomId,
+            action,
+            positionSeconds,
+            updatedAt = state.UpdatedAt
+        });
+    }
+
+    /// <summary>Stops the active broadcast. Host only.</summary>
+    public async Task StopVideo(string roomId)
+    {
+        var room = await _roomRepo.GetByIdAsync(Guid.Parse(roomId));
+        if (room == null || room.CreatedBy != UserId) return; // host only
+        _roomVideos.Remove(roomId);
+        await Clients.Group(GetGroupName(roomId)).SendAsync("VideoStopped", new { roomId });
+    }
+
+    private static string? ParseYouTubeId(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        url = url.Trim();
+        var match = System.Text.RegularExpressions.Regex.Match(url,
+            @"(?:youtube\.com/(?:watch\?v=|embed/|shorts/|live/)|youtu\.be/)([A-Za-z0-9_-]{11})");
+        if (match.Success) return match.Groups[1].Value;
+        if (System.Text.RegularExpressions.Regex.IsMatch(url, @"^[A-Za-z0-9_-]{11}$")) return url;
+        return null;
+    }
+
     public async Task SendDirectMessage(string receiverId, string content)
     {
         var receiver = Guid.Parse(receiverId);
@@ -651,8 +727,23 @@ public class StudyRoomHub : Hub
                 userId = uid,
                 username = Username
             });
-            await UpdateOnlineUsers(roomId);
+        await UpdateOnlineUsers(roomId);
+
+        // Sync any active broadcast to the newly joined user.
+        if (_roomVideos.TryGetValue(roomId, out var video))
+        {
+            await Clients.Caller.SendAsync("VideoBroadcast", new
+            {
+                roomId,
+                videoId = video.VideoId,
+                url = video.Url,
+                startedBy = video.StartedBy,
+                isPlaying = video.IsPlaying,
+                positionSeconds = video.PositionSeconds,
+                startedAt = video.UpdatedAt
+            });
         }
+    }
 
         lock (_presenceConnections)
         {
@@ -711,4 +802,14 @@ public class CallState
     public string CallType { get; set; } = "audio";
     public string? Offer { get; set; }
     public List<string> IceCandidates { get; set; } = new();
+}
+
+public class RoomVideoState
+{
+    public string VideoId { get; set; } = "";
+    public string Url { get; set; } = "";
+    public string StartedBy { get; set; } = "";
+    public bool IsPlaying { get; set; }
+    public double PositionSeconds { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }

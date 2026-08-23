@@ -138,6 +138,7 @@ public class RoomService : IRoomService
                 ? room.JoinCode
                 : null,
             CreatedByUsername = room.Creator?.Username ?? "Unknown",
+            CreatedById = room.CreatedBy,
             MemberCount = room.Members?.Count ?? 0,
             CreatedAt = room.CreatedAt
         };

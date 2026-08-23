@@ -9,6 +9,7 @@ public class RoomDto
     public bool IsPrivate { get; set; }
     public string? JoinCode { get; set; }
     public string CreatedByUsername { get; set; } = string.Empty;
+    public Guid CreatedById { get; set; }
     public int MemberCount { get; set; }
     public DateTime CreatedAt { get; set; }
 }

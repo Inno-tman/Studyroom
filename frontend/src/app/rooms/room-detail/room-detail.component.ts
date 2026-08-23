@@ -11,6 +11,7 @@ import { NotesService } from '../../core/services/notes.service';
 import { AuthService } from '../../core/services/auth.service';
 import { InvitationService } from '../../core/services/invitation.service';
 import { FriendService } from '../../core/services/friend.service';
+import { YouTubeBroadcastService } from '../../core/services/youtube-broadcast.service';
 import { Room } from '../../shared/models/room.model';
 import { Meeting } from '../../shared/models/meeting.model';
 import { Message } from '../../shared/models/message.model';
@@ -69,6 +70,10 @@ const TABS: RoomTab[] = [
             <span class="material-icons">link</span>
             Invite link
           </button>
+          <button *ngIf="isMember && isHost" class="btn-outline share-video-btn" (click)="openVideoDialog()">
+            <span class="material-icons">smart_display</span>
+            Share Video
+          </button>
           <button *ngIf="isMember" class="btn-outline-danger" (click)="leaveRoom()">Leave</button>
         </div>
       </div>
@@ -90,6 +95,25 @@ const TABS: RoomTab[] = [
               <span class="invite-chip-label">{{ isMobile ? 'Invite' : '' }}</span>
             </button>
           </div>
+        </div>
+
+        <!-- ── YouTube broadcast (persistent while live) ─────── -->
+        <div class="broadcast-bar" *ngIf="isBroadcasting">
+          <div class="broadcast-header">
+            <span class="material-icons broadcast-icon">smart_display</span>
+            <span class="broadcast-title">Now watching</span>
+            <span class="broadcast-by" *ngIf="broadcastStartedBy">· {{ broadcastStartedBy }}</span>
+            <span class="broadcast-spacer"></span>
+            <button *ngIf="isHost" class="bc-btn" (click)="hostPlay()" title="Play"><span class="material-icons">play_arrow</span></button>
+            <button *ngIf="isHost" class="bc-btn" (click)="hostPause()" title="Pause"><span class="material-icons">pause</span></button>
+            <button *ngIf="isHost" class="bc-btn" (click)="hostSeek(-10)" title="Back 10s"><span class="material-icons">replay_10</span></button>
+            <button *ngIf="isHost" class="bc-btn" (click)="hostSeek(10)" title="Forward 10s"><span class="material-icons">forward_10</span></button>
+            <button *ngIf="isHost" class="bc-btn bc-stop" (click)="stopBroadcast()" title="Stop broadcast"><span class="material-icons">stop</span></button>
+          </div>
+          <div class="broadcast-stage">
+            <div [id]="ytElementId" class="yt-player"></div>
+          </div>
+          <p class="broadcast-hint">Open the <strong>Chat</strong> tab to comment while watching.</p>
         </div>
 
         <!-- ── Next meeting hero (always visible) ────────────── -->
@@ -369,6 +393,29 @@ const TABS: RoomTab[] = [
       </nav>
 
       <div class="snack" *ngIf="snack">{{ snack }}</div>
+
+      <!-- ── Share video dialog ──────────────────────────────── -->
+      <div class="dialog-backdrop" *ngIf="showVideoDialog" (click)="showVideoDialog = false">
+        <div class="dialog" (click)="$event.stopPropagation()">
+          <div class="dialog-header">
+            <h3>Share a YouTube video</h3>
+            <button class="dialog-close" (click)="showVideoDialog = false"><span class="material-icons">close</span></button>
+          </div>
+          <div class="dialog-body">
+            <label class="field">YouTube link
+              <input
+                type="text"
+                [(ngModel)]="videoInput"
+                placeholder="https://youtube.com/watch?v=..."
+                (keyup.enter)="startBroadcast()"
+              />
+            </label>
+            <button class="btn-primary dialog-submit" (click)="startBroadcast()" [disabled]="!videoInput.trim()">
+              Start Broadcast
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -655,6 +702,48 @@ const TABS: RoomTab[] = [
     .field input:focus, .field select:focus { border-color: var(--primary); }
     .dialog-submit { width: 100%; padding: 12px; justify-content: center; }
 
+    /* ── Generic dialog (video share) ──────────────────────── */
+    .dialog-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1300;
+    }
+    .dialog {
+      width: 440px; max-width: 92vw; max-height: 85vh; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── YouTube broadcast bar ─────────────────────────────── */
+    .broadcast-bar {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: 16px; overflow: hidden;
+    }
+    .broadcast-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    .broadcast-icon { color: var(--accent); font-size: var(--font-20); }
+    .broadcast-title { font-size: var(--font-13); font-weight: 700; color: var(--text-primary); }
+    .broadcast-by { font-size: var(--font-12); color: var(--text-muted); }
+    .broadcast-spacer { flex: 1; }
+    .bc-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 8px; background: var(--background);
+      border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer;
+    }
+    .bc-btn:hover { color: var(--text-primary); border-color: var(--primary); }
+    .bc-stop { color: var(--error); border-color: var(--error); }
+    .bc-stop:hover { background: rgba(239, 68, 68, 0.1); }
+    .broadcast-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+    .broadcast-stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .broadcast-hint { padding: 8px 14px; margin: 0; font-size: var(--font-12); color: var(--text-muted); }
+
+    .btn-outline.share-video-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 16px; background: transparent; border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-secondary); font-size: var(--font-14);
+      font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    }
+    .btn-outline.share-video-btn:hover { border-color: var(--primary); color: var(--text-primary); }
+    .btn-outline.share-video-btn .material-icons { font-size: var(--font-18); }
+
     /* ── Call overlay ───────────────────────────────────────── */
     .call-overlay {
       position: fixed; inset: 0; z-index: 1200; background: #0b0f14;
@@ -797,6 +886,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private invitationService = inject(InvitationService);
   private friendService = inject(FriendService);
+  private ytPlayerSvc = inject(YouTubeBroadcastService);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
 
@@ -826,6 +916,18 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   scheduleAt = '';
   scheduleDuration = 60;
   scheduling = false;
+
+  // ── YouTube broadcast (host-only start; synced playback) ──
+  broadcastVideoId?: string;
+  broadcastUrl?: string;
+  broadcastStartedBy?: string;
+  videoInput = '';
+  showVideoDialog = false;
+  ytElementId = 'room-broadcast-player';
+  private ytPlayer?: any;
+  private applyingRemote = false;
+  private ignoreState = false;
+  private videoSubs: any[] = [];
 
   isMobile = false;
   activeTab = 'chat';
@@ -875,8 +977,115 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     return this.auth.currentUser()?.id;
   }
 
+  get isHost(): boolean {
+    return !!this.room && this.room.createdById === this.currentUserId;
+  }
+
+  get isBroadcasting(): boolean {
+    return !!this.broadcastVideoId;
+  }
+
   toggleCall() {
     this.inCall = !this.inCall;
+  }
+
+  // ── YouTube broadcast ────────────────────────────────────
+  openVideoDialog() {
+    this.videoInput = '';
+    this.showVideoDialog = true;
+  }
+
+  async startBroadcast() {
+    const url = this.videoInput.trim();
+    if (!url) return;
+    this.showVideoDialog = false;
+    try {
+      await this.signalR.broadcastVideo(this.roomId, url);
+    } catch { }
+  }
+
+  async stopBroadcast() {
+    try {
+      await this.signalR.stopVideo(this.roomId);
+    } catch { }
+    this.clearPlayer();
+  }
+
+  private clearPlayer() {
+    this.broadcastVideoId = undefined;
+    this.broadcastUrl = undefined;
+    this.broadcastStartedBy = undefined;
+    try { this.ytPlayer?.destroy?.(); } catch { }
+    this.ytPlayer = undefined;
+  }
+
+  private startPlayer(data: any) {
+    this.clearPlayer();
+    this.broadcastVideoId = data.videoId;
+    this.broadcastUrl = data.url;
+    this.broadcastStartedBy = data.startedBy;
+
+    setTimeout(() => {
+      this.ytPlayerSvc.createPlayer(this.ytElementId, data.videoId, {
+        onReady: () => {
+          const start = data.positionSeconds || 0;
+          if (data.isPlaying) {
+            this.ignoreState = true;
+            try { this.ytPlayer?.seekTo?.(start, true); } catch { }
+            try { this.ytPlayer?.playVideo?.(); } catch { }
+          }
+        },
+        onStateChange: (state: number) => {
+          if (this.applyingRemote) return;
+          if (this.ignoreState) { this.ignoreState = false; return; }
+          if (!this.isHost) return;
+          const pos = this.ytPlayer?.getCurrentTime?.() ?? 0;
+          if (state === 1) this.signalR.controlVideo(this.roomId, 'play', pos);
+          else if (state === 2) this.signalR.controlVideo(this.roomId, 'pause', pos);
+        }
+      }).catch(() => { });
+    }, 60);
+  }
+
+  hostPlay() {
+    if (!this.ytPlayer) return;
+    this.ignoreState = true;
+    setTimeout(() => { this.ignoreState = false; }, 1200);
+    try { this.ytPlayer.playVideo(); } catch { }
+    this.signalR.controlVideo(this.roomId, 'play', this.ytPlayer.getCurrentTime?.() ?? 0).catch(() => { });
+  }
+
+  hostPause() {
+    if (!this.ytPlayer) return;
+    this.ignoreState = true;
+    setTimeout(() => { this.ignoreState = false; }, 1200);
+    try { this.ytPlayer.pauseVideo(); } catch { }
+    this.signalR.controlVideo(this.roomId, 'pause', this.ytPlayer.getCurrentTime?.() ?? 0).catch(() => { });
+  }
+
+  hostSeek(delta: number) {
+    if (!this.ytPlayer) return;
+    const pos = Math.max(0, (this.ytPlayer.getCurrentTime?.() ?? 0) + delta);
+    this.ignoreState = true;
+    setTimeout(() => { this.ignoreState = false; }, 1200);
+    try { this.ytPlayer.seekTo(pos, true); } catch { }
+    this.signalR.controlVideo(this.roomId, 'seek', pos).catch(() => { });
+  }
+
+  private applyControl(data: any) {
+    if (!this.ytPlayer) return;
+    this.applyingRemote = true;
+    const pos = data.positionSeconds || 0;
+    try {
+      if (data.action === 'pause') {
+        this.ytPlayer.pauseVideo();
+      } else {
+        this.ytPlayer.seekTo(pos, true);
+        this.ytPlayer.playVideo();
+      }
+    } catch { } finally {
+      setTimeout(() => { this.applyingRemote = false; }, 0);
+    }
   }
 
   roomInviteLink(): string {
@@ -1089,6 +1298,18 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.signalR.onlineUsers$.subscribe(users => {
         this.onlineUsers = users;
       });
+
+      this.videoSubs.push(
+        this.signalR.videoBroadcast$.subscribe(data => {
+          if (data.roomId === this.roomId) this.startPlayer(data);
+        }),
+        this.signalR.videoControl$.subscribe(data => {
+          if (data.roomId === this.roomId) this.applyControl(data);
+        }),
+        this.signalR.videoStopped$.subscribe(data => {
+          if (data.roomId === this.roomId) this.clearPlayer();
+        })
+      );
     } catch { }
   }
 
@@ -1163,8 +1384,10 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.notesSub?.unsubscribe();
+    this.videoSubs.forEach(s => s?.unsubscribe());
     if (this.nowTicker) clearInterval(this.nowTicker);
     this.inCall = false;
+    try { this.ytPlayer?.destroy?.(); } catch { }
     if (this.isMember) {
       this.signalR.leaveRoom(this.roomId);
     }

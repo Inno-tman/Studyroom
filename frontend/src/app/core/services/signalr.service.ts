@@ -33,6 +33,9 @@ export class SignalRService {
   private webRtcOfferSubject = new Subject<any>();
   private webRtcAnswerSubject = new Subject<any>();
   private webRtcIceSubject = new Subject<any>();
+  private videoBroadcastSubject = new Subject<any>();
+  private videoControlSubject = new Subject<any>();
+  private videoStoppedSubject = new Subject<any>();
 
   message$ = this.messageSubject.asObservable();
   userJoined$ = this.userJoinedSubject.asObservable();
@@ -57,6 +60,9 @@ export class SignalRService {
   webRtcOffer$ = this.webRtcOfferSubject.asObservable();
   webRtcAnswer$ = this.webRtcAnswerSubject.asObservable();
   webRtcIce$ = this.webRtcIceSubject.asObservable();
+  videoBroadcast$ = this.videoBroadcastSubject.asObservable();
+  videoControl$ = this.videoControlSubject.asObservable();
+  videoStopped$ = this.videoStoppedSubject.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -109,6 +115,9 @@ export class SignalRService {
     this.hubConnection.on('WebRtcOffer', (data: any) => this.webRtcOfferSubject.next(data));
     this.hubConnection.on('WebRtcAnswer', (data: any) => this.webRtcAnswerSubject.next(data));
     this.hubConnection.on('WebRtcIceCandidate', (data: any) => this.webRtcIceSubject.next(data));
+    this.hubConnection.on('VideoBroadcast', (data: any) => this.videoBroadcastSubject.next(data));
+    this.hubConnection.on('VideoControl', (data: any) => this.videoControlSubject.next(data));
+    this.hubConnection.on('VideoStopped', (data: any) => this.videoStoppedSubject.next(data));
 
     await this.hubConnection.start();
   }
@@ -203,6 +212,18 @@ export class SignalRService {
 
   async updateNotes(roomId: string, content: string): Promise<void> {
     await this.hubConnection.invoke('UpdateNotes', roomId, content);
+  }
+
+  async broadcastVideo(roomId: string, youtubeUrl: string): Promise<void> {
+    await this.hubConnection.invoke('BroadcastVideo', roomId, youtubeUrl);
+  }
+
+  async controlVideo(roomId: string, action: string, positionSeconds: number): Promise<void> {
+    await this.hubConnection.invoke('ControlVideo', roomId, action, positionSeconds);
+  }
+
+  async stopVideo(roomId: string): Promise<void> {
+    await this.hubConnection.invoke('StopVideo', roomId);
   }
 
   async stopConnection(): Promise<void> {
