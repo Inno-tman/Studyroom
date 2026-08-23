@@ -584,7 +584,9 @@ public class StudyRoomHub : Hub
         };
         _roomVideos[roomId] = state;
 
-        await Clients.Group(GetGroupName(roomId)).SendAsync("VideoBroadcast", new
+        // Exclude the caller: the host starts its own player locally, and sending
+        // the echo back would cause a redundant re-mount on the host device.
+        await Clients.OthersInGroup(GetGroupName(roomId)).SendAsync("VideoBroadcast", new
         {
             roomId,
             videoId,

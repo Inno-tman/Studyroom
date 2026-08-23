@@ -1030,9 +1030,32 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     const url = this.videoInput.trim();
     if (!url) return;
     this.showVideoDialog = false;
+
+    const id = this.parseYouTubeId(url);
+    // Mount the host's own player right away so it never depends on the
+    // round-trip echo (which can be dropped on mobile / flaky connections).
+    if (id) {
+      this.startPlayer({
+        videoId: id,
+        url,
+        startedBy: this.auth.currentUser()?.username || 'Host',
+        isPlaying: true,
+        positionSeconds: 0
+      });
+    }
+
     try {
       await this.signalR.broadcastVideo(this.roomId, url);
     } catch { }
+  }
+
+  private parseYouTubeId(url: string): string | null {
+    if (!url) return null;
+    url = url.trim();
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    if (/^[A-Za-z0-9_-]{11}$/.test(url)) return url;
+    return null;
   }
 
   async stopBroadcast() {
