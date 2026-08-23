@@ -103,6 +103,9 @@ const TABS: RoomTab[] = [
             <span class="material-icons broadcast-icon">smart_display</span>
             <span class="broadcast-title">Now watching</span>
             <span class="broadcast-by" *ngIf="broadcastStartedBy">· {{ broadcastStartedBy }}</span>
+            <button class="bc-btn" (click)="toggleMute()" [title]="broadcastMuted ? 'Unmute' : 'Mute'">
+              <span class="material-icons">{{ broadcastMuted ? 'volume_off' : 'volume_up' }}</span>
+            </button>
             <span class="broadcast-spacer"></span>
             <button *ngIf="isHost" class="bc-btn" (click)="hostPlay()" title="Play"><span class="material-icons">play_arrow</span></button>
             <button *ngIf="isHost" class="bc-btn" (click)="hostPause()" title="Pause"><span class="material-icons">pause</span></button>
@@ -925,6 +928,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   showVideoDialog = false;
   ytElementId = 'room-broadcast-player';
   private ytPlayer?: any;
+  broadcastMuted = true;
   private applyingRemote = false;
   private ignoreState = false;
   private videoSubs: any[] = [];
@@ -1029,6 +1033,8 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.ytPlayerSvc.createPlayer(this.ytElementId, data.videoId, {
         onReady: (event: any) => {
           this.ytPlayer = event.target;
+          this.broadcastMuted = true;
+          try { this.ytPlayer.mute(); } catch { }
           const start = data.positionSeconds || 0;
           if (data.isPlaying) {
             this.ignoreState = true;
@@ -1071,6 +1077,17 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     setTimeout(() => { this.ignoreState = false; }, 1200);
     try { this.ytPlayer.seekTo(pos, true); } catch { }
     this.signalR.controlVideo(this.roomId, 'seek', pos).catch(() => { });
+  }
+
+  toggleMute() {
+    if (!this.ytPlayer) return;
+    if (this.broadcastMuted) {
+      try { this.ytPlayer.unMute(); } catch { }
+      this.broadcastMuted = false;
+    } else {
+      try { this.ytPlayer.mute(); } catch { }
+      this.broadcastMuted = true;
+    }
   }
 
   private applyControl(data: any) {
