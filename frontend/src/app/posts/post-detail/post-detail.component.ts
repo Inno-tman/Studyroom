@@ -28,7 +28,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
 
       <div *ngIf="post" class="post">
         <div class="post-header">
-          <div class="avatar" [class.has-image]="post.authorAvatar">
+          <div class="avatar" [class.has-image]="post.authorAvatar" routerLink="/profile/{{post.authorId}}" style="cursor:pointer">
             <img *ngIf="post.authorAvatar; else initial" [src]="post.authorAvatar" alt="" />
             <ng-template #initial>{{ post.authorName.charAt(0).toUpperCase() }}</ng-template>
           </div>
@@ -49,7 +49,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
         <div *ngIf="post.sharedFrom" class="shared-card" (click)="openShared(post.sharedFrom)"
              role="button" tabindex="0" title="View original post">
           <div class="post-header">
-            <div class="avatar sm" [class.has-image]="post.sharedFrom.authorAvatar">
+            <div class="avatar sm" [class.has-image]="post.sharedFrom.authorAvatar" routerLink="/profile/{{post.sharedFrom.authorId}}" style="cursor:pointer">
               <img *ngIf="post.sharedFrom.authorAvatar; else sharedInitial" [src]="post.sharedFrom.authorAvatar" alt="" />
               <ng-template #sharedInitial>{{ post.sharedFrom.authorName.charAt(0).toUpperCase() }}</ng-template>
             </div>
@@ -84,7 +84,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
 
         <div *ngIf="showComments" class="comments-section">
           <div *ngFor="let comment of post.comments" class="comment">
-            <div class="avatar sm" [class.has-image]="comment.authorAvatar">
+            <div class="avatar sm" [class.has-image]="comment.authorAvatar" routerLink="/profile/{{comment.authorId}}" style="cursor:pointer">
               <img *ngIf="comment.authorAvatar; else commentInitial" [src]="comment.authorAvatar" alt="" />
               <ng-template #commentInitial>{{ comment.authorName.charAt(0).toUpperCase() }}</ng-template>
             </div>
@@ -99,7 +99,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
 
               <div *ngIf="comment.replies?.length" class="replies">
                 <div *ngFor="let reply of comment.replies" class="comment reply">
-                  <div class="avatar sm" [class.has-image]="reply.authorAvatar">
+                  <div class="avatar sm" [class.has-image]="reply.authorAvatar" routerLink="/profile/{{reply.authorId}}" style="cursor:pointer">
                     <img *ngIf="reply.authorAvatar; else replyInitial" [src]="reply.authorAvatar" alt="" />
                     <ng-template #replyInitial>{{ reply.authorName.charAt(0).toUpperCase() }}</ng-template>
                   </div>

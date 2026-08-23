@@ -78,7 +78,7 @@ const TABS: RoomTab[] = [
         <div class="members-bar">
           <span class="members-title" *ngIf="!isMobile">Members ({{ members.length }})</span>
           <div class="members-avatars" [class.scrollable]="isMobile">
-            <div *ngFor="let member of members" class="member-chip" [title]="member.username">
+            <div *ngFor="let member of members" class="member-chip" [title]="member.username" routerLink="/profile/{{member.id}}" style="cursor:pointer">
               <div class="member-avatar" [class.has-image]="member.avatarUrl">
                 <img *ngIf="member.avatarUrl; else memberInitial" [src]="member.avatarUrl" alt="" />
                 <ng-template #memberInitial>{{ member.username.charAt(0).toUpperCase() }}</ng-template>
@@ -216,7 +216,7 @@ const TABS: RoomTab[] = [
               <span>{{ messages[i].createdAt | date:'mediumDate' }}</span>
             </div>
             <div class="message" [class.own]="msg.userId === currentUserId" [class.avatar-gap]="msg.userId === currentUserId || isFirstOfGroup(i)">
-              <div class="message-avatar" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)" [class.has-image]="msg.avatarUrl">
+              <div class="message-avatar" *ngIf="msg.userId !== currentUserId && isFirstOfGroup(i)" [class.has-image]="msg.avatarUrl" routerLink="/profile/{{msg.userId}}" style="cursor:pointer">
                 <img *ngIf="msg.avatarUrl; else messageInitial" [src]="msg.avatarUrl" alt="" />
                 <ng-template #messageInitial>{{ msg.username.charAt(0).toUpperCase() }}</ng-template>
               </div>
@@ -305,7 +305,7 @@ const TABS: RoomTab[] = [
           <div class="invite-dialog-body">
             <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite — everyone you know is already here!</p>
             <div *ngFor="let friend of invitableFriends" class="invite-row">
-              <div class="member-avatar" [class.has-image]="friend.avatarUrl">
+              <div class="member-avatar" [class.has-image]="friend.avatarUrl" routerLink="/profile/{{friend.userId}}" style="cursor:pointer">
                 <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
                 <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
               </div>

@@ -1,13 +1,14 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { FriendService } from '../core/services/friend.service';
 import { Friend, UserSearchResult } from '../shared/models/social.model';
 
 @Component({
   selector: 'app-people',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule],
+  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink],
   template: `
     <div class="people-page">
       <div class="page-header">
@@ -49,7 +50,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
               <img *ngIf="user.avatarUrl; else initial" [src]="user.avatarUrl" alt="" />
               <ng-template #initial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
-            <div class="person-info">
+            <div class="person-info" [routerLink]="['/profile', profileId(user)]">
               <span class="person-name">{{ user.displayName || user.username }}</span>
               <span class="person-sub">{{ '@' + user.username }}{{ user.schoolName ? ' · ' + user.schoolName : '' }}</span>
             </div>
@@ -123,7 +124,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
               <img *ngIf="req.avatarUrl; else reqInitial" [src]="req.avatarUrl" alt="" />
               <ng-template #reqInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
-            <div class="person-info">
+            <div class="person-info" [routerLink]="['/profile', profileId(req)]">
               <span class="person-name">{{ req.displayName || req.username }}</span>
               <span class="person-sub">{{ '@' + req.username }}</span>
             </div>
@@ -149,7 +150,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
               <img *ngIf="req.avatarUrl; else sentInitial" [src]="req.avatarUrl" alt="" />
               <ng-template #sentInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
-            <div class="person-info">
+            <div class="person-info" [routerLink]="['/profile', profileId(req)]">
               <span class="person-name">{{ req.displayName || req.username }}</span>
               <span class="person-sub">{{ '@' + req.username }}{{ req.createdAt ? ' · sent ' + (req.createdAt | date:'mediumDate') : '' }}</span>
             </div>
@@ -174,7 +175,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
               <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
               <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
-            <div class="person-info">
+            <div class="person-info" [routerLink]="['/profile', profileId(friend)]">
               <span class="person-name">{{ friend.displayName || friend.username }}</span>
               <span class="person-sub">{{ '@' + friend.username }}</span>
             </div>
@@ -264,7 +265,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     }
     .person-row:last-child { border-bottom: none; }
 
-    .person-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+    .person-info { display: flex; flex-direction: column; flex: 1; min-width: 0; cursor: pointer; }
     .person-name { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
     .person-sub { font-size: var(--font-13); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .person-reason { font-size: var(--font-12); color: var(--primary); font-weight: 500; margin-top: 2px; }
@@ -372,5 +373,9 @@ export class PeopleComponent implements OnInit {
   async unfriend(friend: Friend): Promise<void> {
     await this.friendService.removeFriend(friend.userId).toPromise();
     await this.loadAll();
+  }
+
+  profileId(user: any): string {
+    return user?.id || user?.userId || user?.UserId || '';
   }
 }

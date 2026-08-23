@@ -1,9 +1,25 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { NgIf } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { StatisticsService } from '../core/services/statistics.service';
+import { UserService } from '../core/services/user.service';
 import { UserStats } from '../shared/models/stats.model';
+
+interface ProfileView {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  email?: string;
+  schoolName?: string;
+  location?: string;
+  major?: string;
+  birthDate?: string;
+  interests?: string;
+  bio?: string;
+  role: string;
+}
 
 @Component({
   selector: 'app-profile',
@@ -12,28 +28,28 @@ import { UserStats } from '../shared/models/stats.model';
   template: `
     <div class="profile">
       <div class="page-header">
-        <h1>Profile</h1>
-        <a routerLink="/settings/profile" class="btn-outline">
+        <h1>{{ viewingOther ? (profile?.displayName + '’s Profile') : 'Profile' }}</h1>
+        <a *ngIf="!viewingOther" routerLink="/settings/profile" class="btn-outline">
           <span class="material-icons">settings</span>
           Edit Profile
         </a>
       </div>
 
-      <div class="profile-card">
-        <div class="avatar lg" [class.has-image]="auth.currentUser()?.avatarUrl">
-          <img *ngIf="auth.currentUser()?.avatarUrl; else initial" [src]="auth.currentUser()?.avatarUrl" alt="avatar" />
-          <ng-template #initial>{{ displayName()?.charAt(0)?.toUpperCase() }}</ng-template>
+      <div class="profile-card" *ngIf="profile">
+        <div class="avatar lg" [class.has-image]="profile?.avatarUrl">
+          <img *ngIf="profile?.avatarUrl; else initial" [src]="profile?.avatarUrl" alt="avatar" />
+          <ng-template #initial>{{ profile?.displayName?.charAt(0)?.toUpperCase() }}</ng-template>
         </div>
         <div class="profile-info">
-          <h2>{{ displayName() }}</h2>
-          <p>{{ auth.currentUser()?.email }}</p>
-          <p *ngIf="auth.currentUser()?.schoolName" class="school"><span class="material-icons school-icon">school</span> {{ auth.currentUser()?.schoolName }}</p>
-          <p *ngIf="auth.currentUser()?.location" class="detail"><span class="material-icons">place</span> {{ auth.currentUser()?.location }}</p>
-          <p *ngIf="auth.currentUser()?.major" class="detail"><span class="material-icons">work</span> {{ auth.currentUser()?.major }}</p>
-          <p *ngIf="auth.currentUser()?.birthDate" class="detail"><span class="material-icons">cake</span> {{ age() }} years old</p>
-          <p *ngIf="auth.currentUser()?.interests" class="interests">{{ interestsTags() }}</p>
-          <p *ngIf="auth.currentUser()?.bio" class="bio">{{ auth.currentUser()?.bio }}</p>
-          <span class="badge badge-accent">{{ auth.currentUser()?.role }}</span>
+          <h2>{{ profile?.displayName }}</h2>
+          <p>{{ profile?.email }}</p>
+          <p *ngIf="profile?.schoolName" class="school"><span class="material-icons school-icon">school</span> {{ profile?.schoolName }}</p>
+          <p *ngIf="profile?.location" class="detail"><span class="material-icons">place</span> {{ profile?.location }}</p>
+          <p *ngIf="profile?.major" class="detail"><span class="material-icons">work</span> {{ profile?.major }}</p>
+          <p *ngIf="profile?.birthDate" class="detail"><span class="material-icons">cake</span> {{ age() }} years old</p>
+          <p *ngIf="profile?.interests" class="interests">{{ interestsTags() }}</p>
+          <p *ngIf="profile?.bio" class="bio">{{ profile?.bio }}</p>
+          <span class="badge badge-accent">{{ profile?.role }}</span>
         </div>
       </div>
 
@@ -97,8 +113,13 @@ import { UserStats } from '../shared/models/stats.model';
 export class ProfileComponent implements OnInit {
   auth = inject(AuthService);
   private statsService = inject(StatisticsService);
+  private userService = inject(UserService);
+  private route = inject(ActivatedRoute);
 
+  profile: ProfileView | null = null;
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
+  viewingOther = false;
+  loading = true;
 
   formatDuration(minutes: number): string {
     const total = Math.max(0, Math.round(minutes || 0));
@@ -109,15 +130,11 @@ export class ProfileComponent implements OnInit {
   }
 
   displayName(): string {
-    const user = this.auth.currentUser();
-    if (user?.firstName || user?.lastName) {
-      return [user.firstName, user.lastName].filter(Boolean).join(' ');
-    }
-    return user?.username ?? '';
+    return this.profile?.displayName ?? '';
   }
 
   age(): number | null {
-    const birthDate = this.auth.currentUser()?.birthDate;
+    const birthDate = this.profile?.birthDate;
     if (!birthDate) return null;
     const birth = new Date(birthDate);
     if (isNaN(birth.getTime())) return null;
@@ -130,14 +147,60 @@ export class ProfileComponent implements OnInit {
   }
 
   interestsTags(): string {
-    const interests = this.auth.currentUser()?.interests;
+    const interests = this.profile?.interests;
     if (!interests) return '';
     return interests.split(/[,;]/).map(t => t.trim()).filter(Boolean).join(' · ');
   }
 
   async ngOnInit() {
+    const id = this.route.snapshot.paramMap.get('id');
+    const me = this.auth.currentUser();
     try {
-      this.stats = await this.statsService.getStats().toPromise() || this.stats;
-    } catch { }
+      if (id && id !== me?.id) {
+        this.viewingOther = true;
+        const user = await this.userService.getById(id).toPromise();
+        if (!user) return;
+        this.profile = {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          schoolName: user.schoolName,
+          location: user.location,
+          major: user.major,
+          interests: user.interests,
+          bio: user.bio,
+          role: user.role
+        };
+        this.stats = user.stats || this.stats;
+      } else {
+        if (me) {
+          this.profile = {
+            id: me.id,
+            username: me.username,
+            displayName: this.selfDisplayName(me),
+            avatarUrl: me.avatarUrl,
+            email: me.email,
+            schoolName: me.schoolName,
+            location: me.location,
+            major: me.major,
+            birthDate: me.birthDate,
+            interests: me.interests,
+            bio: me.bio,
+            role: me.role
+          };
+        }
+        this.stats = await this.statsService.getStats().toPromise() || this.stats;
+      }
+    } catch { } finally {
+      this.loading = false;
+    }
+  }
+
+  private selfDisplayName(me: any): string {
+    if (me?.firstName || me?.lastName) {
+      return [me.firstName, me.lastName].filter(Boolean).join(' ');
+    }
+    return me?.username ?? '';
   }
 }

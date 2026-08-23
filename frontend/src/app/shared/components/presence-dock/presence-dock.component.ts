@@ -1,5 +1,5 @@
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf } from '@angular/common';
 import { SignalRService } from '../../../core/services/signalr.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -14,7 +14,7 @@ interface PresenceUser {
 @Component({
   selector: 'app-presence-dock',
   standalone: true,
-  imports: [NgFor, NgIf],
+  imports: [NgFor, NgIf, RouterLink],
   template: `
     <div class="presence-dock" *ngIf="showDock()">
       <div class="dock-header" (click)="toggleExpanded()">
@@ -24,20 +24,20 @@ interface PresenceUser {
       </div>
 
       <div class="dock-body" *ngIf="expanded()">
-        <button
+        <div
           *ngFor="let u of users()"
           class="presence-row"
           (click)="visit(u)"
           [title]="u.username + (u.roomIds[0] ? ' · ' + u.roomIds[0] : '')"
         >
-          <div class="avatar" [class.has-image]="u.avatarUrl">
+          <a class="avatar" [class.has-image]="u.avatarUrl" routerLink="/profile/{{u.userId}}" (click)="$event.stopPropagation()">
             <img *ngIf="u.avatarUrl; else initial" [src]="u.avatarUrl" alt="" />
             <ng-template #initial>{{ u.username.charAt(0).toUpperCase() }}</ng-template>
             <span class="ava-dot"></span>
-          </div>
+          </a>
           <span class="presence-name">{{ u.username }}</span>
           <span class="material-icons presence-join">call</span>
-        </button>
+        </div>
       </div>
     </div>
   `,

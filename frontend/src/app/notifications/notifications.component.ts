@@ -1,12 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { NotificationService } from '../core/services/notification.service';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, LoadingComponent],
+  imports: [NgFor, NgIf, DatePipe, RouterLink, LoadingComponent],
   template: `
     <div class="notifications-page">
       <div class="page-header page-header-row">
@@ -33,7 +34,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           *ngFor="let n of service.items()"
           (click)="service.open(n)"
         >
-          <div class="notif-avatar" [class.has-image]="n.actorAvatarUrl && !n.icon">
+          <div class="notif-avatar" [class.has-image]="n.actorAvatarUrl && !n.icon" [routerLink]="n.actorId ? ['/profile', n.actorId] : null" [style.cursor]="n.actorId ? 'pointer' : 'default'">
             <img *ngIf="n.actorAvatarUrl; else actorInitial" [src]="n.actorAvatarUrl" alt="" />
             <ng-template #actorInitial>
               <span class="material-icons">{{ n.icon || 'notifications' }}</span>

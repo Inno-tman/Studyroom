@@ -1,6 +1,7 @@
 import { Component, inject, OnDestroy, OnInit, AfterViewChecked, ViewChild, ElementRef } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../core/services/auth.service';
 import { SignalRService } from '../core/services/signalr.service';
@@ -13,7 +14,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule, AiChatPanelComponent],
+  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, AiChatPanelComponent],
   template: `
     <div class="messages-page">
       <div class="page-header">
@@ -40,16 +41,16 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
           </button>
 
           <div *ngIf="conversations.length === 0" class="empty">No conversations yet. Message your friends!</div>
-          <button
+          <div
             *ngFor="let convo of conversations"
             class="convo-item"
             [class.active]="convo.userId === activeUserId && !activeAssistant"
             (click)="openConversation(convo.userId)"
           >
-            <div class="avatar" [class.has-image]="convo.avatarUrl">
+            <a class="avatar" [class.has-image]="convo.avatarUrl" routerLink="/profile/{{convo.userId}}" (click)="$event.stopPropagation()">
               <img *ngIf="convo.avatarUrl; else convoInitial" [src]="convo.avatarUrl" alt="" />
               <ng-template #convoInitial>{{ (convo.displayName || convo.username).charAt(0).toUpperCase() }}</ng-template>
-            </div>
+            </a>
             <div class="convo-info">
               <div class="convo-top">
                 <span class="convo-name">{{ convo.displayName || convo.username }}</span>
@@ -57,7 +58,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               </div>
               <span class="convo-last">{{ convo.lastMessage ? convo.lastMessage : 'No messages yet' }}</span>
             </div>
-          </button>
+          </div>
         </div>
 
         <div class="chat-area" [class.mobile-open]="isMobile && (activeUser || activeAssistant)">
@@ -70,7 +71,7 @@ import { Conversation, DirectMessage } from '../shared/models/social.model';
               <button class="back-btn" (click)="closeConversation()" aria-label="Back to conversations">
                 <span class="material-icons">arrow_back</span>
               </button>
-              <div class="avatar" [class.has-image]="activeUser.avatarUrl">
+              <div class="avatar" [class.has-image]="activeUser.avatarUrl" routerLink="/profile/{{activeUser.userId}}" style="cursor:pointer">
                 <img *ngIf="activeUser.avatarUrl; else activeInitial" [src]="activeUser.avatarUrl" alt="" />
                 <ng-template #activeInitial>{{ (activeUser.displayName || activeUser.username).charAt(0).toUpperCase() }}</ng-template>
               </div>
