@@ -85,6 +85,22 @@ public class StudyRoomHub : Hub
         });
 
         await UpdateOnlineUsers(roomId);
+
+        // Sync any active broadcast to the (re)joining client so a page refresh
+        // or reconnect resumes the video instead of losing it.
+        if (_roomVideos.TryGetValue(roomId, out var activeVideo))
+        {
+            await Clients.Caller.SendAsync("VideoBroadcast", new
+            {
+                roomId,
+                videoId = activeVideo.VideoId,
+                url = activeVideo.Url,
+                startedBy = activeVideo.StartedBy,
+                isPlaying = activeVideo.IsPlaying,
+                positionSeconds = activeVideo.PositionSeconds,
+                startedAt = activeVideo.UpdatedAt
+            });
+        }
     }
 
     public async Task LeaveRoom(string roomId)
@@ -591,7 +607,9 @@ public class StudyRoomHub : Hub
         state.PositionSeconds = positionSeconds;
         state.UpdatedAt = DateTime.UtcNow;
 
-        await Clients.Group(GetGroupName(roomId)).SendAsync("VideoControl", new
+        // Exclude the caller: the host is the source of truth and receiving its
+        // own control back would re-apply it and cause a pause/play feedback loop.
+        await Clients.OthersInGroup(GetGroupName(roomId)).SendAsync("VideoControl", new
         {
             roomId,
             action,
@@ -606,7 +624,7 @@ public class StudyRoomHub : Hub
         var room = await _roomRepo.GetByIdAsync(Guid.Parse(roomId));
         if (room == null || room.CreatedBy != UserId) return; // host only
         _roomVideos.Remove(roomId);
-        await Clients.Group(GetGroupName(roomId)).SendAsync("VideoStopped", new { roomId });
+        await Clients.OthersInGroup(GetGroupName(roomId)).SendAsync("VideoStopped", new { roomId });
     }
 
     private static string? ParseYouTubeId(string url)

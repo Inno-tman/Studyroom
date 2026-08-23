@@ -1347,7 +1347,6 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   async setupSignalR() {
     try {
       await this.signalR.startConnection();
-      await this.signalR.joinRoom(this.roomId);
 
       this.signalR.message$.subscribe(msg => {
         if (msg.roomId === this.roomId) {
@@ -1375,6 +1374,10 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
           if (data.roomId === this.roomId) this.clearPlayer();
         })
       );
+
+      // Subscribe BEFORE joining: JoinRoom syncs the current broadcast to the
+      // caller, and that message would be missed if we subscribed afterwards.
+      await this.signalR.joinRoom(this.roomId);
     } catch { }
   }
 
