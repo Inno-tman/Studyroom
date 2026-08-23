@@ -65,6 +65,10 @@ const TABS: RoomTab[] = [
             <span class="material-icons">event_available</span>
             Schedule
           </button>
+          <button *ngIf="isMember" class="btn-outline share-btn" (click)="copyRoomLink()" title="Copy invite link">
+            <span class="material-icons">link</span>
+            Invite link
+          </button>
           <button *ngIf="isMember" class="btn-outline-danger" (click)="leaveRoom()">Leave</button>
         </div>
       </div>
@@ -181,6 +185,29 @@ const TABS: RoomTab[] = [
         </button>
       </div>
 
+      <!-- Guest meeting join (invite link with ?meeting=1&code=) -->
+      <div class="guest-meeting" *ngIf="guestMeeting && !isMember && room">
+        <div class="guest-card">
+          <span class="material-icons guest-icon">videocam</span>
+          <h1>{{ room.name }}</h1>
+          <p class="guest-sub">You've been invited to join this meeting as a guest.</p>
+          <button class="btn-primary guest-join" (click)="startGuestCall()" [disabled]="inCall">
+            <span class="material-icons">videocam</span> Join Meeting
+          </button>
+          <a routerLink="/rooms" class="guest-back">Go to Rooms</a>
+        </div>
+      </div>
+
+      <!-- ── Call overlay (LiveKit) ──────────────────────────── -->
+      <div class="call-overlay" *ngIf="(isMember || guestMeeting) && inCall">
+        <app-meeting-room
+          [roomId]="roomId"
+          [roomName]="room?.name || 'Meeting'"
+          [joinCode]="guestMeeting ? (guestCode ?? '') : (room?.joinCode ?? '')"
+          (leaveRequest)="toggleCall()"
+        />
+      </div>
+
       <!-- ── Shared templates ────────────────────────────────── -->
       <ng-template #chatBody>
         <div class="messages" #messageContainer>
@@ -223,6 +250,9 @@ const TABS: RoomTab[] = [
         <div class="meetings-panel" *ngIf="upcomingMeetings.length > 0">
           <div class="panel-header">
             <h2><span class="material-icons">event</span> Upcoming Meetings</h2>
+            <button class="schedule-mini" (click)="copyMeetingLink()" title="Copy meeting link">
+              <span class="material-icons">link</span> Copy link
+            </button>
             <button class="schedule-mini" (click)="openScheduleDialog()">
               <span class="material-icons">add</span> Schedule
             </button>
@@ -318,11 +348,6 @@ const TABS: RoomTab[] = [
         </div>
       </div>
 
-      <!-- ── Call overlay (LiveKit) ──────────────────────────── -->
-      <div class="call-overlay" *ngIf="isMember && inCall">
-        <app-meeting-room [roomId]="roomId" [roomName]="room?.name || 'Meeting'" (leaveRequest)="toggleCall()" />
-      </div>
-
       <!-- ── Mobile FAB + tab bar ────────────────────────────── -->
       <div class="call-fab" *ngIf="isMobile && isMember && !inCall" (click)="toggleCall()">
         <span class="material-icons">videocam</span>
@@ -342,6 +367,8 @@ const TABS: RoomTab[] = [
           <span *ngIf="tab.id === 'meet' && upcomingMeetings.length > 0" class="tab-item-badge">{{ upcomingMeetings.length }}</span>
         </button>
       </nav>
+
+      <div class="snack" *ngIf="snack">{{ snack }}</div>
     </div>
   `,
   styles: [`
@@ -652,6 +679,39 @@ const TABS: RoomTab[] = [
     }
     .join-prompt .material-icons { font-size: 48px; color: var(--text-muted); }
     .join-big { padding: 14px 32px; font-size: var(--font-15); }
+
+    /* ── Share / invite-link button ──────────────────────────── */
+    .btn-outline.share-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 16px; background: transparent; border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-secondary); font-size: var(--font-14);
+      font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    }
+    .btn-outline.share-btn:hover { border-color: var(--primary); color: var(--text-primary); }
+    .btn-outline.share-btn .material-icons { font-size: var(--font-18); }
+
+    /* ── Guest meeting join ──────────────────────────────────── */
+    .guest-meeting { display: flex; justify-content: center; padding: 48px 16px; }
+    .guest-card {
+      display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 32px; max-width: 420px; width: 100%;
+    }
+    .guest-icon { font-size: 48px; color: var(--primary); }
+    .guest-card h1 { font-size: var(--font-20); font-weight: 700; color: var(--text-primary); }
+    .guest-sub { font-size: var(--font-13); color: var(--text-secondary); margin-top: -6px; }
+    .guest-join { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; font-size: var(--font-15); }
+    .guest-back { font-size: var(--font-13); color: var(--accent); text-decoration: none; }
+    .guest-back:hover { text-decoration: underline; }
+
+    /* ── Snack / copy feedback ───────────────────────────────── */
+    .snack {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1300;
+      background: rgba(20, 20, 30, 0.95); border: 1px solid var(--border); color: #fff;
+      padding: 10px 18px; border-radius: 10px; font-size: var(--font-13); font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); animation: snack-in 0.2s ease;
+    }
+    @keyframes snack-in { from { opacity: 0; transform: translateX(-50%) translateY(6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
     /* ── Mobile ─────────────────────────────────────────────── */
     @media (max-width: 900px) {
