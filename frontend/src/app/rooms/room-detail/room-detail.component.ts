@@ -118,6 +118,36 @@ const TABS: RoomTab[] = [
           </button>
         </div>
 
+        <!-- ── Smart schedule helper: meetings in other rooms ─ -->
+        <div class="smart-schedule" *ngIf="otherMeetings.length > 0">
+          <div class="smart-schedule-head">
+            <span class="material-icons">auto_awesome</span>
+            <span>Smart Schedule</span>
+            <span class="smart-schedule-sub">You have meetings in other rooms</span>
+          </div>
+          <div class="smart-schedule-list">
+            <div *ngFor="let m of otherMeetings" class="smart-schedule-item">
+              <span class="ssi-icon material-icons">videocam</span>
+              <div class="ssi-info">
+                <span class="ssi-title">{{ m.title }}</span>
+                <span class="ssi-meta">
+                  {{ m.roomName }}
+                  &middot; {{ m.scheduledAt | date:'EEE, MMM d, h:mm a' }}
+                  &middot; {{ m.durationMinutes }} min
+                </span>
+              </div>
+              <button
+                class="ssi-accept"
+                [class.accepted]="m.acceptedByMe"
+                (click)="acceptMeeting(m)"
+              >
+                <span class="material-icons">{{ m.acceptedByMe ? 'check' : 'add' }}</span>
+                {{ m.acceptedByMe ? 'Accepted' : 'Accept' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Unified tab body (all devices) ────────────────── -->
         <div class="tab-body" [class.tab-body-bottom-pad]="isMobile">
           <div *ngIf="activeTab === 'chat'" class="tab-pane chat-pane">
@@ -212,6 +242,13 @@ const TABS: RoomTab[] = [
                 </span>
                 <span *ngIf="meeting.description" class="meeting-desc">{{ meeting.description }}</span>
               </div>
+              <button
+                class="meeting-accept"
+                [class.accepted]="meeting.acceptedByMe"
+                (click)="acceptMeeting(meeting)"
+                title="Accept / decline meeting"
+              ><span class="material-icons">{{ meeting.acceptedByMe ? 'check_circle' : 'check_circle_outline' }}</span>
+                {{ meeting.acceptedCount || 0 }}</button>
               <button
                 *ngIf="canDeleteMeeting(meeting)"
                 class="meeting-delete"
@@ -499,6 +536,45 @@ const TABS: RoomTab[] = [
     .meeting-delete { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 6px; }
     .meeting-delete:hover { color: var(--error); }
 
+    .meeting-accept {
+      display: inline-flex; align-items: center; gap: 2px;
+      background: none; border: none; color: var(--text-muted); cursor: pointer;
+      padding: 4px 8px; border-radius: 6px; font-size: var(--font-12); font-weight: 600;
+    }
+    .meeting-accept:hover { color: var(--primary); }
+    .meeting-accept.accepted { color: var(--success); }
+
+    /* ── Smart schedule helper ─────────────────────────────── */
+    .smart-schedule {
+      background: var(--surface);
+      border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 16px;
+    }
+    .smart-schedule-head {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+      font-size: var(--font-14); font-weight: 700; color: var(--text-primary);
+    }
+    .smart-schedule-head .material-icons { color: var(--accent); font-size: var(--font-18); }
+    .smart-schedule-sub { font-size: var(--font-12); font-weight: 500; color: var(--text-muted); margin-left: 4px; }
+    .smart-schedule-list { display: flex; flex-direction: column; gap: 8px; }
+    .smart-schedule-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    }
+    .ssi-icon { color: var(--primary); font-size: var(--font-20); }
+    .ssi-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .ssi-title { font-size: var(--font-13); font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ssi-meta { font-size: var(--font-12); color: var(--text-muted); }
+    .ssi-accept {
+      display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+      border: 1px solid var(--primary); background: var(--primary); color: #fff;
+      border-radius: 8px; padding: 6px 12px; font-size: var(--font-12); font-weight: 700; cursor: pointer;
+    }
+    .ssi-accept .material-icons { font-size: var(--font-16); }
+    .ssi-accept.accepted { background: transparent; color: var(--success); border-color: var(--success); }
+
+
     .schedule-mini {
       display: flex; align-items: center; gap: 4px; padding: 6px 12px;
       background: transparent; border: 1px solid var(--primary); border-radius: 8px;
@@ -679,6 +755,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   invitingId = '';
   inCall = false;
   meetings: Meeting[] = [];
+  otherMeetings: Meeting[] = [];
   showScheduleDialog = false;
   scheduleTitle = '';
   scheduleDescription = '';
@@ -778,6 +855,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
         await this.loadChat();
         await this.loadNotes();
         await this.loadMeetings();
+        await this.loadOtherMeetings();
         await this.setupSignalR();
       }
     } catch { } finally {
@@ -788,6 +866,21 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   async loadMeetings() {
     try {
       this.meetings = await this.meetingService.getForRoom(this.roomId).toPromise() || [];
+    } catch { }
+  }
+
+  async loadOtherMeetings() {
+    try {
+      this.otherMeetings = await this.meetingService.getOtherRoomMeetings(this.roomId).toPromise() || [];
+    } catch { }
+  }
+
+  async acceptMeeting(meeting: Meeting) {
+    try {
+      const updated = await this.meetingService
+        .setAttendance(meeting, meeting.acceptedByMe ? 'Declined' : 'Accepted')
+        .toPromise();
+      Object.assign(meeting, updated);
     } catch { }
   }
 

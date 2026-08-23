@@ -31,4 +31,17 @@ export class MeetingService {
       {}
     );
   }
+
+  /** Upcoming meetings in OTHER rooms the user belongs to (smart schedule helper). */
+  getOtherRoomMeetings(currentRoomId: string): Observable<Meeting[]> {
+    return this.http.get<Meeting[]>(`${environment.apiUrl}/rooms/${currentRoomId}/meetings/other`);
+  }
+
+  /** Accept/decline a meeting (RSVP). Uses the meeting's own room for the route. */
+  setAttendance(meeting: Meeting, status: 'Accepted' | 'Declined'): Observable<Meeting> {
+    return this.http.post<Meeting>(
+      `${environment.apiUrl}/rooms/${meeting.roomId}/meetings/${meeting.id}/attend`,
+      { status }
+    );
+  }
 }

@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
+    public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -161,6 +162,13 @@ public class AppDbContext : DbContext
             entity.HasIndex(m => m.ScheduledAt);
             entity.HasOne(m => m.Room).WithMany().HasForeignKey(m => m.RoomId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(m => m.Creator).WithMany().HasForeignKey(m => m.CreatedBy).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MeetingAttendee>(entity =>
+        {
+            entity.HasKey(a => new { a.MeetingId, a.UserId });
+            entity.HasOne(a => a.Meeting).WithMany().HasForeignKey(a => a.MeetingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

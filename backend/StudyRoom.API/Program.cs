@@ -435,6 +435,17 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE INDEX IF NOT EXISTS "IX_Meetings_RoomId" ON "Meetings" ("RoomId");
         CREATE INDEX IF NOT EXISTS "IX_Meetings_ScheduledAt" ON "Meetings" ("ScheduledAt");
+
+        CREATE TABLE IF NOT EXISTS "MeetingAttendees" (
+            "MeetingId" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Status" text NOT NULL DEFAULT 'Accepted',
+            "RespondedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_MeetingAttendees" PRIMARY KEY ("MeetingId", "UserId"),
+            CONSTRAINT "FK_MeetingAttendees_Meetings_MeetingId" FOREIGN KEY ("MeetingId") REFERENCES "Meetings" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_MeetingAttendees_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_MeetingAttendees_UserId" ON "MeetingAttendees" ("UserId");
     """);
 }
 

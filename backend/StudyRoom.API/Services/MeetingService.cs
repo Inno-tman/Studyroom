@@ -7,9 +7,11 @@ namespace StudyRoom.API.Services;
 public interface IMeetingService
 {
     Task<List<MeetingDto>> GetForRoomAsync(Guid roomId, Guid userId);
+    Task<List<MeetingDto>> GetOtherRoomsAsync(Guid userId, Guid currentRoomId);
     Task<MeetingDto> CreateAsync(Guid roomId, CreateMeetingDto dto, Guid userId);
     Task<MeetingDto> UpdateAsync(Guid roomId, Guid meetingId, UpdateMeetingDto dto, Guid userId);
     Task DeleteAsync(Guid roomId, Guid meetingId, Guid userId);
+    Task<MeetingDto> SetAttendanceAsync(Guid meetingId, Guid userId, string status);
 }
 
 public class MeetingService : IMeetingService
@@ -29,7 +31,15 @@ public class MeetingService : IMeetingService
             throw new UnauthorizedAccessException("You must be a member to view meetings.");
 
         var meetings = await _meetingRepo.GetForRoomAsync(roomId);
-        return meetings.Select(MapToDto).ToList();
+        return await MapWithAttendanceAsync(meetings, userId);
+    }
+
+    public async Task<List<MeetingDto>> GetOtherRoomsAsync(Guid userId, Guid currentRoomId)
+    {
+        // Meetings scheduled in rooms the user belongs to, excluding the room
+        // they are currently viewing — the "smart schedule" heads-up.
+        var meetings = await _meetingRepo.GetUserUpcomingMeetingsAsync(userId, currentRoomId);
+        return await MapWithAttendanceAsync(meetings, userId);
     }
 
     public async Task<MeetingDto> CreateAsync(Guid roomId, CreateMeetingDto dto, Guid userId)
@@ -88,15 +98,64 @@ public class MeetingService : IMeetingService
         await _meetingRepo.DeleteAsync(meeting);
     }
 
-    private static MeetingDto MapToDto(Meeting m) => new()
+    private static MeetingDto MapToDto(Meeting m, bool acceptedByMe = false, int acceptedCount = 0) => new()
     {
         Id = m.Id,
         RoomId = m.RoomId,
+        RoomName = m.Room?.Name,
         Title = m.Title,
         Description = m.Description,
         ScheduledAt = m.ScheduledAt,
         DurationMinutes = m.DurationMinutes,
         CreatedByUsername = m.Creator?.Username ?? "Unknown",
-        CreatedAt = m.CreatedAt
+        CreatedAt = m.CreatedAt,
+        AcceptedByMe = acceptedByMe,
+        AcceptedCount = acceptedCount
     };
+
+    private async Task<List<MeetingDto>> MapWithAttendanceAsync(List<Meeting> meetings, Guid userId)
+    {
+        if (meetings.Count == 0) return new();
+
+        var ids = meetings.Select(m => m.Id).ToList();
+        var attendees = await _meetingRepo.GetAttendeesForMeetingsAsync(ids);
+
+        return meetings.Select(m =>
+        {
+            var ma = attendees.Where(a => a.MeetingId == m.Id).ToList();
+            return MapToDto(
+                m,
+                ma.Any(a => a.UserId == userId && a.Status == "Accepted"),
+                ma.Count(a => a.Status == "Accepted"));
+        }).ToList();
+    }
+
+    public async Task<MeetingDto> SetAttendanceAsync(Guid meetingId, Guid userId, string status)
+    {
+        if (status != "Accepted" && status != "Declined")
+            throw new ArgumentException("Status must be 'Accepted' or 'Declined'.");
+
+        var meeting = await _meetingRepo.GetByIdAsync(meetingId)
+            ?? throw new KeyNotFoundException("Meeting not found.");
+
+        if (!await _roomRepo.IsMemberAsync(meeting.RoomId, userId))
+            throw new UnauthorizedAccessException("You must be a member of the meeting's room to respond.");
+
+        await _meetingRepo.UpsertAttendeeAsync(new MeetingAttendee
+        {
+            MeetingId = meetingId,
+            UserId = userId,
+            Status = status,
+            RespondedAt = DateTime.UtcNow
+        });
+
+        var refreshed = await _meetingRepo.GetByIdAsync(meetingId)
+            ?? throw new KeyNotFoundException("Meeting not found.");
+        var attendees = await _meetingRepo.GetAttendeesForMeetingsAsync(new List<Guid> { meetingId });
+
+        return MapToDto(
+            refreshed,
+            attendees.Any(a => a.UserId == userId && a.Status == "Accepted"),
+            attendees.Count(a => a.Status == "Accepted"));
+    }
 }

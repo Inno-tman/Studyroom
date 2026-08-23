@@ -31,6 +31,35 @@ public class MeetingsController : ControllerBase
         }
     }
 
+    [HttpGet("other")]
+    public async Task<IActionResult> GetOtherRooms(Guid roomId)
+    {
+        var meetings = await _meetingService.GetOtherRoomsAsync(UserId, roomId);
+        return Ok(meetings);
+    }
+
+    [HttpPost("{meetingId}/attend")]
+    public async Task<IActionResult> SetAttendance(Guid roomId, Guid meetingId, [FromBody] AttendMeetingDto dto)
+    {
+        try
+        {
+            var meeting = await _meetingService.SetAttendanceAsync(meetingId, UserId, dto.Status);
+            return Ok(meeting);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(Guid roomId, [FromBody] CreateMeetingDto dto)
     {
