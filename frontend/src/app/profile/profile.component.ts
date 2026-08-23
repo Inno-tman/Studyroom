@@ -41,8 +41,8 @@ import { UserStats } from '../shared/models/stats.model';
         <h2>Study Statistics</h2>
         <div class="stats-grid">
           <div class="stat-card">
-            <span class="stat-value">{{ stats.totalStudyHours }}</span>
-            <span class="stat-label">Total Hours</span>
+            <span class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</span>
+            <span class="stat-label">Total Time</span>
           </div>
           <div class="stat-card">
             <span class="stat-value">{{ stats.sessionsCompleted }}</span>
@@ -53,7 +53,7 @@ import { UserStats } from '../shared/models/stats.model';
             <span class="stat-label">Day Streak</span>
           </div>
           <div class="stat-card">
-            <span class="stat-value">{{ stats.weeklyStudyMinutes }}m</span>
+            <span class="stat-value">{{ formatDuration(stats.weeklyStudyMinutes) }}</span>
             <span class="stat-label">This Week</span>
           </div>
         </div>
@@ -98,7 +98,15 @@ export class ProfileComponent implements OnInit {
   auth = inject(AuthService);
   private statsService = inject(StatisticsService);
 
-  stats: UserStats = { totalStudyHours: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
+  stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
+
+  formatDuration(minutes: number): string {
+    const total = Math.max(0, Math.round(minutes || 0));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(h)}h ${pad(m)}m`;
+  }
 
   displayName(): string {
     const user = this.auth.currentUser();

@@ -236,6 +236,9 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "RefreshToken" text NULL;
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "RefreshTokenExpiresAt" timestamp NULL;
         ALTER TABLE "Users" ALTER COLUMN "AvatarUrl" TYPE text;
+        ALTER TABLE "StudySessions" ALTER COLUMN "DurationMinutes" TYPE numeric(12,2) USING "DurationMinutes"::numeric(12,2);
+        ALTER TABLE "UserStats" ALTER COLUMN "TotalStudyMinutes" TYPE numeric(12,2) USING "TotalStudyMinutes"::numeric(12,2);
+        ALTER TABLE "UserStats" ALTER COLUMN "WeeklyStudyMinutes" TYPE numeric(12,2) USING "WeeklyStudyMinutes"::numeric(12,2);
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_GoogleId" ON "Users" ("GoogleId") WHERE "GoogleId" IS NOT NULL;
     """);
     await context.Database.ExecuteSqlRawAsync("""

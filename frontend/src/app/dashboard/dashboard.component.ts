@@ -33,7 +33,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           </span>
           <span class="hero-badge">
             <span class="material-icons">schedule</span>
-            {{ stats.totalStudyHours }}h studied
+            {{ formatDuration(stats.totalStudyMinutes) }} studied
           </span>
           <span class="hero-badge">
             <span class="material-icons">group</span>
@@ -45,8 +45,8 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       <!-- ── Proactive band ───────────────────────────────────── -->
       <div class="stats-strip">
         <div class="stats-strip-item">
-          <span class="stat-value">{{ stats.totalStudyHours }}h</span>
-          <span class="stat-label">Study Hours</span>
+          <span class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</span>
+          <span class="stat-label">Study Time</span>
         </div>
         <div class="stats-strip-item">
           <span class="stat-value">{{ stats.sessionsCompleted }}</span>
@@ -57,7 +57,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           <span class="stat-label">Day Streak</span>
         </div>
         <div class="stats-strip-item">
-          <span class="stat-value">{{ stats.weeklyStudyMinutes }}m</span>
+          <span class="stat-value">{{ formatDuration(stats.weeklyStudyMinutes) }}</span>
           <span class="stat-label">Last 7 Days</span>
         </div>
       </div>
@@ -214,7 +214,15 @@ export class DashboardComponent implements OnInit {
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
-  stats: UserStats = { totalStudyHours: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
+  stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
+
+  formatDuration(minutes: number): string {
+    const total = Math.max(0, Math.round(minutes || 0));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(h)}h ${pad(m)}m`;
+  }
   loading = true;
   tab: 'mine' | 'all' = 'mine';
 
