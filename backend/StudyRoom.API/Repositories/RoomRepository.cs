@@ -86,15 +86,16 @@ public class RoomRepository : IRoomRepository
             .Select(rm => rm.User!)
             .ToListAsync();
 
-    public async Task<List<RoomMember>> GetMembersWithRolesAsync(Guid roomId) =>
+    public async Task<List<RoomMember>> GetMembershipsAsync(Guid roomId) =>
         await _context.RoomMembers
             .Where(rm => rm.RoomId == roomId)
             .Include(rm => rm.User)
+            .OrderBy(rm => rm.JoinedAt)
             .ToListAsync();
 
-    public async Task UpdateMemberAsync(RoomMember member)
+    public async Task UpdateMembershipAsync(RoomMember membership)
     {
-        _context.RoomMembers.Update(member);
+        _context.RoomMembers.Update(membership);
         await _context.SaveChangesAsync();
     }
 

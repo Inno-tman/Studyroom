@@ -83,16 +83,22 @@ const TABS: RoomTab[] = [
         <div class="members-bar">
           <span class="members-title" *ngIf="!isMobile">Members ({{ members.length }})</span>
           <div class="members-avatars" [class.scrollable]="isMobile">
-            <div *ngFor="let member of members" class="member-chip" [title]="member.username" routerLink="/profile/{{member.id}}" style="cursor:pointer">
+            <div *ngFor="let member of members" class="member-chip" [title]="member.username + (member.role === 'cohost' ? ' (co-host)' : '')">
               <div class="member-avatar" [class.has-image]="member.avatarUrl">
                 <img *ngIf="member.avatarUrl; else memberInitial" [src]="member.avatarUrl" alt="" />
                 <ng-template #memberInitial>{{ member.username.charAt(0).toUpperCase() }}</ng-template>
+                <span class="role-dot" *ngIf="member.role === 'host'" title="Host"><span class="material-icons">star</span></span>
+                <span class="role-dot cohost" *ngIf="member.role === 'cohost'" title="Co-host"><span class="material-icons">shield</span></span>
               </div>
               <span class="member-name" *ngIf="!isMobile">{{ member.username }}</span>
             </div>
             <button class="invite-chip" (click)="openInviteDialog()">
               <span class="material-icons">person_add</span>
               <span class="invite-chip-label">{{ isMobile ? 'Invite' : '' }}</span>
+            </button>
+            <button class="invite-chip" *ngIf="isHost" (click)="showRolesDialog = true" title="Manage roles">
+              <span class="material-icons">shield</span>
+              <span class="invite-chip-label">{{ isMobile ? 'Roles' : '' }}</span>
             </button>
           </div>
         </div>
@@ -354,17 +360,17 @@ const TABS: RoomTab[] = [
 
       <!-- ── Schedule dialog ─────────────────────────────────── -->
       <div class="schedule-dialog-backdrop" *ngIf="showScheduleDialog" (click)="showScheduleDialog = false">
-        <div class="schedule-dialog" (click)="$event.stopPropagation()">
+        <form class="schedule-dialog" (click)="$event.stopPropagation()" (ngSubmit)="scheduleMeeting()">
           <div class="dialog-header">
             <h3>Schedule a meeting</h3>
-            <button class="dialog-close" (click)="showScheduleDialog = false"><span class="material-icons">close</span></button>
+            <button class="dialog-close" type="button" (click)="showScheduleDialog = false"><span class="material-icons">close</span></button>
           </div>
           <div class="dialog-body">
-            <label class="field">Title <input type="text" [(ngModel)]="scheduleTitle" placeholder="e.g. Final review" /></label>
-            <label class="field">Description <input type="text" [(ngModel)]="scheduleDescription" placeholder="Optional" /></label>
-            <label class="field">When <input type="datetime-local" [(ngModel)]="scheduleAt" /></label>
+            <label class="field">Title <input type="text" [(ngModel)]="scheduleTitle" name="scheduleTitle" placeholder="e.g. Final review" /></label>
+            <label class="field">Description <input type="text" [(ngModel)]="scheduleDescription" name="scheduleDescription" placeholder="Optional" /></label>
+            <label class="field">When <input type="datetime-local" [(ngModel)]="scheduleAt" name="scheduleAt" /></label>
             <label class="field">Duration
-              <select [(ngModel)]="scheduleDuration">
+              <select [(ngModel)]="scheduleDuration" name="scheduleDuration">
                 <option [ngValue]="15">15 minutes</option>
                 <option [ngValue]="30">30 minutes</option>
                 <option [ngValue]="45">45 minutes</option>
@@ -373,9 +379,37 @@ const TABS: RoomTab[] = [
                 <option [ngValue]="120">120 minutes</option>
               </select>
             </label>
-            <button class="btn-primary dialog-submit" (click)="scheduleMeeting()" [disabled]="scheduling">
+            <p class="form-error" *ngIf="scheduleError">{{ scheduleError }}</p>
+            <button class="btn-primary dialog-submit" type="submit" [disabled]="scheduling">
               {{ scheduling ? 'Scheduling...' : 'Schedule Meeting' }}
             </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ── Roles dialog ────────────────────────────────────── -->
+      <div class="invite-dialog-backdrop" *ngIf="showRolesDialog" (click)="showRolesDialog = false">
+        <div class="invite-dialog" (click)="$event.stopPropagation()">
+          <div class="invite-dialog-header">
+            <h3>Manage roles</h3>
+            <button class="dialog-close" (click)="showRolesDialog = false"><span class="material-icons">close</span></button>
+          </div>
+          <div class="invite-dialog-body">
+            <p class="invite-hint">Co-hosts can delete any meeting in this room.</p>
+            <div *ngFor="let member of manageableMembers" class="invite-row">
+              <div class="member-avatar" [class.has-image]="member.avatarUrl">
+                <img *ngIf="member.avatarUrl; else roleMemberInitial" [src]="member.avatarUrl" alt="" />
+                <ng-template #roleMemberInitial>{{ member.username.charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span class="invite-name">{{ member.username }}</span>
+              <span class="role-tag" *ngIf="member.role === 'cohost'" [class.changing]="roleChangingId === member.id">co-host</span>
+              <button
+                class="btn-invite"
+                [class.btn-invite-ghost]="member.role === 'cohost'"
+                (click)="toggleCoHost(member)"
+                [disabled]="roleChangingId === member.id"
+              >{{ roleChangingId === member.id ? '...' : (member.role === 'cohost' ? 'Demote' : 'Make co-host') }}</button>
+            </div>
           </div>
         </div>
       </div>
@@ -485,8 +519,8 @@ const TABS: RoomTab[] = [
 
     .member-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 20px; background: var(--background); border: 1px solid var(--border); flex-shrink: 0; }
 
-    .member-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: var(--font-11); overflow: hidden; flex-shrink: 0; }
-    .member-avatar.has-image img { width: 100%; height: 100%; object-fit: cover; }
+    .member-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: var(--font-11); flex-shrink: 0; }
+    .member-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
     .member-name { font-size: var(--font-12); color: var(--text-primary); }
 
@@ -676,7 +710,8 @@ const TABS: RoomTab[] = [
 
     /* ── Dialogs ────────────────────────────────────────────── */
     .invite-dialog-backdrop, .schedule-dialog-backdrop {
-      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      position: fixed; inset: 0; height: 100vh; height: 100dvh;
+      background: rgba(0, 0, 0, 0.5);
       display: flex; align-items: center; justify-content: center; z-index: 1300;
     }
 
@@ -711,9 +746,24 @@ const TABS: RoomTab[] = [
 
     .dialog-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
     .field { display: flex; flex-direction: column; gap: 6px; font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); }
-    .field input, .field select { padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none; }
+    .field input, .field select { padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none; min-height: 44px; }
     .field input:focus, .field select:focus { border-color: var(--primary); }
-    .dialog-submit { width: 100%; padding: 12px; justify-content: center; }
+    .form-error { color: var(--error); font-size: var(--font-13); margin: 0; }
+    .dialog-submit { width: 100%; padding: 14px; justify-content: center; min-height: 48px; flex-shrink: 0; }
+
+    /* ── Roles ──────────────────────────────────────────────── */
+    .role-dot {
+      position: absolute; right: -4px; bottom: -4px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #f5b301; border: 2px solid var(--surface);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .role-dot .material-icons { font-size: 11px; color: #fff; }
+    .role-dot.cohost { background: var(--accent); }
+    .member-avatar { position: relative; }
+    .btn-invite-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-invite-ghost:hover:not(:disabled) { border-color: var(--error); color: var(--error); background: transparent; }
+    .role-tag { font-size: var(--font-11); font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
 
     /* ── Generic dialog (video share) ──────────────────────── */
     .dialog-backdrop {
@@ -892,7 +942,7 @@ const TABS: RoomTab[] = [
         display: flex; align-items: center; justify-content: center; padding: 0 3px;
       }
 
-      .invite-dialog, .schedule-dialog { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 90vh; }
+      .invite-dialog, .schedule-dialog { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 88vh; max-height: 88dvh; padding-bottom: env(safe-area-inset-bottom); }
       .invite-dialog-backdrop, .schedule-dialog-backdrop { align-items: flex-end; }
 
       .call-overlay-header { padding: 10px 12px; }
@@ -945,6 +995,9 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   scheduleAt = '';
   scheduleDuration = 60;
   scheduling = false;
+  scheduleError = '';
+  showRolesDialog = false;
+  roleChangingId = '';
 
   // ── YouTube broadcast (host-only start; synced playback) ──
   broadcastVideoId?: string;
@@ -1009,11 +1062,31 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   }
 
   get isHost(): boolean {
-    return !!this.room && this.room.createdById === this.currentUserId;
+    if (!this.room) return false;
+    const me = this.auth.currentUser();
+    const myName = me?.username || me?.email || '';
+    return !!myName && this.room.createdByUsername === myName;
   }
 
-  get isBroadcasting(): boolean {
-    return !!this.broadcastVideoId;
+  get manageableMembers(): UserDto[] {
+    return this.members.filter(m => m.id !== this.currentUserId && m.role !== 'host');
+  }
+
+  get myRole(): string {
+    return this.members.find(m => m.id === this.currentUserId)?.role || 'member';
+  }
+
+  async toggleCoHost(member: UserDto): Promise<void> {
+    const next = member.role === 'cohost' ? 'member' : 'cohost';
+    this.roleChangingId = member.id;
+    try {
+      await this.roomService.setMemberRole(this.roomId, member.id, next).toPromise();
+      member.role = next;
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to update role.');
+    } finally {
+      this.roleChangingId = '';
+    }
   }
 
   toggleCall() {
@@ -1298,6 +1371,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     this.scheduleTitle = '';
     this.scheduleDescription = '';
     this.scheduleDuration = 60;
+    this.scheduleError = '';
     const d = new Date(Date.now() + 60 * 60 * 1000);
     d.setMinutes(d.getMinutes() - d.getMinutes() % 5);
     this.scheduleAt = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -1305,23 +1379,28 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   }
 
   async scheduleMeeting() {
-    if (!this.scheduleTitle.trim() || !this.scheduleAt) {
-      alert('Please enter a title and time.');
+    if (!this.scheduleTitle?.trim() || !this.scheduleAt) {
+      this.scheduleError = 'Please enter a title and time.';
+      return;
+    }
+    const when = new Date(this.scheduleAt);
+    if (isNaN(when.getTime())) {
+      this.scheduleError = 'Please pick a valid date and time.';
       return;
     }
     this.scheduling = true;
+    this.scheduleError = '';
     try {
-      const utc = new Date(this.scheduleAt).toISOString();
       await this.meetingService.create(this.roomId, {
         title: this.scheduleTitle.trim(),
         description: this.scheduleDescription.trim() || undefined,
-        scheduledAt: utc,
+        scheduledAt: when.toISOString(),
         durationMinutes: this.scheduleDuration
       }).toPromise();
       this.showScheduleDialog = false;
       await this.loadMeetings();
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to schedule meeting.');
+      this.scheduleError = err.error?.error || 'Failed to schedule meeting. Please try again.';
     } finally {
       this.scheduling = false;
     }
@@ -1338,7 +1417,10 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   }
 
   canDeleteMeeting(meeting: Meeting): boolean {
-    return meeting.createdByUsername === (this.auth.currentUser()?.username || this.auth.currentUser()?.email);
+    const me = this.auth.currentUser();
+    const myName = me?.username || me?.email || '';
+    if (meeting.createdByUsername === myName) return true;
+    return this.myRole === 'host' || this.myRole === 'cohost';
   }
 
   async loadChat() {

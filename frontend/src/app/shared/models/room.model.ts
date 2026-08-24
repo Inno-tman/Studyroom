@@ -2,6 +2,7 @@ export interface UserDto {
   id: string;
   username: string;
   avatarUrl?: string;
+  role?: string;
 }
 
 export interface Room {

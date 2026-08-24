@@ -13,6 +13,9 @@ public class RoomMember
 
     public Guid UserId { get; set; }
 
+    [MaxLength(20)]
+    public string Role { get; set; } = "member";
+
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey(nameof(RoomId))]

@@ -43,6 +43,10 @@ export class RoomService {
     return this.http.get<any[]>(`${environment.apiUrl}/rooms/${id}/members`);
   }
 
+  setMemberRole(id: string, memberUserId: string, role: 'member' | 'cohost'): Observable<void> {
+    return this.http.put<void>(`${environment.apiUrl}/rooms/${id}/members/${memberUserId}/role`, { role });
+  }
+
   getMyRooms(): Observable<Room[]> {
     return this.http.get<Room[]>(`${environment.apiUrl}/rooms/my`);
   }

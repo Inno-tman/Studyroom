@@ -115,13 +115,15 @@ public class RoomService : IRoomService
 
     public async Task<List<UserDto>> GetMembersAsync(Guid roomId)
     {
-        var memberships = await _roomRepo.GetMembersWithRolesAsync(roomId);
+        var room = await _roomRepo.GetByIdAsync(roomId)
+            ?? throw new KeyNotFoundException("Room not found.");
+        var memberships = await _roomRepo.GetMembershipsAsync(roomId);
         return memberships.Select(m => new UserDto
         {
             Id = m.User!.Id,
             Username = m.User.Username,
             AvatarUrl = m.User.AvatarUrl,
-            Role = m.Role
+            Role = m.UserId == room.CreatedBy ? "host" : m.Role
         }).ToList();
     }
 
@@ -139,6 +141,31 @@ public class RoomService : IRoomService
     {
         var rooms = await _roomRepo.GetUserRoomsAsync(userId);
         return rooms.Select(r => MapToDto(r, userId)).ToList();
+    }
+
+    public async Task SetMemberRoleAsync(Guid roomId, Guid memberUserId, string role, Guid requesterId)
+    {
+        var room = await _roomRepo.GetByIdAsync(roomId)
+            ?? throw new KeyNotFoundException("Room not found.");
+
+        if (room.CreatedBy != requesterId)
+            throw new UnauthorizedAccessException("Only the room host can manage roles.");
+
+        var normalized = role?.Trim().ToLowerInvariant() switch
+        {
+            "member" => "member",
+            "cohost" or "co-host" => "cohost",
+            _ => throw new ArgumentException("Invalid role.")
+        };
+
+        if (memberUserId == requesterId)
+            throw new InvalidOperationException("You cannot change your own role.");
+
+        var membership = await _roomRepo.GetMembershipAsync(roomId, memberUserId)
+            ?? throw new KeyNotFoundException("That user is not a member of this room.");
+
+        membership.Role = normalized;
+        await _roomRepo.UpdateMembershipAsync(membership);
     }
 
     private RoomDto MapToDto(Room room, Guid? userId)

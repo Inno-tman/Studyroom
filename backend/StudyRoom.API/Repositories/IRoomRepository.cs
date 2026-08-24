@@ -14,8 +14,8 @@ public interface IRoomRepository
     Task AddMemberAsync(RoomMember member);
     Task RemoveMemberAsync(Guid roomId, Guid userId);
     Task<List<User>> GetMembersAsync(Guid roomId);
-    Task<List<RoomMember>> GetMembersWithRolesAsync(Guid roomId);
-    Task UpdateMemberAsync(RoomMember member);
+    Task<List<RoomMember>> GetMembershipsAsync(Guid roomId);
+    Task UpdateMembershipAsync(RoomMember membership);
     Task<int> GetMemberCountAsync(Guid roomId);
     Task<RoomMember?> GetMembershipAsync(Guid roomId, Guid userId);
     Task<List<Room>> GetUserRoomsAsync(Guid userId);

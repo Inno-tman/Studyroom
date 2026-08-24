@@ -13,6 +13,7 @@ public interface IRoomService
     Task LeaveAsync(Guid roomId, Guid userId);
     Task<List<UserDto>> GetMembersAsync(Guid roomId);
     Task<List<RoomDto>> GetUserRoomsAsync(Guid userId);
+    Task SetMemberRoleAsync(Guid roomId, Guid memberUserId, string role, Guid requesterId);
 }
 
 public class UserDto
@@ -20,5 +21,5 @@ public class UserDto
     public Guid Id { get; set; }
     public string Username { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
-    public string Role { get; set; } = RoomRoles.Member;
+    public string Role { get; set; } = "member";
 }

@@ -92,13 +92,22 @@ public class MeetingService : IMeetingService
         if (meeting.RoomId != roomId)
             throw new KeyNotFoundException("Meeting not found in this room.");
 
-        if (meeting.CreatedBy != userId)
-            throw new UnauthorizedAccessException("Only the organizer can delete this meeting.");
+        if (!await CanManageMeetingAsync(roomId, meeting.CreatedBy, userId))
+            throw new UnauthorizedAccessException("Only the organizer, a co-host, or the room host can delete this meeting.");
 
         await _meetingRepo.DeleteAsync(meeting);
     }
 
-    private static MeetingDto MapToDto(Meeting m, bool acceptedByMe = false, int acceptedCount = 0) => new()
+    private async Task<bool> CanManageMeetingAsync(Guid roomId, Guid meetingCreatorId, Guid userId)
+    {
+        if (meetingCreatorId == userId)
+            return true;
+
+        var membership = await _roomRepo.GetMembershipAsync(roomId, userId);
+        return membership != null && membership.Role is "host" or "cohost";
+    }
+
+    private static MeetingDto MapToDto(Meeting m) => new()
     {
         Id = m.Id,
         RoomId = m.RoomId,

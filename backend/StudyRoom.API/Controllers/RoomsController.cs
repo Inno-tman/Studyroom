@@ -124,6 +124,32 @@ public class RoomsController : ControllerBase
         return Ok(members);
     }
 
+    [HttpPut("{id}/members/{memberUserId}/role")]
+    public async Task<IActionResult> SetMemberRole(Guid id, Guid memberUserId, [FromBody] SetRoleDto dto)
+    {
+        try
+        {
+            await _roomService.SetMemberRoleAsync(id, memberUserId, dto.Role ?? "member", UserId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("my")]
     public async Task<IActionResult> GetMyRooms()
     {
@@ -135,4 +161,9 @@ public class RoomsController : ControllerBase
 public class JoinRoomDto
 {
     public string? JoinCode { get; set; }
+}
+
+public class SetRoleDto
+{
+    public string? Role { get; set; }
 }
