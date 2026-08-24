@@ -103,6 +103,10 @@ public class MeetingService : IMeetingService
         if (meetingCreatorId == userId)
             return true;
 
+        var room = await _roomRepo.GetByIdAsync(roomId);
+        if (room != null && room.CreatedBy == userId)
+            return true;
+
         var membership = await _roomRepo.GetMembershipAsync(roomId, userId);
         return membership != null && membership.Role is "host" or "cohost";
     }
