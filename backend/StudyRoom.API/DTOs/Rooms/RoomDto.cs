@@ -12,4 +12,6 @@ public class RoomDto
     public Guid CreatedById { get; set; }
     public int MemberCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    /// <summary>Role of the requesting user in this room (Host/Cohost/Member), or null if not a member.</summary>
+    public string? CurrentUserRole { get; set; }
 }

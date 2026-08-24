@@ -24,4 +24,14 @@ public class MessageRepository : IMessageRepository
         await _context.Messages.AddAsync(message);
         await _context.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == id);
+        if (message != null)
+        {
+            _context.Messages.Remove(message);
+            await _context.SaveChangesAsync();
+        }
+    }
 }

@@ -20,4 +20,7 @@ public class RoomMember
 
     [ForeignKey(nameof(UserId))]
     public User? User { get; set; }
+
+    /// <summary>Room role for this membership. "Host" is implicit for the creator; "Cohost" can moderate.</summary>
+    public string Role { get; set; } = RoomRoles.Member;
 }

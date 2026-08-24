@@ -86,6 +86,18 @@ public class RoomRepository : IRoomRepository
             .Select(rm => rm.User!)
             .ToListAsync();
 
+    public async Task<List<RoomMember>> GetMembersWithRolesAsync(Guid roomId) =>
+        await _context.RoomMembers
+            .Where(rm => rm.RoomId == roomId)
+            .Include(rm => rm.User)
+            .ToListAsync();
+
+    public async Task UpdateMemberAsync(RoomMember member)
+    {
+        _context.RoomMembers.Update(member);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<int> GetMemberCountAsync(Guid roomId) =>
         await _context.RoomMembers.CountAsync(rm => rm.RoomId == roomId);
 

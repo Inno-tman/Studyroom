@@ -46,7 +46,8 @@ public class RoomService : IRoomService
         await _roomRepo.AddMemberAsync(new RoomMember
         {
             RoomId = room.Id,
-            UserId = userId
+            UserId = userId,
+            Role = RoomRoles.Host
         });
 
         return MapToDto(room, userId);
@@ -58,7 +59,11 @@ public class RoomService : IRoomService
             ?? throw new KeyNotFoundException("Room not found.");
 
         if (room.CreatedBy != userId)
-            throw new UnauthorizedAccessException("Only the room owner can update.");
+        {
+            var membership = await _roomRepo.GetMembershipAsync(id, userId);
+            if (membership?.Role != RoomRoles.Cohost)
+                throw new UnauthorizedAccessException("Only the room owner or a co-host can update.");
+        }
 
         room.Name = dto.Name;
         room.Description = dto.Description;
@@ -110,13 +115,24 @@ public class RoomService : IRoomService
 
     public async Task<List<UserDto>> GetMembersAsync(Guid roomId)
     {
-        var members = await _roomRepo.GetMembersAsync(roomId);
-        return members.Select(u => new UserDto
+        var memberships = await _roomRepo.GetMembersWithRolesAsync(roomId);
+        return memberships.Select(m => new UserDto
         {
-            Id = u.Id,
-            Username = u.Username,
-            AvatarUrl = u.AvatarUrl
+            Id = m.User!.Id,
+            Username = m.User.Username,
+            AvatarUrl = m.User.AvatarUrl,
+            Role = m.Role
         }).ToList();
+    }
+
+    /// <summary>True if the user is the room creator or a co-host.</summary>
+    public async Task<bool> IsModeratorAsync(Guid roomId, Guid userId)
+    {
+        var room = await _roomRepo.GetByIdAsync(roomId);
+        if (room == null) return false;
+        if (room.CreatedBy == userId) return true;
+        var membership = await _roomRepo.GetMembershipAsync(roomId, userId);
+        return membership?.Role == RoomRoles.Cohost;
     }
 
     public async Task<List<RoomDto>> GetUserRoomsAsync(Guid userId)
@@ -140,7 +156,12 @@ public class RoomService : IRoomService
             CreatedByUsername = room.Creator?.Username ?? "Unknown",
             CreatedById = room.CreatedBy,
             MemberCount = room.Members?.Count ?? 0,
-            CreatedAt = room.CreatedAt
+            CreatedAt = room.CreatedAt,
+            CurrentUserRole = userId.HasValue
+                ? (room.CreatedBy == userId
+                    ? RoomRoles.Host
+                    : (room.Members?.FirstOrDefault(m => m.UserId == userId)?.Role ?? RoomRoles.Member))
+                : null
         };
     }
 
