@@ -1013,6 +1013,10 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private ignoreState = false;
   private videoSubs: any[] = [];
 
+  get isBroadcasting(): boolean {
+    return !!this.broadcastVideoId;
+  }
+
   isMobile = false;
   activeTab = 'chat';
   tabs: RoomTab[] = TABS;
