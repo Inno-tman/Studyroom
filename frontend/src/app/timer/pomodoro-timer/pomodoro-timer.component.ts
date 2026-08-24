@@ -213,7 +213,12 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     await this.signalR.pauseTimer(this.roomId);
   }
 
-  resumeTimer() {
+  async resumeTimer() {
+    // Pausing finalizes the backend session, so resuming must re-register
+    // the remaining time or the rest of the session is never recorded.
+    const remainingMin = Math.max(1, Math.ceil(this.state.remainingSeconds / 60));
+    this.isSynced = true;
+    this.signalR.startTimer(this.roomId, remainingMin).catch(() => {});
     this.timerService.start();
   }
 
