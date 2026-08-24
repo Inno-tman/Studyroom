@@ -107,7 +107,7 @@ public class MeetingService : IMeetingService
         return membership != null && membership.Role is "host" or "cohost";
     }
 
-    private static MeetingDto MapToDto(Meeting m) => new()
+    private static MeetingDto MapToDto(Meeting m, bool acceptedByMe = false, int acceptedCount = 0) => new()
     {
         Id = m.Id,
         RoomId = m.RoomId,
