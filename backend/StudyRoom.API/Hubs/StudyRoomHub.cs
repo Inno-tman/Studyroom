@@ -18,6 +18,7 @@ public class StudyRoomHub : Hub
     private readonly IDirectMessageRepository _dmRepo;
     private readonly IUserRepository _userRepo;
     private readonly ITimerScheduler _timerScheduler;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<StudyRoomHub> _logger;
 
     // Room-scoped: connectionId -> roomId
@@ -40,6 +41,7 @@ public class StudyRoomHub : Hub
         IDirectMessageRepository dmRepo,
         IUserRepository userRepo,
         ITimerScheduler timerScheduler,
+        INotificationService notificationService,
         ILogger<StudyRoomHub> logger)
     {
         _messageRepo = messageRepo;
@@ -48,6 +50,7 @@ public class StudyRoomHub : Hub
         _dmRepo = dmRepo;
         _userRepo = userRepo;
         _timerScheduler = timerScheduler;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -532,7 +535,12 @@ public class StudyRoomHub : Hub
             completedBy = Username
         });
 
+        _timerScheduler.Cancel(UserId);
         await FinalizeActiveSessionAsync();
+
+        await _notificationService.CreateAsync(
+            UserId, "timer", "Focus session complete",
+            "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
     }
 
     private async Task FinalizeActiveSessionAsync()
