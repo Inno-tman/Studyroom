@@ -37,11 +37,14 @@ public class StudySessionsController : ControllerBase
     [HttpPost("start")]
     public async Task<IActionResult> StartSession([FromBody] StartSessionRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.RoomId) || !Guid.TryParse(request.RoomId, out var roomId))
+            return BadRequest(new { error = "Invalid roomId" });
+
         var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
         var existing = sessions.FirstOrDefault(s => !s.Completed);
         if (existing != null)
         {
-            existing.RoomId = Guid.Parse(request.RoomId);
+            existing.RoomId = roomId;
             existing.StartedAt = DateTime.UtcNow;
             await _sessionRepo.UpdateAsync(existing);
         }
@@ -50,7 +53,7 @@ public class StudySessionsController : ControllerBase
             var s = new StudySession
             {
                 UserId = UserId,
-                RoomId = Guid.Parse(request.RoomId),
+                RoomId = roomId,
                 DurationMinutes = request.DurationMinutes,
                 StartedAt = DateTime.UtcNow,
                 Completed = false
@@ -58,7 +61,7 @@ public class StudySessionsController : ControllerBase
             await _sessionRepo.AddAsync(s);
         }
 
-        _timerScheduler.ScheduleFocus(UserId, Guid.Parse(request.RoomId), request.DurationMinutes);
+        _timerScheduler.ScheduleFocus(UserId, roomId, request.DurationMinutes);
 
         await _hubContext.Clients.Group("room_" + request.RoomId)
             .SendAsync("TimerStarted", new
@@ -104,7 +107,10 @@ public class StudySessionsController : ControllerBase
     [HttpPost("start-break")]
     public async Task<IActionResult> StartBreak([FromBody] BreakRequest request)
     {
-        _timerScheduler.ScheduleBreak(UserId, Guid.Parse(request.RoomId), request.DurationMinutes, request.IsLong);
+        if (string.IsNullOrWhiteSpace(request.RoomId) || !Guid.TryParse(request.RoomId, out var roomId))
+            return BadRequest(new { error = "Invalid roomId" });
+
+        _timerScheduler.ScheduleBreak(UserId, roomId, request.DurationMinutes, request.IsLong);
 
         await _hubContext.Clients.Group("room_" + request.RoomId)
             .SendAsync("TimerStarted", new
