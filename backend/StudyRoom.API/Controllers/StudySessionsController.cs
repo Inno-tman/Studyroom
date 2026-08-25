@@ -37,71 +37,85 @@ public class StudySessionsController : ControllerBase
     [HttpPost("start")]
     public async Task<IActionResult> StartSession([FromBody] StartSessionRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.RoomId) || !Guid.TryParse(request.RoomId, out var roomId))
-            return BadRequest(new { error = "Invalid roomId" });
-
-        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-        var existing = sessions.FirstOrDefault(s => !s.Completed);
-        if (existing != null)
+        try
         {
-            existing.RoomId = roomId;
-            existing.StartedAt = DateTime.UtcNow;
-            await _sessionRepo.UpdateAsync(existing);
+            if (string.IsNullOrWhiteSpace(request.RoomId) || !Guid.TryParse(request.RoomId, out var roomId))
+                return BadRequest(new { error = "Invalid roomId" });
+
+            var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
+            var existing = sessions.FirstOrDefault(s => !s.Completed);
+            if (existing != null)
+            {
+                existing.RoomId = roomId;
+                existing.StartedAt = DateTime.UtcNow;
+                await _sessionRepo.UpdateAsync(existing);
+            }
+            else
+            {
+                var s = new StudySession
+                {
+                    UserId = UserId,
+                    RoomId = roomId,
+                    DurationMinutes = request.DurationMinutes,
+                    StartedAt = DateTime.UtcNow,
+                    Completed = false
+                };
+                await _sessionRepo.AddAsync(s);
+            }
+
+            _timerScheduler.ScheduleFocus(UserId, roomId, request.DurationMinutes);
+
+            await _hubContext.Clients.Group("room_" + request.RoomId)
+                .SendAsync("TimerStarted", new
+                {
+                    roomId = request.RoomId,
+                    durationMinutes = request.DurationMinutes,
+                    startedBy = Username,
+                    startedAt = DateTime.UtcNow
+                });
+
+            return Ok(new { success = true });
         }
-        else
+        catch (Exception ex)
         {
-            var s = new StudySession
-            {
-                UserId = UserId,
-                RoomId = roomId,
-                DurationMinutes = request.DurationMinutes,
-                StartedAt = DateTime.UtcNow,
-                Completed = false
-            };
-            await _sessionRepo.AddAsync(s);
+            return StatusCode(500, new { error = ex.Message, detail = ex.InnerException?.Message });
         }
-
-        _timerScheduler.ScheduleFocus(UserId, roomId, request.DurationMinutes);
-
-        await _hubContext.Clients.Group("room_" + request.RoomId)
-            .SendAsync("TimerStarted", new
-            {
-                roomId = request.RoomId,
-                durationMinutes = request.DurationMinutes,
-                startedBy = Username,
-                startedAt = DateTime.UtcNow
-            });
-
-        return Ok(new { success = true });
     }
 
     [HttpPost("complete")]
     public async Task<IActionResult> CompleteSession([FromBody] SessionRequest request)
     {
-        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-        var latest = sessions.FirstOrDefault(s => !s.Completed);
-        if (latest == null)
-            return Ok(new { success = false, message = "No active session found" });
-
-        var start = latest.StartedAt ?? latest.CreatedAt;
-        var minutes = (DateTime.UtcNow - start).TotalMinutes;
-        latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
-        latest.Completed = true;
-        await _sessionRepo.UpdateAsync(latest);
-
-        _timerScheduler.Cancel(UserId);
-
-        if (!string.IsNullOrEmpty(request.RoomId))
+        try
         {
-            await _hubContext.Clients.Group("room_" + request.RoomId)
-                .SendAsync("TimerCompleted", new { roomId = request.RoomId, completedBy = Username });
+            var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
+            var latest = sessions.FirstOrDefault(s => !s.Completed);
+            if (latest == null)
+                return Ok(new { success = false, message = "No active session found" });
+
+            var start = latest.StartedAt ?? latest.CreatedAt;
+            var minutes = (DateTime.UtcNow - start).TotalMinutes;
+            latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
+            latest.Completed = true;
+            await _sessionRepo.UpdateAsync(latest);
+
+            _timerScheduler.Cancel(UserId);
+
+            if (!string.IsNullOrEmpty(request.RoomId))
+            {
+                await _hubContext.Clients.Group("room_" + request.RoomId)
+                    .SendAsync("TimerCompleted", new { roomId = request.RoomId, completedBy = Username });
+            }
+
+            await _notificationService.CreateAsync(
+                UserId, "timer", "Focus session complete",
+                "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
+
+            return Ok(new { success = true, durationMinutes = latest.DurationMinutes });
         }
-
-        await _notificationService.CreateAsync(
-            UserId, "timer", "Focus session complete",
-            "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
-
-        return Ok(new { success = true, durationMinutes = latest.DurationMinutes });
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message, detail = ex.InnerException?.Message });
+        }
     }
 
     [HttpPost("start-break")]
