@@ -5,6 +5,7 @@ import { TimerService, TimerState } from '../../core/services/timer.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { StatisticsService } from '../../core/services/statistics.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -117,6 +118,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   private signalR = inject(SignalRService);
   private settings = inject(SettingsService);
   private notification = inject(NotificationService);
+  private statsService = inject(StatisticsService);
 
   state: TimerState = {
     isRunning: false, isPaused: false, isBreak: false, isLongBreak: false,
@@ -167,21 +169,29 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         const breakBegan = s.isRunning && s.isBreak && (!this.wasBreak || !this.wasRunning);
 
         // Each focus session (manual or auto-started) creates a StudySession so
-        // study time + streak are counted. The backend scheduler fires the
-        // completion + chime even if this tab is closed mid-session.
+        // study time + streak are counted.
         if (focusBegan) {
           this.isSynced = true;
-          this.signalR.startTimer(this.roomId, s.focusDuration).catch(err => console.warn('[timer] startTimer failed', err));
+          this.statsService.startSession(this.roomId, s.focusDuration).subscribe({
+            error: err => console.error('[timer] startSession HTTP failed', err)
+          });
         }
-        // Tell the backend scheduler when a break starts so it can fire the
-        // end-of-break notification server-side.
         if (breakBegan) {
           this.isSynced = true;
-          this.signalR.startBreak(this.roomId, s.isLongBreak ? s.longBreakDuration : s.breakDuration, s.isLongBreak).catch(err => console.warn('[timer] startBreak failed', err));
+          this.statsService.startSession(this.roomId, s.isLongBreak ? s.longBreakDuration : s.breakDuration).subscribe({
+            error: err => console.error('[timer] startBreak HTTP failed', err)
+          });
         }
         // Persist completion of a focus session -> updates stats read model.
+        // Use HTTP (not fire-and-forget SignalR) so the DB write is reliable
+        // even if the SignalR connection is reconnecting or cold-starting.
         if (justCompleted && !wasBreak) {
-          this.signalR.timerCompleted(this.roomId).catch(err => console.warn('[timer] timerCompleted failed', err));
+          this.statsService.completeSession(this.roomId).subscribe({
+            next: res => {
+              if (res.success) console.log('[timer] session finalized via HTTP, minutes=' + res.durationMinutes);
+            },
+            error: err => console.error('[timer] completeSession HTTP failed', err)
+          });
           this.notification.notify('Focus session complete', 'Nice work! Take a breather.');
         }
         if (justCompleted && wasBreak) {
@@ -220,7 +230,9 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
 
   async pauseTimer() {
     this.timerService.pause();
-    await this.signalR.pauseTimer(this.roomId);
+    this.statsService.pauseSession(this.roomId).subscribe({
+      error: err => console.error('[timer] pauseSession HTTP failed', err)
+    });
   }
 
   async resumeTimer() {
@@ -228,14 +240,18 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     // the remaining time or the rest of the session is never recorded.
     const remainingMin = Math.max(1, Math.ceil(this.state.remainingSeconds / 60));
     this.isSynced = true;
-    this.signalR.startTimer(this.roomId, remainingMin).catch(err => console.warn('[timer] resume startTimer failed', err));
+    this.statsService.startSession(this.roomId, remainingMin).subscribe({
+      error: err => console.error('[timer] resume startSession HTTP failed', err)
+    });
     this.timerService.start();
   }
 
   async resetTimer() {
     this.timerService.reset();
     this.isSynced = false;
-    await this.signalR.resetTimer(this.roomId);
+    this.statsService.resetSession(this.roomId).subscribe({
+      error: err => console.error('[timer] resetSession HTTP failed', err)
+    });
   }
 
   skip() {

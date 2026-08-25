@@ -11,4 +11,23 @@ export class StatisticsService {
   getStats(): Observable<UserStats> {
     return this.http.get<UserStats>(`${environment.apiUrl}/users/stats`);
   }
+
+  completeSession(roomId?: string): Observable<{ success: boolean; durationMinutes?: number }> {
+    return this.http.post<{ success: boolean; durationMinutes?: number }>(
+      `${environment.apiUrl}/study-sessions/complete`,
+      { roomId }
+    );
+  }
+
+  startSession(roomId: string, durationMinutes: number): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/study-sessions/start`, { roomId, durationMinutes });
+  }
+
+  pauseSession(roomId: string): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/study-sessions/pause`, { roomId });
+  }
+
+  resetSession(roomId: string): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/study-sessions/reset`, { roomId });
+  }
 }
