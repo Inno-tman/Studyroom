@@ -238,6 +238,8 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE "Users" ALTER COLUMN "AvatarUrl" TYPE text;
         ALTER TABLE "RoomMembers" ADD COLUMN IF NOT EXISTS "Role" text NOT NULL DEFAULT 'member';
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_GoogleId" ON "Users" ("GoogleId") WHERE "GoogleId" IS NOT NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "StartedAt" timestamp NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "Completed" boolean NOT NULL DEFAULT false;
     """);
     await context.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "AiConversations" (
