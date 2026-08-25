@@ -132,8 +132,38 @@ async markRead(id: string): Promise<void> {
 
   /** End-of-session chime + optional desktop notification. */
   notify(title: string, body: string): void {
-    this.playSound();
-    this.showDesktopNotification(title, body);
+    this.playChime();
+    this.showDesktopNotification(title, body, true);
+  }
+
+  /**
+   * Play a chime that works even outside a user-gesture context (e.g. when
+   * the tab has been idle). Falls back to a simple Audio element if the
+   * AudioContext is suspended by the browser's autoplay policy.
+   */
+  private playChime(): void {
+    try {
+      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const ctx = new Ctx();
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.6);
+    } catch {
+      // AudioContext blocked — try a <audio> element as fallback
+      try {
+        const a = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+        a.volume = 0.3;
+        a.play().catch(() => {});
+      } catch { }
+    }
   }
 
   private handleRealtimeNotification(n: NotificationItem): void {
@@ -181,8 +211,8 @@ async markRead(id: string): Promise<void> {
     }
   }
 
-  private showDesktopNotification(title: string, body: string): void {
-    if (!this.settings.prefs().desktopNotifications) return;
+  private showDesktopNotification(title: string, body: string, bypassPrefs = false): void {
+    if (!bypassPrefs && !this.settings.prefs().desktopNotifications) return;
     if (this.settings.isQuietHour()) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 

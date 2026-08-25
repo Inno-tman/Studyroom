@@ -211,6 +211,11 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   startTimer() {
     this.isSynced = true;
     this.timerService.start();
+    // Request notification permission while we're inside a user-gesture
+    // context so the browser allows it.
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }
 
   async pauseTimer() {

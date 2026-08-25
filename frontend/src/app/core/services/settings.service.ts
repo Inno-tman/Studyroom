@@ -129,7 +129,7 @@ export class SettingsService {
       studyReminders: true,
       roomActivity: true,
       weeklySummary: false,
-      desktopNotifications: false,
+      desktopNotifications: true,
       notificationSound: true,
       showMessagePreviews: true,
       quietHoursEnabled: false,
