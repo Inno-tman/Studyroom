@@ -116,6 +116,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   private timerService = inject(TimerService);
   private signalR = inject(SignalRService);
   private settings = inject(SettingsService);
+  private notification = inject(NotificationService);
 
   state: TimerState = {
     isRunning: false, isPaused: false, isBreak: false, isLongBreak: false,
@@ -181,6 +182,10 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         // Persist completion of a focus session -> updates stats read model.
         if (justCompleted && !wasBreak) {
           this.signalR.timerCompleted(this.roomId).catch(err => console.warn('[timer] timerCompleted failed', err));
+          this.notification.notify('Focus session complete', 'Nice work! Take a breather.');
+        }
+        if (justCompleted && wasBreak) {
+          this.notification.notify(this.state.isLongBreak ? 'Long break complete' : 'Break complete', 'Time to get back to focus.');
         }
       }),
       this.signalR.timerStarted$.subscribe(async data => {
