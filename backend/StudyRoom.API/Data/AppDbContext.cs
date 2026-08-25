@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudyRoom.API.Models;
 
 namespace StudyRoom.API.Data;
@@ -6,6 +7,14 @@ namespace StudyRoom.API.Data;
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder builder)
+    {
+        builder.Properties<DateTime>()
+            .HaveConversion<DateTimeUtcConverter>();
+        builder.Properties<DateTime?>()
+            .HaveConversion<DateTimeNullableUtcConverter>();
+    }
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Room> Rooms => Set<Room>();
@@ -170,4 +179,18 @@ public class AppDbContext : DbContext
             entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
+}
+
+public class DateTimeUtcConverter : ValueConverter<DateTime, DateTime>
+{
+    public DateTimeUtcConverter() : base(
+        v => DateTime.SpecifyKind(v, DateTimeKind.Utc),
+        v => v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v, DateTimeKind.Utc)) { }
+}
+
+public class DateTimeNullableUtcConverter : ValueConverter<DateTime?, DateTime?>
+{
+    public DateTimeNullableUtcConverter() : base(
+        v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v,
+        v => v.HasValue && v.Value.Kind != DateTimeKind.Utc ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v) { }
 }
