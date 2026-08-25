@@ -123,7 +123,6 @@ builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<INotesRepository, NotesRepository>();
 builder.Services.AddScoped<IStudySessionRepository, StudySessionRepository>();
-builder.Services.AddScoped<IUserStatsRepository, UserStatsRepository>();
 builder.Services.AddScoped<IPostStatsRepository, PostStatsRepository>();
 
 builder.Services.AddSingleton<TimerScheduler>();
@@ -269,21 +268,6 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE INDEX IF NOT EXISTS "IX_AiMessages_ConversationId" ON "AiMessages" ("ConversationId");
         CREATE INDEX IF NOT EXISTS "IX_AiMessages_CreatedAt" ON "AiMessages" ("CreatedAt");
-
-        CREATE TABLE IF NOT EXISTS "UserStats" (
-            "UserId" uuid NOT NULL,
-            "TotalStudyMinutes" integer NOT NULL DEFAULT 0,
-            "SessionsCompleted" integer NOT NULL DEFAULT 0,
-            "DailyStreak" integer NOT NULL DEFAULT 0,
-            "WeeklyStudyMinutes" integer NOT NULL DEFAULT 0,
-            "UpdatedAt" timestamp with time zone NOT NULL,
-            CONSTRAINT "PK_UserStats" PRIMARY KEY ("UserId")
-        );
-        ALTER TABLE "UserStats" ADD COLUMN IF NOT EXISTS "TotalStudyMinutes" integer NOT NULL DEFAULT 0;
-        ALTER TABLE "UserStats" ADD COLUMN IF NOT EXISTS "SessionsCompleted" integer NOT NULL DEFAULT 0;
-        ALTER TABLE "UserStats" ADD COLUMN IF NOT EXISTS "DailyStreak" integer NOT NULL DEFAULT 0;
-        ALTER TABLE "UserStats" ADD COLUMN IF NOT EXISTS "WeeklyStudyMinutes" integer NOT NULL DEFAULT 0;
-        ALTER TABLE "UserStats" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT now();
 
         CREATE TABLE IF NOT EXISTS "Friendships" (
             "Id" uuid NOT NULL,

@@ -87,13 +87,12 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
             using var scope = _scopeFactory.CreateScope();
             var hub = scope.ServiceProvider.GetRequiredService<IHubContext<StudyRoomHub>>();
             var sessionRepo = scope.ServiceProvider.GetRequiredService<IStudySessionRepository>();
-            var statsRepo = scope.ServiceProvider.GetRequiredService<IUserStatsRepository>();
             var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<TimerScheduler>>();
 
             if (!entry.IsBreak)
             {
-                // Mark the latest in-progress focus session complete and refresh stats,
+                // Mark the latest in-progress focus session complete
                 // so study time + streak stay accurate even if the tab was closed.
                 var sessions = await sessionRepo.GetByUserIdAsync(entry.UserId);
                 var latest = sessions.FirstOrDefault(s => !s.Completed);
@@ -104,14 +103,6 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
                     latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
                     latest.Completed = true;
                     await sessionRepo.UpdateAsync(latest);
-                    try
-                    {
-                        await statsRepo.RefreshAsync(entry.UserId);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "[timer-scheduler] stats refresh failed for user={UserId} session={SessionId}", entry.UserId, latest.Id);
-                    }
                     logger.LogInformation("[timer-scheduler] finalized session {SessionId} user={UserId} minutes={Minutes}", latest.Id, entry.UserId, latest.DurationMinutes);
                 }
 

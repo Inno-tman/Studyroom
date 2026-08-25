@@ -17,7 +17,6 @@ public class StudyRoomHub : Hub
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IDirectMessageRepository _dmRepo;
     private readonly IUserRepository _userRepo;
-    private readonly IUserStatsRepository _statsRepo;
     private readonly ITimerScheduler _timerScheduler;
     private readonly ILogger<StudyRoomHub> _logger;
 
@@ -40,7 +39,6 @@ public class StudyRoomHub : Hub
         IStudySessionRepository sessionRepo,
         IDirectMessageRepository dmRepo,
         IUserRepository userRepo,
-        IUserStatsRepository statsRepo,
         ITimerScheduler timerScheduler,
         ILogger<StudyRoomHub> logger)
     {
@@ -49,7 +47,6 @@ public class StudyRoomHub : Hub
         _sessionRepo = sessionRepo;
         _dmRepo = dmRepo;
         _userRepo = userRepo;
-        _statsRepo = statsRepo;
         _timerScheduler = timerScheduler;
         _logger = logger;
     }
@@ -547,14 +544,6 @@ public class StudyRoomHub : Hub
             latest.DurationMinutes = ComputeElapsedMinutes(latest);
             latest.Completed = true;
             await _sessionRepo.UpdateAsync(latest);
-            try
-            {
-                await _statsRepo.RefreshAsync(UserId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[timer] stats refresh failed for user={UserId} after finalizing session {SessionId}", UserId, latest.Id);
-            }
             _logger.LogInformation("[timer] finalized session {SessionId} user={UserId} minutes={Minutes}", latest.Id, UserId, latest.DurationMinutes);
         }
         else
