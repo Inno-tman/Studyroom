@@ -28,7 +28,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(o =>
+    o.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
 builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 
