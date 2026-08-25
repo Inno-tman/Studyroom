@@ -19,6 +19,7 @@ public class StudyRoomHub : Hub
     private readonly IUserRepository _userRepo;
     private readonly IUserStatsRepository _statsRepo;
     private readonly ITimerScheduler _timerScheduler;
+    private readonly ILogger<StudyRoomHub> _logger;
 
     // Room-scoped: connectionId -> roomId
     private static readonly Dictionary<string, string> _onlineUsers = new();
@@ -40,7 +41,8 @@ public class StudyRoomHub : Hub
         IDirectMessageRepository dmRepo,
         IUserRepository userRepo,
         IUserStatsRepository statsRepo,
-        ITimerScheduler timerScheduler)
+        ITimerScheduler timerScheduler,
+        ILogger<StudyRoomHub> logger)
     {
         _messageRepo = messageRepo;
         _roomRepo = roomRepo;
@@ -49,6 +51,7 @@ public class StudyRoomHub : Hub
         _userRepo = userRepo;
         _statsRepo = statsRepo;
         _timerScheduler = timerScheduler;
+        _logger = logger;
     }
 
     private Guid UserId => Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -466,17 +469,20 @@ public class StudyRoomHub : Hub
             existing.RoomId = Guid.Parse(roomId);
             existing.StartedAt = DateTime.UtcNow;
             await _sessionRepo.UpdateAsync(existing);
+            _logger.LogInformation("[timer] StartTimer user={UserId} reused session {SessionId}", UserId, existing.Id);
         }
         else
         {
-            await _sessionRepo.AddAsync(new StudySession
+            var s = new StudySession
             {
                 UserId = UserId,
                 RoomId = Guid.Parse(roomId),
                 DurationMinutes = durationMinutes,
                 StartedAt = DateTime.UtcNow,
                 Completed = false
-            });
+            };
+            await _sessionRepo.AddAsync(s);
+            _logger.LogInformation("[timer] StartTimer user={UserId} created session {SessionId} room={RoomId} minutes={Minutes}", UserId, s.Id, roomId, durationMinutes);
         }
 
         _timerScheduler.ScheduleFocus(UserId, Guid.Parse(roomId), durationMinutes);
@@ -541,7 +547,19 @@ public class StudyRoomHub : Hub
             latest.DurationMinutes = ComputeElapsedMinutes(latest);
             latest.Completed = true;
             await _sessionRepo.UpdateAsync(latest);
-            await _statsRepo.RefreshAsync(UserId);
+            try
+            {
+                await _statsRepo.RefreshAsync(UserId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[timer] stats refresh failed for user={UserId} after finalizing session {SessionId}", UserId, latest.Id);
+            }
+            _logger.LogInformation("[timer] finalized session {SessionId} user={UserId} minutes={Minutes}", latest.Id, UserId, latest.DurationMinutes);
+        }
+        else
+        {
+            _logger.LogWarning("[timer] finalize found NO in-progress session for user={UserId}", UserId);
         }
     }
 

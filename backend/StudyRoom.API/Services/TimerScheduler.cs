@@ -89,6 +89,7 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
             var sessionRepo = scope.ServiceProvider.GetRequiredService<IStudySessionRepository>();
             var statsRepo = scope.ServiceProvider.GetRequiredService<IUserStatsRepository>();
             var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<TimerScheduler>>();
 
             if (!entry.IsBreak)
             {
@@ -103,7 +104,15 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
                     latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
                     latest.Completed = true;
                     await sessionRepo.UpdateAsync(latest);
-                    await statsRepo.RefreshAsync(entry.UserId);
+                    try
+                    {
+                        await statsRepo.RefreshAsync(entry.UserId);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "[timer-scheduler] stats refresh failed for user={UserId} session={SessionId}", entry.UserId, latest.Id);
+                    }
+                    logger.LogInformation("[timer-scheduler] finalized session {SessionId} user={UserId} minutes={Minutes}", latest.Id, entry.UserId, latest.DurationMinutes);
                 }
 
                 if (entry.RoomId.HasValue)
@@ -131,9 +140,16 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
                     "Time to get back to focus.", icon: "timer", link: "/dashboard");
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Best-effort: a failed notification must not crash the scheduler loop.
+            try
+            {
+                using var errorScope = _scopeFactory.CreateScope();
+                errorScope.ServiceProvider.GetRequiredService<ILogger<TimerScheduler>>()
+                    .LogError(ex, "[timer-scheduler] FireAsync failed for user={UserId} isBreak={IsBreak}", entry.UserId, entry.IsBreak);
+            }
+            catch { }
         }
     }
 
