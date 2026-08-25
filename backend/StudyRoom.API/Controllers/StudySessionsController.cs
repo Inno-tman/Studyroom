@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using StudyRoom.API.Hubs;
 using StudyRoom.API.Models;
 using StudyRoom.API.Repositories;
+using StudyRoom.API.Services;
 
 namespace StudyRoom.API.Controllers;
 
@@ -15,11 +16,19 @@ public class StudySessionsController : ControllerBase
 {
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IHubContext<StudyRoomHub> _hubContext;
+    private readonly INotificationService _notificationService;
+    private readonly ITimerScheduler _timerScheduler;
 
-    public StudySessionsController(IStudySessionRepository sessionRepo, IHubContext<StudyRoomHub> hubContext)
+    public StudySessionsController(
+        IStudySessionRepository sessionRepo,
+        IHubContext<StudyRoomHub> hubContext,
+        INotificationService notificationService,
+        ITimerScheduler timerScheduler)
     {
         _sessionRepo = sessionRepo;
         _hubContext = hubContext;
+        _notificationService = notificationService;
+        _timerScheduler = timerScheduler;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -49,6 +58,8 @@ public class StudySessionsController : ControllerBase
             await _sessionRepo.AddAsync(s);
         }
 
+        _timerScheduler.ScheduleFocus(UserId, Guid.Parse(request.RoomId), request.DurationMinutes);
+
         await _hubContext.Clients.Group("room_" + request.RoomId)
             .SendAsync("TimerStarted", new
             {
@@ -75,18 +86,45 @@ public class StudySessionsController : ControllerBase
         latest.Completed = true;
         await _sessionRepo.UpdateAsync(latest);
 
+        _timerScheduler.Cancel(UserId);
+
         if (!string.IsNullOrEmpty(request.RoomId))
         {
             await _hubContext.Clients.Group("room_" + request.RoomId)
                 .SendAsync("TimerCompleted", new { roomId = request.RoomId, completedBy = Username });
         }
 
+        await _notificationService.CreateAsync(
+            UserId, "timer", "Focus session complete",
+            "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
+
         return Ok(new { success = true, durationMinutes = latest.DurationMinutes });
+    }
+
+    [HttpPost("start-break")]
+    public async Task<IActionResult> StartBreak([FromBody] BreakRequest request)
+    {
+        _timerScheduler.ScheduleBreak(UserId, Guid.Parse(request.RoomId), request.DurationMinutes, request.IsLong);
+
+        await _hubContext.Clients.Group("room_" + request.RoomId)
+            .SendAsync("TimerStarted", new
+            {
+                roomId = request.RoomId,
+                durationMinutes = request.DurationMinutes,
+                isBreak = true,
+                isLong = request.IsLong,
+                startedBy = Username,
+                startedAt = DateTime.UtcNow
+            });
+
+        return Ok(new { success = true });
     }
 
     [HttpPost("reset")]
     public async Task<IActionResult> ResetSession([FromBody] SessionRequest request)
     {
+        _timerScheduler.Cancel(UserId);
+
         var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
         var latest = sessions.FirstOrDefault(s => !s.Completed);
         if (latest != null)
@@ -110,6 +148,8 @@ public class StudySessionsController : ControllerBase
     [HttpPost("pause")]
     public async Task<IActionResult> PauseSession([FromBody] SessionRequest request)
     {
+        _timerScheduler.Cancel(UserId);
+
         var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
         var latest = sessions.FirstOrDefault(s => !s.Completed);
         if (latest != null)
@@ -140,4 +180,11 @@ public class StartSessionRequest
 {
     public string RoomId { get; set; } = "";
     public int DurationMinutes { get; set; }
+}
+
+public class BreakRequest
+{
+    public string RoomId { get; set; } = "";
+    public int DurationMinutes { get; set; }
+    public bool IsLong { get; set; }
 }

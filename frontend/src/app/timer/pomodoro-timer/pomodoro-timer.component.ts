@@ -176,9 +176,10 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
             error: err => console.error('[timer] startSession HTTP failed', err)
           });
         }
+        // Breaks schedule the server timer for end-of-break notification
+        // but do NOT create DB sessions — only focus counts toward study time.
         if (breakBegan) {
-          this.isSynced = true;
-          this.statsService.startSession(this.roomId, s.isLongBreak ? s.longBreakDuration : s.breakDuration).subscribe({
+          this.statsService.startBreak(this.roomId, s.isLongBreak ? s.longBreakDuration : s.breakDuration, s.isLongBreak).subscribe({
             error: err => console.error('[timer] startBreak HTTP failed', err)
           });
         }

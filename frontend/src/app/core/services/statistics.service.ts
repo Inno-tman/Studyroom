@@ -23,6 +23,10 @@ export class StatisticsService {
     return this.http.post(`${environment.apiUrl}/study-sessions/start`, { roomId, durationMinutes });
   }
 
+  startBreak(roomId: string, durationMinutes: number, isLong: boolean): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/study-sessions/start-break`, { roomId, durationMinutes, isLong });
+  }
+
   pauseSession(roomId: string): Observable<any> {
     return this.http.post(`${environment.apiUrl}/study-sessions/pause`, { roomId });
   }
