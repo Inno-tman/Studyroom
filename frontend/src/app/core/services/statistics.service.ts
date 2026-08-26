@@ -139,4 +139,28 @@ export class StatisticsService {
   getRecommendations(): Observable<Recommendation[]> {
     return this.http.get<Recommendation[]>(`${environment.apiUrl}/users/recommendations`);
   }
+
+  getAnalyticsOverview(): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/analytics/overview`);
+  }
+
+  getRoomBreakdown(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/analytics/rooms`);
+  }
+
+  getDailyTrend(days: number = 30): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/analytics/trend`, { params: { days } });
+  }
+
+  getHourlyDistribution(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/analytics/hourly`);
+  }
+
+  getWeeklyGoals(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/analytics/weekly-goals`);
+  }
+
+  setWeeklyGoal(targetMinutes: number): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/analytics/weekly-goals`, { targetMinutes });
+  }
 }

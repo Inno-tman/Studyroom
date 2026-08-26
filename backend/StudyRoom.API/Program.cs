@@ -198,6 +198,7 @@ builder.Services.AddScoped<IMilestoneService, MilestoneService>();
 builder.Services.AddScoped<IWeeklySummaryService, WeeklySummaryService>();
 builder.Services.AddScoped<INudgeService, NudgeService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 var app = builder.Build();
 
@@ -480,6 +481,18 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE INDEX IF NOT EXISTS "IX_TabSwitchEvents_SessionId" ON "TabSwitchEvents" ("SessionId");
         CREATE INDEX IF NOT EXISTS "IX_TabSwitchEvents_UserId" ON "TabSwitchEvents" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "WeeklyGoals" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "WeekNumber" integer NOT NULL,
+            "Year" integer NOT NULL,
+            "TargetMinutes" numeric NOT NULL,
+            "ActualMinutes" numeric NOT NULL,
+            CONSTRAINT "PK_WeeklyGoals" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_WeeklyGoals_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_WeeklyGoals_UserId" ON "WeeklyGoals" ("UserId");
     """);
 }
 

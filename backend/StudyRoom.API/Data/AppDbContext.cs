@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
     public DbSet<UserMilestone> UserMilestones => Set<UserMilestone>();
     public DbSet<TabSwitchEvent> TabSwitchEvents => Set<TabSwitchEvent>();
+    public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
