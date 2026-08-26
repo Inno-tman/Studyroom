@@ -20,6 +20,9 @@ public class Room
 
     public bool IsPrivate { get; set; }
 
+    [MaxLength(500)]
+    public string? BackgroundUrl { get; set; }
+
     [MaxLength(10)]
     public string? JoinCode { get; set; }
 

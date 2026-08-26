@@ -114,19 +114,22 @@ async markRead(id: string): Promise<void> {
   playSound(): void {
     if (!this.settings.prefs().notificationSound) return;
     if (this.settings.isQuietHour()) return;
+    const type = this.settings.prefs().soundType;
+    if (type === 'none') return;
+    const vol = this.settings.prefs().soundVolume;
     try {
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       const ctx = new Ctx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.type = type === 'soft' ? 'sine' : type === 'bell' ? 'triangle' : 'sine';
+      osc.frequency.value = type === 'bell' ? 1200 : type === 'soft' ? 440 : 880;
+      gain.gain.setValueAtTime(0.08 * vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (type === 'soft' ? 0.6 : 0.4));
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.4);
+      osc.stop(ctx.currentTime + (type === 'soft' ? 0.6 : 0.4));
     } catch { }
   }
 
@@ -142,20 +145,23 @@ async markRead(id: string): Promise<void> {
    * AudioContext is suspended by the browser's autoplay policy.
    */
   private playChime(): void {
+    const type = this.settings.prefs().soundType;
+    if (type === 'none') return;
+    const vol = this.settings.prefs().soundVolume;
     try {
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       const ctx = new Ctx();
       if (ctx.state === 'suspended') ctx.resume().catch(() => {});
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.type = type === 'soft' ? 'sine' : type === 'bell' ? 'triangle' : 'sine';
+      osc.frequency.value = type === 'bell' ? 1200 : type === 'soft' ? 440 : 880;
+      gain.gain.setValueAtTime(0.12 * vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (type === 'soft' ? 0.8 : 0.6));
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.6);
+      osc.stop(ctx.currentTime + (type === 'soft' ? 0.8 : 0.6));
     } catch {
       // AudioContext blocked — try a <audio> element as fallback
       try {

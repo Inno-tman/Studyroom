@@ -2,7 +2,9 @@ import { Component, inject, OnInit, OnDestroy, ViewChild, ElementRef, HostListen
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { RoomService } from '../../core/services/room.service';
 import { MeetingService } from '../../core/services/meeting.service';
 import { SignalRService } from '../../core/services/signalr.service';
@@ -39,9 +41,9 @@ const TABS: RoomTab[] = [
   standalone: true,
   imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent, MeetingRoomComponent],
   template: `
-    <div class="room-detail">
+    <div class="room-detail" [style.background-image]="room?.backgroundUrl ? 'url(' + room?.backgroundUrl + ')' : 'none'">
       <!-- ── Header ─────────────────────────────────────────── -->
-      <div class="room-header">
+      <div class="room-header" [class.has-bg]="room?.backgroundUrl">
         <div class="room-info">
           <a routerLink="/rooms" class="back-link">
             <span class="material-icons">arrow_back</span>
@@ -79,6 +81,10 @@ const TABS: RoomTab[] = [
             <span class="material-icons">smart_display</span>
             Broadcast
           </button>
+          <label *ngIf="isMember && isHost" class="btn-outline bg-upload-btn" title="Change room background">
+            <span class="material-icons">image</span>
+            <input type="file" accept="image/*" (change)="onBackgroundUpload($event)" hidden />
+          </label>
           <button *ngIf="isMember" class="btn-outline-danger" (click)="leaveRoom()">Leave</button>
         </div>
       </div>
@@ -519,7 +525,10 @@ const TABS: RoomTab[] = [
   `,
   styles: [`
     :host { display: block; }
-    .room-detail { max-width: 1200px; margin: 0 auto; }
+    .room-detail { max-width: 1200px; margin: 0 auto; background-size: cover; background-position: center; background-repeat: no-repeat; position: relative; border-radius: 16px; overflow: hidden; }
+    .room-detail::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0.25); pointer-events: none; z-index: 0; }
+    .room-detail > * { position: relative; z-index: 1; }
+    .room-header.has-bg { background: rgba(255,255,255,0.08); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
     /* ── Header ─────────────────────────────────────────────── */
     .room-header { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
@@ -1084,6 +1093,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
   private ytPlayerSvc = inject(YouTubeBroadcastService);
   private statsService = inject(StatisticsService);
+  private http = inject(HttpClient);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
 
@@ -1386,6 +1396,23 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   async copyRoomLink() {
     if (!this.room?.joinCode) { this.showSnack('Join code unavailable'); return; }
     await this.copyText(this.roomInviteLink(), 'Room invite link copied');
+  }
+
+  onBackgroundUpload(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length || !this.roomId) return;
+    const file = input.files[0];
+    if (file.size > 5 * 1024 * 1024) { this.showSnack('Max 5MB'); return; }
+    const formData = new FormData();
+    formData.append('file', file);
+    this.http.post<{ url: string }>(`${environment.apiUrl}/rooms/${this.roomId}/background`, formData).subscribe({
+      next: res => {
+        if (this.room) this.room.backgroundUrl = res.url;
+        this.showSnack('Background updated');
+      },
+      error: () => this.showSnack('Upload failed')
+    });
+    input.value = '';
   }
 
   formatDuration(minutes: number): string {

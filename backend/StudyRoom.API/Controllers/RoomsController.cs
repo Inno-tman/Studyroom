@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StudyRoom.API.Data;
 using StudyRoom.API.DTOs.Rooms;
 using StudyRoom.API.Services;
 
@@ -12,8 +13,15 @@ namespace StudyRoom.API.Controllers;
 public class RoomsController : ControllerBase
 {
     private readonly IRoomService _roomService;
+    private readonly AppDbContext _context;
+    private readonly IWebHostEnvironment _env;
 
-    public RoomsController(IRoomService roomService) => _roomService = roomService;
+    public RoomsController(IRoomService roomService, AppDbContext context, IWebHostEnvironment env)
+    {
+        _roomService = roomService;
+        _context = context;
+        _env = env;
+    }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -155,6 +163,37 @@ public class RoomsController : ControllerBase
     {
         var rooms = await _roomService.GetUserRoomsAsync(UserId);
         return Ok(rooms);
+    }
+
+    [HttpPost("{id}/background")]
+    public async Task<IActionResult> UploadBackground(Guid id, IFormFile file)
+    {
+        var room = await _context.Rooms.FindAsync(id);
+        if (room == null) return NotFound();
+        if (room.CreatedBy != UserId) return Forbid();
+        if (file == null || file.Length == 0) return BadRequest("No file");
+        if (file.Length > 5 * 1024 * 1024) return BadRequest("Max 5MB");
+
+        var ext = Path.GetExtension(file.FileName).ToLower();
+        if (!new[] { ".jpg", ".jpeg", ".png", ".webp" }.Contains(ext))
+            return BadRequest("Only JPG, PNG, WebP allowed");
+
+        var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "rooms");
+        Directory.CreateDirectory(uploadsDir);
+
+        var fileName = $"{id}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var url = $"/uploads/rooms/{fileName}";
+        room.BackgroundUrl = url;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { url });
     }
 }
 

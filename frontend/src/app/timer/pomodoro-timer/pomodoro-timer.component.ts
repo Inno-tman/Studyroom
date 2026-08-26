@@ -1,5 +1,5 @@
 import { Component, Input, OnInit, OnDestroy, inject } from '@angular/core';
-import { NgIf, NgClass } from '@angular/common';
+import { NgIf, NgClass, NgFor } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TimerService, TimerState } from '../../core/services/timer.service';
 import { SignalRService } from '../../core/services/signalr.service';
@@ -11,7 +11,7 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-pomodoro-timer',
   standalone: true,
-  imports: [NgIf, NgClass, FormsModule],
+  imports: [NgIf, NgClass, NgFor, FormsModule],
   template: `
     <div class="timer-card">
       <div class="timer-header">

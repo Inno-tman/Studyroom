@@ -43,6 +43,39 @@ type BoolPrefKey = {
         </button>
       </div>
 
+      <div class="sound-options" *ngIf="settings.prefs().notificationSound">
+        <div class="pref-row">
+          <div class="pref-info">
+            <span class="material-icons pref-icon">music_note</span>
+            <div>
+              <div class="pref-name">Sound Type</div>
+              <div class="pref-desc">Choose your notification sound.</div>
+            </div>
+          </div>
+          <select class="sound-select" [ngModel]="settings.prefs().soundType" (ngModelChange)="settings.updatePrefs({ soundType: $event })">
+            <option value="chime">Chime</option>
+            <option value="bell">Bell</option>
+            <option value="soft">Soft</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="pref-row">
+          <div class="pref-info">
+            <span class="material-icons pref-icon">volume_down</span>
+            <div>
+              <div class="pref-name">Volume</div>
+              <div class="pref-desc">Adjust notification sound volume.</div>
+            </div>
+          </div>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.1"
+            [ngModel]="settings.prefs().soundVolume"
+            (ngModelChange)="settings.updatePrefs({ soundVolume: $event })" />
+        </div>
+        <button class="test-sound-btn" (click)="testSound()">
+          <span class="material-icons">play_circle</span> Test Sound
+        </button>
+      </div>
+
       <div class="pref-row">
         <div class="pref-info">
           <span class="material-icons pref-icon">preview</span>
@@ -174,6 +207,22 @@ type BoolPrefKey = {
 
     .quiet-hours input:focus { border-color: var(--primary); }
 
+    .sound-options { padding-left: 36px; display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+    .sound-select {
+      padding: 8px 12px; background: var(--background); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); outline: none;
+    }
+    .sound-select:focus { border-color: var(--primary); }
+    .volume-slider { width: 120px; accent-color: var(--primary); }
+    .test-sound-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-secondary); font-size: var(--font-13); font-weight: 600;
+      cursor: pointer; transition: all 0.15s; width: fit-content;
+    }
+    .test-sound-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .test-sound-btn .material-icons { font-size: 18px; }
+
     @media (max-width: 480px) {
       .pref-row { flex-direction: column; align-items: flex-start; }
       .quiet-hours { padding-left: 0; }
@@ -205,5 +254,9 @@ export class NotificationsSettingsComponent {
     if (key === 'desktopNotifications' && next) {
       this.notificationService.requestPermission();
     }
+  }
+
+  testSound(): void {
+    this.notificationService.playSound();
   }
 }

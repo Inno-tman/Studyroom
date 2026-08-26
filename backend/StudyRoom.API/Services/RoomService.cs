@@ -180,6 +180,7 @@ public class RoomService : IRoomService
             JoinCode = userId.HasValue && (room.CreatedBy == userId || room.Members?.Any(m => m.UserId == userId) == true)
                 ? room.JoinCode
                 : null,
+            BackgroundUrl = room.BackgroundUrl,
             CreatedByUsername = room.Creator?.Username ?? "Unknown",
             CreatedById = room.CreatedBy,
             MemberCount = room.Members?.Count ?? 0,

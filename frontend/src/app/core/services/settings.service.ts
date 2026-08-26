@@ -15,6 +15,8 @@ export interface NotificationPrefs {
   weeklySummary: boolean;
   desktopNotifications: boolean;
   notificationSound: boolean;
+  soundType: 'chime' | 'bell' | 'soft' | 'none';
+  soundVolume: number;
   showMessagePreviews: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;
@@ -131,6 +133,8 @@ export class SettingsService {
       weeklySummary: false,
       desktopNotifications: true,
       notificationSound: true,
+      soundType: 'chime',
+      soundVolume: 0.8,
       showMessagePreviews: true,
       quietHoursEnabled: false,
       quietHoursStart: '22:00',

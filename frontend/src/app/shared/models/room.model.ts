@@ -12,6 +12,7 @@ export interface Room {
   subject?: string;
   isPrivate: boolean;
   joinCode?: string;
+  backgroundUrl?: string;
   createdByUsername: string;
   createdById: string;
   memberCount: number;

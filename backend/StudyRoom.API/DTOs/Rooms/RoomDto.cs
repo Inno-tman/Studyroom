@@ -8,6 +8,7 @@ public class RoomDto
     public string? Subject { get; set; }
     public bool IsPrivate { get; set; }
     public string? JoinCode { get; set; }
+    public string? BackgroundUrl { get; set; }
     public string CreatedByUsername { get; set; } = string.Empty;
     public Guid CreatedById { get; set; }
     public int MemberCount { get; set; }
