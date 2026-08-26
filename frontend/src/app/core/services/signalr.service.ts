@@ -37,6 +37,9 @@ export class SignalRService {
   private videoControlSubject = new Subject<any>();
   private videoStoppedSubject = new Subject<any>();
 
+  // Phase 2a – focus count
+  private focusCountUpdatedSubject = new Subject<any>();
+
   message$ = this.messageSubject.asObservable();
   userJoined$ = this.userJoinedSubject.asObservable();
   userLeft$ = this.userLeftSubject.asObservable();
@@ -63,6 +66,7 @@ export class SignalRService {
   videoBroadcast$ = this.videoBroadcastSubject.asObservable();
   videoControl$ = this.videoControlSubject.asObservable();
   videoStopped$ = this.videoStoppedSubject.asObservable();
+  focusCountUpdated$ = this.focusCountUpdatedSubject.asObservable();
 
   constructor(private authService: AuthService) {}
 
@@ -118,6 +122,7 @@ export class SignalRService {
     this.hubConnection.on('VideoBroadcast', (data: any) => this.videoBroadcastSubject.next(data));
     this.hubConnection.on('VideoControl', (data: any) => this.videoControlSubject.next(data));
     this.hubConnection.on('VideoStopped', (data: any) => this.videoStoppedSubject.next(data));
+    this.hubConnection.on('FocusCountUpdated', (data: any) => this.focusCountUpdatedSubject.next(data));
 
     await this.hubConnection.start();
   }

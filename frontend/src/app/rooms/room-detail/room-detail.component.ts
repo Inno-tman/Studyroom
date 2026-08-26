@@ -50,6 +50,10 @@ const TABS: RoomTab[] = [
           <div class="room-badges">
             <span class="subject-badge">{{ room?.subject || 'General' }}</span>
             <span class="members-badge">{{ room?.memberCount }} members</span>
+            <span class="focus-badge" *ngIf="focusCount > 0">
+              <span class="material-icons">local_fire_department</span>
+              {{ focusCount }} focusing
+            </span>
             <span *ngIf="room?.isPrivate" class="private-badge">Private</span>
           </div>
           <p class="room-description" *ngIf="room?.description">{{ room?.description }}</p>
@@ -482,6 +486,17 @@ const TABS: RoomTab[] = [
     .subject-badge { background: rgba(56, 189, 248, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; }
     .members-badge { background: rgba(34, 197, 94, 0.1); color: var(--success); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; }
     .private-badge { background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600; }
+    .focus-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(239, 68, 68, 0.1); color: var(--error);
+      padding: 4px 8px; border-radius: 6px; font-size: var(--font-11); font-weight: 600;
+      animation: focusPulse 2s ease-in-out infinite;
+    }
+    .focus-badge .material-icons { font-size: 14px; }
+    @keyframes focusPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
 
     .room-description { font-size: var(--font-13); color: var(--text-secondary); }
 
@@ -974,6 +989,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   messages: Message[] = [];
   members: UserDto[] = [];
   onlineUsers: string[] = [];
+  focusCount = 0;
   newMessage = '';
   isMember = false;
   joining = false;
@@ -1025,6 +1041,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private nowTicker?: any;
 
   private notesSub?: Subscription;
+  private focusSub?: Subscription;
 
   @HostListener('window:resize')
   onResize() {
@@ -1472,6 +1489,12 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
         this.onlineUsers = users;
       });
 
+      this.focusSub = this.signalR.focusCountUpdated$.subscribe((data: any) => {
+        if (data.roomId === this.roomId) {
+          this.focusCount = data.focusCount;
+        }
+      });
+
       this.videoSubs.push(
         this.signalR.videoBroadcast$.subscribe(data => {
           if (data.roomId === this.roomId) this.startPlayer(data);
@@ -1561,6 +1584,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.notesSub?.unsubscribe();
+    this.focusSub?.unsubscribe();
     this.videoSubs.forEach(s => s?.unsubscribe());
     if (this.nowTicker) clearInterval(this.nowTicker);
     this.inCall = false;

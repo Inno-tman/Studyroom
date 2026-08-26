@@ -34,6 +34,11 @@ public class StudyRoomHub : Hub
     // Room-scoped YouTube broadcast: roomId -> current video state
     private static readonly Dictionary<string, RoomVideoState> _roomVideos = new();
 
+    // Phase 2a – focus count: roomId -> set of userIds actively focusing
+    private static readonly Dictionary<string, HashSet<string>> _roomFocusUsers = new();
+    // connectionId -> roomId (which room this connection is focusing in)
+    private static readonly Dictionary<string, string> _focusConnections = new();
+
     public StudyRoomHub(
         IMessageRepository messageRepo,
         IRoomRepository roomRepo,
@@ -486,6 +491,13 @@ public class StudyRoomHub : Hub
         }
 
         _timerScheduler.ScheduleFocus(UserId, Guid.Parse(roomId), durationMinutes);
+
+        // Phase 2a – focus count tracking
+        TrackFocusStart(roomId);
+        await BroadcastFocusCount(roomId);
+
+        // Phase 2b – notify friends in the same room
+        _ = NotifyFriendsInRoomAsync(roomId);
     }
 
     public async Task StartBreak(string roomId, int durationMinutes, bool isLong)
@@ -513,6 +525,9 @@ public class StudyRoomHub : Hub
 
         await FinalizeActiveSessionAsync();
         _timerScheduler.Cancel(UserId);
+
+        TrackFocusEnd();
+        await BroadcastFocusCount(roomId);
     }
 
     public async Task ResetTimer(string roomId)
@@ -525,6 +540,9 @@ public class StudyRoomHub : Hub
 
         await FinalizeActiveSessionAsync();
         _timerScheduler.Cancel(UserId);
+
+        TrackFocusEnd();
+        await BroadcastFocusCount(roomId);
     }
 
     public async Task TimerCompleted(string roomId)
@@ -537,6 +555,9 @@ public class StudyRoomHub : Hub
 
         _timerScheduler.Cancel(UserId);
         await FinalizeActiveSessionAsync();
+
+        TrackFocusEnd();
+        await BroadcastFocusCount(roomId);
 
         await _notificationService.CreateAsync(
             UserId, "timer", "Focus session complete",
@@ -730,6 +751,22 @@ public class StudyRoomHub : Hub
     {
         var uid = UserId.ToString();
 
+        // Phase 2a – clean up focus tracking on disconnect
+        if (_focusConnections.TryGetValue(Context.ConnectionId, out var focusRoom))
+        {
+            _focusConnections.Remove(Context.ConnectionId);
+            lock (_roomFocusUsers)
+            {
+                if (_roomFocusUsers.TryGetValue(focusRoom, out var fset))
+                {
+                    fset.Remove(uid);
+                    if (fset.Count == 0)
+                        _roomFocusUsers.Remove(focusRoom);
+                }
+            }
+            _ = BroadcastFocusCount(focusRoom);
+        }
+
         // Clean up any calls this user is part of.
         var callsToClose = new List<(string PeerId, string CallId)>();
         lock (_calls)
@@ -829,6 +866,100 @@ public class StudyRoomHub : Hub
     private static string GetGroupName(string roomId) => $"room_{roomId}";
 
     private static string GetUserGroup(string userId) => $"user_{userId}";
+
+    private void TrackFocusStart(string roomId)
+    {
+        var uid = UserId.ToString();
+        lock (_roomFocusUsers)
+        {
+            if (!_roomFocusUsers.TryGetValue(roomId, out var set))
+            {
+                set = new HashSet<string>();
+                _roomFocusUsers[roomId] = set;
+            }
+            set.Add(uid);
+        }
+        lock (_focusConnections)
+        {
+            _focusConnections[Context.ConnectionId] = roomId;
+        }
+    }
+
+    private void TrackFocusEnd()
+    {
+        var uid = UserId.ToString();
+        lock (_focusConnections)
+        {
+            if (_focusConnections.TryGetValue(Context.ConnectionId, out var roomId))
+            {
+                _focusConnections.Remove(Context.ConnectionId);
+                lock (_roomFocusUsers)
+                {
+                    if (_roomFocusUsers.TryGetValue(roomId, out var set))
+                    {
+                        set.Remove(uid);
+                        if (set.Count == 0)
+                            _roomFocusUsers.Remove(roomId);
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task BroadcastFocusCount(string roomId)
+    {
+        int count;
+        lock (_roomFocusUsers)
+        {
+            count = _roomFocusUsers.TryGetValue(roomId, out var set) ? set.Count : 0;
+        }
+        await Clients.Group(GetGroupName(roomId)).SendAsync("FocusCountUpdated", new
+        {
+            roomId,
+            focusCount = count
+        });
+    }
+
+    /// <summary>
+    /// Phase 2b – when a user starts studying, notify accepted friends who are
+    /// members of the same room that someone they know just started focusing.
+    /// </summary>
+    private async Task NotifyFriendsInRoomAsync(string roomId)
+    {
+        try
+        {
+            using var scope = Context.GetHttpContext()!.RequestServices.CreateScope();
+            var friendshipRepo = scope.ServiceProvider.GetRequiredService<IFriendshipRepository>();
+            var roomRepo = scope.ServiceProvider.GetRequiredService<IRoomRepository>();
+
+            var friendships = await friendshipRepo.GetFriendIdsAsync(UserId);
+            var friendIds = friendships
+                .Select(f => f.RequesterId == UserId ? f.AddresseeId : f.RequesterId)
+                .ToHashSet();
+
+            if (friendIds.Count == 0) return;
+
+            var members = await roomRepo.GetMembersAsync(Guid.Parse(roomId));
+            var friendsInRoom = members.Where(m => friendIds.Contains(m.Id)).ToList();
+
+            foreach (var friend in friendsInRoom)
+            {
+                await _notificationService.CreateAsync(
+                    friend.Id,
+                    "social",
+                    "Someone you know is studying",
+                    $"{Username} just started a focus session in this room.",
+                    icon: "people",
+                    actorId: UserId,
+                    actorName: Username,
+                    link: $"/rooms/{roomId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[focus] Failed to send friend activity alerts for room {RoomId}", roomId);
+        }
+    }
 }
 
 public class CallState
