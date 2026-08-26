@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using StudyRoom.API.Hubs;
+using StudyRoom.API.DTOs.Statistics;
 using StudyRoom.API.Models;
 using StudyRoom.API.Repositories;
 using StudyRoom.API.Services;
@@ -15,6 +16,7 @@ namespace StudyRoom.API.Controllers;
 public class StudySessionsController : ControllerBase
 {
     private readonly IStudySessionRepository _sessionRepo;
+    private readonly IRoomRepository _roomRepo;
     private readonly IHubContext<StudyRoomHub> _hubContext;
     private readonly INotificationService _notificationService;
     private readonly ITimerScheduler _timerScheduler;
@@ -22,12 +24,14 @@ public class StudySessionsController : ControllerBase
 
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
+        IRoomRepository roomRepo,
         IHubContext<StudyRoomHub> hubContext,
         INotificationService notificationService,
         ITimerScheduler timerScheduler,
         ISessionValidationService validation)
     {
         _sessionRepo = sessionRepo;
+        _roomRepo = roomRepo;
         _hubContext = hubContext;
         _notificationService = notificationService;
         _timerScheduler = timerScheduler;
@@ -215,6 +219,42 @@ public class StudySessionsController : ControllerBase
         await _sessionRepo.UpdateAsync(session);
 
         return Ok(new { success = true });
+    }
+
+    [HttpGet("room/{roomId}/leaderboard")]
+    public async Task<IActionResult> GetRoomLeaderboard(Guid roomId)
+    {
+        var entries = await _sessionRepo.GetRoomLeaderboardAsync(roomId);
+        var result = entries.Select((e, i) => new LeaderboardEntryDto
+        {
+            UserId = e.UserId.ToString(),
+            Username = e.Username,
+            AvatarUrl = e.AvatarUrl,
+            VerifiedMinutes = Math.Round(e.VerifiedMinutes, 2),
+            Sessions = e.Sessions,
+            Streak = e.Streak,
+            Rank = i + 1
+        }).ToList();
+        return Ok(result);
+    }
+
+    [HttpGet("room/{roomId}/collective")]
+    public async Task<IActionResult> GetRoomCollectiveStats(Guid roomId)
+    {
+        var minutes = await _sessionRepo.GetRoomCollectiveMinutesAsync(roomId);
+        var sessions = await _sessionRepo.GetRoomCollectiveSessionsAsync(roomId);
+        var memberCount = await _roomRepo.GetMemberCountAsync(roomId);
+
+        // default goal: 10h per member per week, minimum 50h
+        var goalMinutes = Math.Max(50m * 60, memberCount * 10m * 60);
+
+        return Ok(new RoomCollectiveStatsDto
+        {
+            TotalMinutes = Math.Round(minutes, 2),
+            TotalSessions = sessions,
+            MemberCount = memberCount,
+            GoalMinutes = goalMinutes
+        });
     }
 }
 

@@ -12,6 +12,24 @@ export interface CompleteSessionResult {
   verifiedReason?: string;
 }
 
+export interface LeaderboardEntry {
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  verifiedMinutes: number;
+  sessions: number;
+  streak: number;
+  rank: number;
+}
+
+export interface RoomCollectiveStats {
+  totalMinutes: number;
+  totalSessions: number;
+  memberCount: number;
+  goalMinutes: number;
+  progress: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatisticsService {
   constructor(private http: HttpClient) {}
@@ -45,5 +63,13 @@ export class StatisticsService {
 
   updateSessionNotes(sessionId: string, notes: string): Observable<any> {
     return this.http.patch(`${environment.apiUrl}/study-sessions/${sessionId}/notes`, { notes });
+  }
+
+  getRoomLeaderboard(roomId: string): Observable<LeaderboardEntry[]> {
+    return this.http.get<LeaderboardEntry[]>(`${environment.apiUrl}/study-sessions/room/${roomId}/leaderboard`);
+  }
+
+  getRoomCollectiveStats(roomId: string): Observable<RoomCollectiveStats> {
+    return this.http.get<RoomCollectiveStats>(`${environment.apiUrl}/study-sessions/room/${roomId}/collective`);
   }
 }

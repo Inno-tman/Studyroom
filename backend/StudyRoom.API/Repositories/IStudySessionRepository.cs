@@ -14,4 +14,9 @@ public interface IStudySessionRepository
     Task<List<StudySession>> GetStaleSessionsAsync(DateTime olderThan);
     Task<int> GetCompletedTodayCountAsync(Guid userId);
     Task<int> GetUnverifiedCountAsync(Guid userId);
+
+    // Phase 3 — leaderboard & collective stats
+    Task<List<(Guid UserId, string Username, string? AvatarUrl, decimal VerifiedMinutes, int Sessions, int Streak)>> GetRoomLeaderboardAsync(Guid roomId, int take = 10);
+    Task<decimal> GetRoomCollectiveMinutesAsync(Guid roomId);
+    Task<int> GetRoomCollectiveSessionsAsync(Guid roomId);
 }

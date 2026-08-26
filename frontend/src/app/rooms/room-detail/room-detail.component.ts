@@ -8,6 +8,7 @@ import { MeetingService } from '../../core/services/meeting.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { ChatService } from '../../core/services/chat.service';
 import { NotesService } from '../../core/services/notes.service';
+import { StatisticsService, LeaderboardEntry, RoomCollectiveStats } from '../../core/services/statistics.service';
 import { AuthService } from '../../core/services/auth.service';
 import { InvitationService } from '../../core/services/invitation.service';
 import { FriendService } from '../../core/services/friend.service';
@@ -104,6 +105,53 @@ const TABS: RoomTab[] = [
               <span class="material-icons">shield</span>
               <span class="invite-chip-label">{{ isMobile ? 'Roles' : '' }}</span>
             </button>
+          </div>
+        </div>
+
+        <!-- ── Weekly leaderboard + collective progress ─────── -->
+        <div class="leaderboard-section" *ngIf="isMember && leaderboard.length > 0">
+          <div class="leaderboard-header">
+            <span class="material-icons">emoji_events</span>
+            <span class="leaderboard-title">Weekly Leaderboard</span>
+            <span class="leaderboard-sub">Last 7 days · verified minutes</span>
+          </div>
+
+          <div class="collective-progress" *ngIf="collectiveStats">
+            <div class="collective-label">
+              <span>Group Focus</span>
+              <span class="collective-amount">{{ formatDuration(collectiveStats.totalMinutes) }} / {{ formatDuration(collectiveStats.goalMinutes) }} goal</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="collectiveStats.progress"></div>
+            </div>
+            <div class="collective-meta">
+              {{ collectiveStats.totalSessions }} sessions this week · {{ collectiveStats.memberCount }} members
+            </div>
+          </div>
+
+          <div class="leaderboard-list">
+            <div class="leaderboard-row" *ngFor="let entry of leaderboard; let i = index">
+              <span class="lb-rank" [class]="'rank-' + entry.rank">
+                <ng-container *ngIf="entry.rank === 1">🥇</ng-container>
+                <ng-container *ngIf="entry.rank === 2">🥈</ng-container>
+                <ng-container *ngIf="entry.rank === 3">🥉</ng-container>
+                <ng-container *ngIf="entry.rank > 3">{{ entry.rank }}</ng-container>
+              </span>
+              <div class="lb-avatar" [class.has-image]="entry.avatarUrl">
+                <img *ngIf="entry.avatarUrl; else lbInitial" [src]="entry.avatarUrl" alt="" />
+                <ng-template #lbInitial>{{ entry.username.charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <div class="lb-info">
+                <span class="lb-name">{{ entry.username }}</span>
+                <span class="lb-sessions">{{ entry.sessions }} sessions</span>
+              </div>
+              <div class="lb-stats">
+                <span class="lb-minutes">{{ formatDuration(entry.verifiedMinutes) }}</span>
+                <span class="lb-streak" *ngIf="entry.streak > 1">
+                  <span class="material-icons">local_fire_department</span>{{ entry.streak }}d
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -547,6 +595,60 @@ const TABS: RoomTab[] = [
     .invite-chip:hover { background: rgba(56, 189, 248, 0.1); }
     .invite-chip .material-icons { font-size: var(--font-16); }
 
+    /* ── Leaderboard + collective progress ────────────────────── */
+    .leaderboard-section {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .leaderboard-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    }
+    .leaderboard-header .material-icons { color: #f59e0b; font-size: 20px; }
+    .leaderboard-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .leaderboard-sub { font-size: var(--font-11); color: var(--text-muted); margin-left: auto; }
+
+    .collective-progress { margin-bottom: 14px; }
+    .collective-label {
+      display: flex; justify-content: space-between; font-size: var(--font-12);
+      color: var(--text-secondary); margin-bottom: 4px;
+    }
+    .collective-amount { font-weight: 600; }
+    .progress-bar {
+      width: 100%; height: 8px; background: var(--background); border-radius: 4px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 4px; transition: width 0.6s ease;
+    }
+    .collective-meta { font-size: var(--font-11); color: var(--text-muted); margin-top: 4px; }
+
+    .leaderboard-list { display: flex; flex-direction: column; gap: 6px; }
+    .leaderboard-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border-radius: 8px; background: var(--background); transition: background 0.15s;
+    }
+    .leaderboard-row:hover { background: rgba(56, 189, 248, 0.06); }
+
+    .lb-rank { width: 28px; text-align: center; font-weight: 700; font-size: var(--font-13); flex-shrink: 0; }
+    .lb-avatar {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      background: var(--primary); color: white; font-size: var(--font-11); font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lb-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+    .lb-info { flex: 1; min-width: 0; }
+    .lb-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lb-sessions { font-size: var(--font-11); color: var(--text-muted); }
+
+    .lb-stats { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .lb-minutes { font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .lb-streak {
+      display: inline-flex; align-items: center; gap: 2px;
+      font-size: var(--font-11); font-weight: 600; color: #f59e0b;
+    }
+    .lb-streak .material-icons { font-size: 13px; }
+
     /* ── Next meeting hero ──────────────────────────────────── */
     .next-meeting {
       display: flex; align-items: center; gap: 12px;
@@ -981,6 +1083,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private invitationService = inject(InvitationService);
   private friendService = inject(FriendService);
   private ytPlayerSvc = inject(YouTubeBroadcastService);
+  private statsService = inject(StatisticsService);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
 
@@ -990,6 +1093,8 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   members: UserDto[] = [];
   onlineUsers: string[] = [];
   focusCount = 0;
+  leaderboard: LeaderboardEntry[] = [];
+  collectiveStats: RoomCollectiveStats | null = null;
   newMessage = '';
   isMember = false;
   joining = false;
@@ -1283,6 +1388,14 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     await this.copyText(this.roomInviteLink(), 'Room invite link copied');
   }
 
+  formatDuration(minutes: number): string {
+    const total = Math.max(0, Math.round(minutes || 0));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h === 0) return `${m}m`;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
   async copyMeetingLink() {
     if (!this.room?.joinCode) { this.showSnack('Join code unavailable'); return; }
     await this.copyText(this.meetingLink(), 'Meeting link copied');
@@ -1360,6 +1473,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
         await this.loadNotes();
         await this.loadMeetings();
         await this.loadOtherMeetings();
+        await this.loadLeaderboard();
         await this.setupSignalR();
       }
     } catch { } finally {
@@ -1376,6 +1490,17 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   async loadOtherMeetings() {
     try {
       this.otherMeetings = await this.meetingService.getOtherRoomMeetings(this.roomId).toPromise() || [];
+    } catch { }
+  }
+
+  async loadLeaderboard() {
+    try {
+      const [lb, cs] = await Promise.all([
+        this.statsService.getRoomLeaderboard(this.roomId).toPromise(),
+        this.statsService.getRoomCollectiveStats(this.roomId).toPromise()
+      ]);
+      this.leaderboard = lb || [];
+      this.collectiveStats = cs || null;
     } catch { }
   }
 
