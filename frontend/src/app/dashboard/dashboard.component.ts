@@ -1,9 +1,9 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { NgFor, NgIf, DatePipe, NgClass } from '@angular/common';
+import { NgFor, NgIf, DatePipe, NgClass, DecimalPipe } from '@angular/common';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
-import { StatisticsService } from '../core/services/statistics.service';
+import { StatisticsService, Milestone, TodayProgress } from '../core/services/statistics.service';
 import { SignalRService } from '../core/services/signalr.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
@@ -12,7 +12,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, NgFor, NgIf, NgClass, DatePipe, LoadingComponent],
+  imports: [RouterLink, NgFor, NgIf, NgClass, DatePipe, DecimalPipe, LoadingComponent],
   template: `
     <div class="dashboard">
       <!-- ── Hero header card ─────────────────────────────────── -->
@@ -39,6 +39,41 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <span class="material-icons">group</span>
             {{ myRooms.length }} rooms
           </span>
+        </div>
+      </div>
+
+      <!-- ── Daily goal progress ────────────────────────────── -->
+      <div class="daily-goal" *ngIf="todayProgress">
+        <div class="daily-goal-header">
+          <span class="material-icons">flag</span>
+          <span class="daily-goal-title">Today's Goal</span>
+          <span class="daily-goal-amount">{{ formatDurationShort(todayProgress.studiedMinutes) }} / {{ formatDurationShort(todayProgress.dailyGoalMinutes) }}</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="dailyGoalPercent"></div>
+        </div>
+        <div class="daily-goal-hint" *ngIf="dailyGoalPercent < 100">
+          {{ dailyGoalPercent | number:'1.0-0' }}% complete — keep going!
+        </div>
+        <div class="daily-goal-hint done" *ngIf="dailyGoalPercent >= 100">
+          <span class="material-icons">celebration</span> Goal reached! Great work today.
+        </div>
+      </div>
+
+      <!-- ── Recent milestones ───────────────────────────────── -->
+      <div class="milestones" *ngIf="milestones.length > 0">
+        <div class="milestones-header">
+          <span class="material-icons">emoji_events</span>
+          <span class="milestones-title">Recent Achievements</span>
+        </div>
+        <div class="milestones-grid">
+          <div class="milestone-card" *ngFor="let m of milestones.slice(0, 6)">
+            <span class="material-icons milestone-icon">{{ m.icon }}</span>
+            <div class="milestone-info">
+              <span class="milestone-name">{{ m.title }}</span>
+              <span class="milestone-desc">{{ m.description }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -157,6 +192,40 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     }
     .hero-badge .material-icons { font-size: var(--font-16); }
 
+    /* Daily goal progress */
+    .daily-goal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px; margin-bottom: 16px;
+    }
+    .daily-goal-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .daily-goal-header .material-icons { color: var(--primary); font-size: 20px; }
+    .daily-goal-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .daily-goal-amount { margin-left: auto; font-size: var(--font-13); font-weight: 600; color: var(--text-secondary); }
+    .progress-bar { width: 100%; height: 8px; background: var(--background); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; transition: width 0.6s ease; }
+    .daily-goal-hint { font-size: var(--font-12); color: var(--text-muted); }
+    .daily-goal-hint.done { color: var(--success); display: flex; align-items: center; gap: 4px; }
+    .daily-goal-hint.done .material-icons { font-size: var(--font-16); }
+
+    /* Milestones */
+    .milestones { margin-bottom: 20px; }
+    .milestones-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .milestones-header .material-icons { color: #f59e0b; font-size: 20px; }
+    .milestones-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .milestones-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+    .milestone-card {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    }
+    .milestone-icon { font-size: 24px; color: #f59e0b; }
+    .milestone-info { flex: 1; min-width: 0; }
+    .milestone-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .milestone-desc { font-size: var(--font-11); color: var(--text-muted); }
+
     /* Proactive live strip */
     .stats-strip {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px;
@@ -221,6 +290,13 @@ export class DashboardComponent implements OnInit {
   myRooms: Room[] = [];
   allRooms: Room[] = [];
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
+  todayProgress: TodayProgress | null = null;
+  milestones: Milestone[] = [];
+
+  get dailyGoalPercent(): number {
+    if (!this.todayProgress || this.todayProgress.dailyGoalMinutes <= 0) return 0;
+    return Math.min(100, Math.round(this.todayProgress.studiedMinutes / this.todayProgress.dailyGoalMinutes * 100));
+  }
 
   formatDuration(minutes: number): string {
     const total = Math.max(0, Math.round(minutes || 0));
@@ -229,19 +305,31 @@ export class DashboardComponent implements OnInit {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${pad(h)}h ${pad(m)}m`;
   }
+
+  formatDurationShort(minutes: number): string {
+    const total = Math.max(0, Math.round(minutes || 0));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h === 0) return `${m}m`;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
   loading = true;
   tab: 'mine' | 'all' = 'mine';
 
   async ngOnInit() {
     try {
-      const [myRooms, allRooms, stats] = await Promise.all([
+      const [myRooms, allRooms, stats, todayProgress, milestones] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
         this.roomService.getAll().toPromise(),
-        this.statsService.getStats().toPromise()
+        this.statsService.getStats().toPromise(),
+        this.statsService.getTodayProgress().toPromise(),
+        this.statsService.getMilestones().toPromise()
       ]);
       this.myRooms = myRooms || [];
       this.allRooms = allRooms || [];
       this.stats = stats || this.stats;
+      this.todayProgress = todayProgress || null;
+      this.milestones = milestones || [];
     } catch { } finally {
       this.loading = false;
     }
@@ -249,8 +337,14 @@ export class DashboardComponent implements OnInit {
     // Keep the streak / study totals fresh when a focus session completes.
     this.signalR.timerCompleted$.subscribe(async () => {
       try {
-        const refreshed = await this.statsService.getStats().toPromise();
+        const [refreshed, progress, ms] = await Promise.all([
+          this.statsService.getStats().toPromise(),
+          this.statsService.getTodayProgress().toPromise(),
+          this.statsService.getMilestones().toPromise()
+        ]);
         if (refreshed) this.stats = refreshed;
+        if (progress) this.todayProgress = progress;
+        if (ms) this.milestones = ms;
       } catch { }
     });
   }

@@ -57,6 +57,9 @@ public class User
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Phase 4 — daily study goal (minutes), default 2 hours
+    public int DailyGoalMinutes { get; set; } = 120;
+
     public ICollection<RoomMember> RoomMemberships { get; set; } = new List<RoomMember>();
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<StudySession> StudySessions { get; set; } = new List<StudySession>();

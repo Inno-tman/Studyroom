@@ -154,7 +154,14 @@ public class StudySessionRepository : IStudySessionRepository
     {
         var weekStart = DateTime.UtcNow.AddDays(-7);
         return await _context.StudySessions
-            .Where(s => s.RoomId == roomId && s.Completed && s.IsVerified && s.CreatedAt >= weekStart)
-            .CountAsync();
+            .CountAsync(s => s.RoomId == roomId && s.Completed && s.IsVerified && s.CreatedAt >= weekStart);
+    }
+
+    public async Task<decimal> GetTodayStudyMinutesAsync(Guid userId)
+    {
+        var today = DateTime.UtcNow.Date;
+        return await _context.StudySessions
+            .Where(s => s.UserId == userId && s.Completed && s.IsVerified && s.CreatedAt >= today)
+            .SumAsync(s => s.DurationMinutes);
     }
 }

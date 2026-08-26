@@ -35,6 +35,7 @@ public class AppDbContext : DbContext
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
+    public DbSet<UserMilestone> UserMilestones => Set<UserMilestone>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

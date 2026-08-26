@@ -30,6 +30,24 @@ export interface RoomCollectiveStats {
   progress: number;
 }
 
+export interface Milestone {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  icon: string;
+  earnedAt: string;
+}
+
+export interface TodayProgress {
+  dailyGoalMinutes: number;
+  studiedMinutes: number;
+}
+
+export interface DailyGoalResponse {
+  dailyGoalMinutes: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatisticsService {
   constructor(private http: HttpClient) {}
@@ -71,5 +89,21 @@ export class StatisticsService {
 
   getRoomCollectiveStats(roomId: string): Observable<RoomCollectiveStats> {
     return this.http.get<RoomCollectiveStats>(`${environment.apiUrl}/study-sessions/room/${roomId}/collective`);
+  }
+
+  getTodayProgress(): Observable<TodayProgress> {
+    return this.http.get<TodayProgress>(`${environment.apiUrl}/users/today-progress`);
+  }
+
+  getMilestones(): Observable<Milestone[]> {
+    return this.http.get<Milestone[]>(`${environment.apiUrl}/users/milestones`);
+  }
+
+  getDailyGoal(): Observable<DailyGoalResponse> {
+    return this.http.get<DailyGoalResponse>(`${environment.apiUrl}/users/daily-goal`);
+  }
+
+  updateDailyGoal(minutes: number): Observable<DailyGoalResponse> {
+    return this.http.patch<DailyGoalResponse>(`${environment.apiUrl}/users/daily-goal`, { dailyGoalMinutes: minutes });
   }
 }

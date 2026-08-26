@@ -21,6 +21,7 @@ public class StudySessionsController : ControllerBase
     private readonly INotificationService _notificationService;
     private readonly ITimerScheduler _timerScheduler;
     private readonly ISessionValidationService _validation;
+    private readonly IMilestoneService _milestoneService;
 
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
@@ -28,7 +29,8 @@ public class StudySessionsController : ControllerBase
         IHubContext<StudyRoomHub> hubContext,
         INotificationService notificationService,
         ITimerScheduler timerScheduler,
-        ISessionValidationService validation)
+        ISessionValidationService validation,
+        IMilestoneService milestoneService)
     {
         _sessionRepo = sessionRepo;
         _roomRepo = roomRepo;
@@ -36,6 +38,7 @@ public class StudySessionsController : ControllerBase
         _notificationService = notificationService;
         _timerScheduler = timerScheduler;
         _validation = validation;
+        _milestoneService = milestoneService;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -105,6 +108,10 @@ public class StudySessionsController : ControllerBase
             latest.Completed = true;
             await _validation.ValidateSessionAsync(latest);
             await _sessionRepo.UpdateAsync(latest);
+
+            // Phase 4 — check milestones after session completion
+            if (latest.IsVerified)
+                await _milestoneService.CheckAndAwardMilestonesAsync(UserId);
 
             _timerScheduler.Cancel(UserId);
 

@@ -579,6 +579,13 @@ public class StudyRoomHub : Hub
 
             await _sessionRepo.UpdateAsync(latest);
             _logger.LogInformation("[timer] finalized session {SessionId} user={UserId} minutes={Minutes} verified={Verified}", latest.Id, UserId, latest.DurationMinutes, latest.IsVerified);
+
+            // Phase 4 — check milestones after each session
+            if (latest.IsVerified)
+            {
+                var milestones = scope.ServiceProvider.GetRequiredService<IMilestoneService>();
+                await milestones.CheckAndAwardMilestonesAsync(UserId);
+            }
         }
         else
         {

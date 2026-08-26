@@ -19,4 +19,7 @@ public interface IStudySessionRepository
     Task<List<(Guid UserId, string Username, string? AvatarUrl, decimal VerifiedMinutes, int Sessions, int Streak)>> GetRoomLeaderboardAsync(Guid roomId, int take = 10);
     Task<decimal> GetRoomCollectiveMinutesAsync(Guid roomId);
     Task<int> GetRoomCollectiveSessionsAsync(Guid roomId);
+
+    // Phase 4 — today's progress
+    Task<decimal> GetTodayStudyMinutesAsync(Guid userId);
 }

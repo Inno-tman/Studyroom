@@ -191,6 +191,9 @@ if (!string.IsNullOrWhiteSpace(livekitUrl) || !string.IsNullOrWhiteSpace(livekit
 
 builder.Services.AddHostedService<StaleDirectMessageNotifier>();
 builder.Services.AddHostedService<SessionWatcher>();
+builder.Services.AddHostedService<WeeklySummaryWorker>();
+builder.Services.AddScoped<IMilestoneService, MilestoneService>();
+builder.Services.AddScoped<IWeeklySummaryService, WeeklySummaryService>();
 
 var app = builder.Build();
 
@@ -245,6 +248,7 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "IsVerified" boolean NOT NULL DEFAULT true;
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerifiedReason" text NULL;
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "SessionNotes" text NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "DailyGoalMinutes" integer NOT NULL DEFAULT 120;
     """);
     await context.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "AiConversations" (
@@ -444,6 +448,19 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_MeetingAttendees_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS "IX_MeetingAttendees_UserId" ON "MeetingAttendees" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "UserMilestones" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "MilestoneType" text NOT NULL,
+            "Title" text NOT NULL,
+            "Description" text NULL,
+            "Icon" text NULL,
+            "EarnedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_UserMilestones" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_UserMilestones_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_UserMilestones_UserId" ON "UserMilestones" ("UserId");
     """);
 }
 

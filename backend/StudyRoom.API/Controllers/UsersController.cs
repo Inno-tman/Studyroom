@@ -19,12 +19,16 @@ public class UsersController : ControllerBase
     private readonly IFriendService _friendService;
     private readonly IUserRepository _userRepo;
     private readonly IStatisticsService _statsService;
+    private readonly IMilestoneService _milestoneService;
+    private readonly IStudySessionRepository _sessionRepo;
 
-    public UsersController(IFriendService friendService, IUserRepository userRepo, IStatisticsService statsService)
+    public UsersController(IFriendService friendService, IUserRepository userRepo, IStatisticsService statsService, IMilestoneService milestoneService, IStudySessionRepository sessionRepo)
     {
         _friendService = friendService;
         _userRepo = userRepo;
         _statsService = statsService;
+        _milestoneService = milestoneService;
+        _sessionRepo = sessionRepo;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -70,10 +74,70 @@ public class UsersController : ControllerBase
         });
     }
 
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var stats = await _statsService.GetUserStatsAsync(UserId);
+        return Ok(stats);
+    }
+
+    [HttpGet("daily-goal")]
+    public async Task<IActionResult> GetDailyGoal()
+    {
+        var user = await _userRepo.GetByIdAsync(UserId);
+        if (user == null) return NotFound();
+        return Ok(new { dailyGoalMinutes = user.DailyGoalMinutes });
+    }
+
+    [HttpPatch("daily-goal")]
+    public async Task<IActionResult> UpdateDailyGoal([FromBody] UpdateDailyGoalRequest request)
+    {
+        var user = await _userRepo.GetByIdAsync(UserId);
+        if (user == null) return NotFound();
+
+        user.DailyGoalMinutes = Math.Clamp(request.DailyGoalMinutes, 10, 720);
+        await _userRepo.UpdateAsync(user);
+        return Ok(new { dailyGoalMinutes = user.DailyGoalMinutes });
+    }
+
+    [HttpGet("milestones")]
+    public async Task<IActionResult> GetMilestones()
+    {
+        var milestones = await _milestoneService.GetUserMilestonesAsync(UserId);
+        return Ok(milestones.Select(m => new
+        {
+            id = m.Id.ToString(),
+            type = m.MilestoneType,
+            title = m.Title,
+            description = m.Description,
+            icon = m.Icon,
+            earnedAt = m.EarnedAt
+        }));
+    }
+
+    [HttpGet("today-progress")]
+    public async Task<IActionResult> GetTodayProgress()
+    {
+        var user = await _userRepo.GetByIdAsync(UserId);
+        if (user == null) return NotFound();
+
+        var todayMinutes = await _sessionRepo.GetTodayStudyMinutesAsync(UserId);
+        return Ok(new
+        {
+            dailyGoalMinutes = user.DailyGoalMinutes,
+            studiedMinutes = Math.Round(todayMinutes, 2)
+        });
+    }
+
     private static string BuildDisplayName(User u)
     {
         if (string.IsNullOrWhiteSpace(u.FirstName) && string.IsNullOrWhiteSpace(u.LastName))
             return u.Username;
         return $"{u.FirstName} {u.LastName}".Trim();
     }
+}
+
+public class UpdateDailyGoalRequest
+{
+    public int DailyGoalMinutes { get; set; }
 }
