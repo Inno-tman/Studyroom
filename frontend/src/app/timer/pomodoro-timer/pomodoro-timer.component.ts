@@ -71,6 +71,18 @@ import { Subscription } from 'rxjs';
       <div class="timer-info" *ngIf="state.sessionCompleted && !state.isRunning">
         {{ state.lastCompleted === 'break' ? 'Break' : 'Session' }} completed! Great work!
       </div>
+
+      <div class="session-notes" *ngIf="showNotes && lastSessionId">
+        <textarea
+          [(ngModel)]="sessionNotesText"
+          placeholder="Quick note about this session..."
+          maxlength="2000"
+          rows="2"
+          (input)="onNotesInput()"
+          (blur)="saveSessionNotes()"
+        ></textarea>
+        <div class="notes-saved" *ngIf="notesSaved">Saved</div>
+      </div>
     </div>
   `,
   styles: [`
@@ -110,6 +122,15 @@ import { Subscription } from 'rxjs';
     .auto-toggle input { accent-color: var(--primary); }
 
     .timer-info { margin-top: 12px; font-size: var(--font-13); font-weight: 600; color: var(--success); }
+
+    .session-notes { margin-top: 12px; text-align: left; position: relative; }
+    .session-notes textarea {
+      width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--background); color: var(--text-primary); font-size: var(--font-13);
+      font-family: inherit; resize: vertical; min-height: 48px; box-sizing: border-box;
+    }
+    .session-notes textarea:focus { outline: none; border-color: var(--primary); }
+    .notes-saved { position: absolute; right: 8px; bottom: 8px; font-size: var(--font-11); color: var(--success); font-weight: 600; }
   `]
 })
 export class PomodoroTimerComponent implements OnInit, OnDestroy {
@@ -130,6 +151,12 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   breakMin = 5;
   longBreakMin = 15;
   autoStart = true;
+
+  showNotes = false;
+  lastSessionId = '';
+  sessionNotesText = '';
+  notesSaved = false;
+  private notesSaveTimeout?: ReturnType<typeof setTimeout>;
 
   private subscriptions: Subscription[] = [];
   private isSynced = false;
@@ -189,13 +216,20 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         if (justCompleted && !wasBreak) {
           this.statsService.completeSession(this.roomId).subscribe({
             next: res => {
-              if (res.success) console.log('[timer] session finalized via HTTP, minutes=' + res.durationMinutes);
+              if (res.success) {
+                console.log('[timer] session finalized via HTTP, minutes=' + res.durationMinutes);
+                this.lastSessionId = res.sessionId || '';
+                this.sessionNotesText = '';
+                this.showNotes = true;
+                this.notesSaved = false;
+              }
             },
             error: err => console.error('[timer] completeSession HTTP failed', err)
           });
           this.notification.notify('Focus session complete', 'Nice work! Take a breather.');
         }
         if (justCompleted && wasBreak) {
+          this.showNotes = false;
           this.notification.notify(this.state.isLongBreak ? 'Long break complete' : 'Break complete', 'Time to get back to focus.');
         }
       }),
@@ -305,6 +339,25 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     return Math.min(max, Math.max(min, n));
   }
 
+  saveSessionNotes() {
+    if (!this.lastSessionId || !this.sessionNotesText.trim()) return;
+    clearTimeout(this.notesSaveTimeout);
+    this.notesSaveTimeout = setTimeout(() => {
+      this.statsService.updateSessionNotes(this.lastSessionId, this.sessionNotesText).subscribe({
+        next: () => {
+          this.notesSaved = true;
+          setTimeout(() => this.notesSaved = false, 2000);
+        },
+        error: err => console.error('[timer] save notes failed', err)
+      });
+    }, 500);
+  }
+
+  onNotesInput() {
+    clearTimeout(this.notesSaveTimeout);
+    this.notesSaveTimeout = setTimeout(() => this.saveSessionNotes(), 3000);
+  }
+
   formatTime(seconds: number): string {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -312,6 +365,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    clearTimeout(this.notesSaveTimeout);
     this.subscriptions.forEach(s => s.unsubscribe());
   }
 }

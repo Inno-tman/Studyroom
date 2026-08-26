@@ -142,6 +142,7 @@ builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IRoomInvitationService, RoomInvitationService>();
 builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ISessionValidationService, SessionValidationService>();
 builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 builder.Services.AddScoped<IMeetingService, MeetingService>();
 
@@ -189,6 +190,7 @@ if (!string.IsNullOrWhiteSpace(livekitUrl) || !string.IsNullOrWhiteSpace(livekit
 }
 
 builder.Services.AddHostedService<StaleDirectMessageNotifier>();
+builder.Services.AddHostedService<SessionWatcher>();
 
 var app = builder.Build();
 
@@ -240,6 +242,9 @@ using (var scope = app.Services.CreateScope())
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_GoogleId" ON "Users" ("GoogleId") WHERE "GoogleId" IS NOT NULL;
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "StartedAt" timestamp NULL;
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "Completed" boolean NOT NULL DEFAULT false;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "IsVerified" boolean NOT NULL DEFAULT true;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerifiedReason" text NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "SessionNotes" text NULL;
     """);
     await context.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "AiConversations" (

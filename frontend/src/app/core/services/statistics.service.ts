@@ -4,6 +4,14 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { UserStats } from '../../shared/models/stats.model';
 
+export interface CompleteSessionResult {
+  success: boolean;
+  sessionId?: string;
+  durationMinutes?: number;
+  isVerified?: boolean;
+  verifiedReason?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatisticsService {
   constructor(private http: HttpClient) {}
@@ -12,8 +20,8 @@ export class StatisticsService {
     return this.http.get<UserStats>(`${environment.apiUrl}/users/stats`);
   }
 
-  completeSession(roomId?: string): Observable<{ success: boolean; durationMinutes?: number }> {
-    return this.http.post<{ success: boolean; durationMinutes?: number }>(
+  completeSession(roomId?: string): Observable<CompleteSessionResult> {
+    return this.http.post<CompleteSessionResult>(
       `${environment.apiUrl}/study-sessions/complete`,
       { roomId }
     );
@@ -33,5 +41,9 @@ export class StatisticsService {
 
   resetSession(roomId: string): Observable<any> {
     return this.http.post(`${environment.apiUrl}/study-sessions/reset`, { roomId });
+  }
+
+  updateSessionNotes(sessionId: string, notes: string): Observable<any> {
+    return this.http.patch(`${environment.apiUrl}/study-sessions/${sessionId}/notes`, { notes });
   }
 }

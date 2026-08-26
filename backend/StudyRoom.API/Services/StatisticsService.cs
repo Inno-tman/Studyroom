@@ -18,13 +18,15 @@ public class StatisticsService : IStatisticsService
         var completed = await _sessionsRepo.GetSessionsCompletedAsync(userId);
         var weekly = await _sessionsRepo.GetWeeklyStudyMinutesAsync(userId);
         var streak = await _sessionsRepo.GetCurrentStreakAsync(userId);
+        var unverified = await _sessionsRepo.GetUnverifiedCountAsync(userId);
 
         return new UserStatsDto
         {
             TotalStudyMinutes = total,
             SessionsCompleted = completed,
             DailyStreak = streak,
-            WeeklyStudyMinutes = weekly
+            WeeklyStudyMinutes = weekly,
+            UnverifiedSessions = unverified
         };
     }
 }

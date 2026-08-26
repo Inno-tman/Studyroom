@@ -43,13 +43,18 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       </div>
 
       <!-- ── Proactive band ───────────────────────────────────── -->
-      <div class="stats-strip">
+        <div class="stats-strip">
         <div class="stats-strip-item">
           <span class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</span>
           <span class="stat-label">Study Time</span>
         </div>
         <div class="stats-strip-item">
-          <span class="stat-value">{{ stats.sessionsCompleted }}</span>
+          <span class="stat-value">
+            {{ stats.sessionsCompleted }}
+            <span class="unverified-warn" *ngIf="stats.unverifiedSessions" title="{{ stats.unverifiedSessions }} sessions flagged as unverified">
+              <span class="material-icons">warning</span>
+            </span>
+          </span>
           <span class="stat-label">Sessions</span>
         </div>
         <div class="stats-strip-item">
@@ -161,8 +166,9 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       border-radius: 12px; padding: 16px 18px;
       display: flex; flex-direction: column; gap: 2px;
     }
-    .stat-value { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); }
+    .stat-value { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 4px; }
     .stat-label { font-size: var(--font-12); color: var(--text-muted); }
+    .unverified-warn .material-icons { font-size: var(--font-16); color: #f59e0b; }
 
     /* Segmented tabs */
     .section { margin-bottom: 32px; }

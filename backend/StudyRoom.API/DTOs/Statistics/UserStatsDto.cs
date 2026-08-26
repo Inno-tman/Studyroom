@@ -6,4 +6,5 @@ public class UserStatsDto
     public int SessionsCompleted { get; set; }
     public int DailyStreak { get; set; }
     public decimal WeeklyStudyMinutes { get; set; }
+    public int UnverifiedSessions { get; set; }
 }

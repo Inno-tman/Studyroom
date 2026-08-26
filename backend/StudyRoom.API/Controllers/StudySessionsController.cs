@@ -18,17 +18,20 @@ public class StudySessionsController : ControllerBase
     private readonly IHubContext<StudyRoomHub> _hubContext;
     private readonly INotificationService _notificationService;
     private readonly ITimerScheduler _timerScheduler;
+    private readonly ISessionValidationService _validation;
 
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
         IHubContext<StudyRoomHub> hubContext,
         INotificationService notificationService,
-        ITimerScheduler timerScheduler)
+        ITimerScheduler timerScheduler,
+        ISessionValidationService validation)
     {
         _sessionRepo = sessionRepo;
         _hubContext = hubContext;
         _notificationService = notificationService;
         _timerScheduler = timerScheduler;
+        _validation = validation;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -96,6 +99,7 @@ public class StudySessionsController : ControllerBase
             var minutes = (DateTime.UtcNow - start).TotalMinutes;
             latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
             latest.Completed = true;
+            await _validation.ValidateSessionAsync(latest);
             await _sessionRepo.UpdateAsync(latest);
 
             _timerScheduler.Cancel(UserId);
@@ -110,7 +114,14 @@ public class StudySessionsController : ControllerBase
                 UserId, "timer", "Focus session complete",
                 "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
 
-            return Ok(new { success = true, durationMinutes = latest.DurationMinutes });
+            return Ok(new
+            {
+                success = true,
+                sessionId = latest.Id.ToString(),
+                durationMinutes = latest.DurationMinutes,
+                isVerified = latest.IsVerified,
+                verifiedReason = latest.VerifiedReason
+            });
         }
         catch (Exception ex)
         {
@@ -153,6 +164,7 @@ public class StudySessionsController : ControllerBase
             var minutes = (DateTime.UtcNow - start).TotalMinutes;
             latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
             latest.Completed = true;
+            await _validation.ValidateSessionAsync(latest);
             await _sessionRepo.UpdateAsync(latest);
         }
 
@@ -178,6 +190,7 @@ public class StudySessionsController : ControllerBase
             var minutes = (DateTime.UtcNow - start).TotalMinutes;
             latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
             latest.Completed = true;
+            await _validation.ValidateSessionAsync(latest);
             await _sessionRepo.UpdateAsync(latest);
         }
 
@@ -186,6 +199,20 @@ public class StudySessionsController : ControllerBase
             await _hubContext.Clients.Group("room_" + request.RoomId)
                 .SendAsync("TimerPaused", new { roomId = request.RoomId, pausedBy = Username });
         }
+
+        return Ok(new { success = true });
+    }
+
+    [HttpPatch("{id}/notes")]
+    public async Task<IActionResult> UpdateNotes(Guid id, [FromBody] UpdateNotesRequest request)
+    {
+        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
+        var session = sessions.FirstOrDefault(s => s.Id == id);
+        if (session == null)
+            return NotFound(new { error = "Session not found" });
+
+        session.SessionNotes = request.Notes;
+        await _sessionRepo.UpdateAsync(session);
 
         return Ok(new { success = true });
     }
@@ -207,4 +234,9 @@ public class BreakRequest
     public string RoomId { get; set; } = "";
     public int DurationMinutes { get; set; }
     public bool IsLong { get; set; }
+}
+
+public class UpdateNotesRequest
+{
+    public string? Notes { get; set; }
 }

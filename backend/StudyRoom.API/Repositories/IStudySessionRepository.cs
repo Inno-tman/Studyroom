@@ -11,4 +11,7 @@ public interface IStudySessionRepository
     Task<int> GetSessionsCompletedAsync(Guid userId);
     Task<decimal> GetWeeklyStudyMinutesAsync(Guid userId);
     Task<int> GetCurrentStreakAsync(Guid userId);
+    Task<List<StudySession>> GetStaleSessionsAsync(DateTime olderThan);
+    Task<int> GetCompletedTodayCountAsync(Guid userId);
+    Task<int> GetUnverifiedCountAsync(Guid userId);
 }

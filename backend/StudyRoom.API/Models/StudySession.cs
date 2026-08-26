@@ -17,6 +17,14 @@ public class StudySession
 
     public bool Completed { get; set; }
 
+    public bool IsVerified { get; set; } = true;
+
+    [MaxLength(50)]
+    public string? VerifiedReason { get; set; }
+
+    [MaxLength(2000)]
+    public string? SessionNotes { get; set; }
+
     public DateTime? StartedAt { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

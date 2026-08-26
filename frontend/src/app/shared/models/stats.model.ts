@@ -3,6 +3,7 @@ export interface UserStats {
   sessionsCompleted: number;
   dailyStreak: number;
   weeklyStudyMinutes: number;
+  unverifiedSessions?: number;
 }
 
 export interface PublicUserProfile {

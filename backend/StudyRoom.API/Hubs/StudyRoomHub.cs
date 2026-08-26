@@ -551,8 +551,13 @@ public class StudyRoomHub : Hub
         {
             latest.DurationMinutes = ComputeElapsedMinutes(latest);
             latest.Completed = true;
+
+            using var scope = Context.GetHttpContext()!.RequestServices.CreateScope();
+            var validation = scope.ServiceProvider.GetRequiredService<ISessionValidationService>();
+            await validation.ValidateSessionAsync(latest);
+
             await _sessionRepo.UpdateAsync(latest);
-            _logger.LogInformation("[timer] finalized session {SessionId} user={UserId} minutes={Minutes}", latest.Id, UserId, latest.DurationMinutes);
+            _logger.LogInformation("[timer] finalized session {SessionId} user={UserId} minutes={Minutes} verified={Verified}", latest.Id, UserId, latest.DurationMinutes, latest.IsVerified);
         }
         else
         {
