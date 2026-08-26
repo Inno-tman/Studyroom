@@ -192,8 +192,10 @@ if (!string.IsNullOrWhiteSpace(livekitUrl) || !string.IsNullOrWhiteSpace(livekit
 builder.Services.AddHostedService<StaleDirectMessageNotifier>();
 builder.Services.AddHostedService<SessionWatcher>();
 builder.Services.AddHostedService<WeeklySummaryWorker>();
+builder.Services.AddHostedService<NudgeWorker>();
 builder.Services.AddScoped<IMilestoneService, MilestoneService>();
 builder.Services.AddScoped<IWeeklySummaryService, WeeklySummaryService>();
+builder.Services.AddScoped<INudgeService, NudgeService>();
 
 var app = builder.Build();
 
