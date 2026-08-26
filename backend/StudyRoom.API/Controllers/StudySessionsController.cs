@@ -17,6 +17,7 @@ public class StudySessionsController : ControllerBase
 {
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IRoomRepository _roomRepo;
+    private readonly ITabSwitchRepository _tabSwitchRepo;
     private readonly IHubContext<StudyRoomHub> _hubContext;
     private readonly INotificationService _notificationService;
     private readonly ITimerScheduler _timerScheduler;
@@ -26,6 +27,7 @@ public class StudySessionsController : ControllerBase
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
         IRoomRepository roomRepo,
+        ITabSwitchRepository tabSwitchRepo,
         IHubContext<StudyRoomHub> hubContext,
         INotificationService notificationService,
         ITimerScheduler timerScheduler,
@@ -39,6 +41,7 @@ public class StudySessionsController : ControllerBase
         _timerScheduler = timerScheduler;
         _validation = validation;
         _milestoneService = milestoneService;
+        _tabSwitchRepo = tabSwitchRepo;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -263,6 +266,51 @@ public class StudySessionsController : ControllerBase
             GoalMinutes = goalMinutes
         });
     }
+
+    [HttpPost("tab-switch")]
+    public async Task<IActionResult> ReportTabSwitch([FromBody] TabSwitchRequest request)
+    {
+        if (!Guid.TryParse(request.SessionId, out var sessionId))
+            return BadRequest(new { error = "Invalid sessionId" });
+
+        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
+        var session = sessions.FirstOrDefault(s => s.Id == sessionId && !s.Completed);
+        if (session == null)
+            return BadRequest(new { error = "No active session found" });
+
+        var evt = new TabSwitchEvent
+        {
+            UserId = UserId,
+            SessionId = sessionId,
+            EventType = request.EventType == "returned" ? "returned" : "left"
+        };
+        await _tabSwitchRepo.AddEventAsync(evt);
+
+        return Ok(new { success = true });
+    }
+
+    [HttpGet("{id}/trust-score")]
+    public async Task<IActionResult> GetTrustScore(Guid id)
+    {
+        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
+        var session = sessions.FirstOrDefault(s => s.Id == id);
+        if (session == null) return NotFound();
+
+        var switchCount = await _tabSwitchRepo.GetSwitchCountAsync(id);
+        var totalMinutes = session.DurationMinutes > 0 ? session.DurationMinutes : 1;
+
+        // Rough trust score: 100 = perfect, loses 5 points per switch, minimum 0
+        var trustScore = Math.Max(0, 100 - (switchCount * 5));
+
+        return Ok(new
+        {
+            sessionId = id.ToString(),
+            switchCount,
+            trustScore,
+            isVerified = session.IsVerified,
+            verifiedReason = session.VerifiedReason
+        });
+    }
 }
 
 public class SessionRequest
@@ -286,4 +334,10 @@ public class BreakRequest
 public class UpdateNotesRequest
 {
     public string? Notes { get; set; }
+}
+
+public class TabSwitchRequest
+{
+    public string SessionId { get; set; } = "";
+    public string EventType { get; set; } = "left"; // "left" or "returned"
 }

@@ -106,4 +106,12 @@ export class StatisticsService {
   updateDailyGoal(minutes: number): Observable<DailyGoalResponse> {
     return this.http.patch<DailyGoalResponse>(`${environment.apiUrl}/users/daily-goal`, { dailyGoalMinutes: minutes });
   }
+
+  reportTabSwitch(sessionId: string, eventType: string): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/study-sessions/tab-switch`, { sessionId, eventType });
+  }
+
+  getTrustScore(sessionId: string): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/study-sessions/${sessionId}/trust-score`);
+  }
 }

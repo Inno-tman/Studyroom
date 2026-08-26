@@ -163,6 +163,8 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   private wasRunning = false;
   private wasBreak = false;
   private wasCompleted = false;
+  private activeSessionId = '';
+  private tabSwitchCount = 0;
 
   get phaseLabel(): string {
     if (this.state.isBreak) return this.state.isLongBreak ? 'Long Break' : 'Break';
@@ -199,6 +201,8 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         // study time + streak are counted.
         if (focusBegan) {
           this.isSynced = true;
+          this.activeSessionId = '';
+          this.tabSwitchCount = 0;
           this.statsService.startSession(this.roomId, s.focusDuration).subscribe({
             error: err => console.error('[timer] startSession HTTP failed', err)
           });
@@ -219,6 +223,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
               if (res.success) {
                 console.log('[timer] session finalized via HTTP, minutes=' + res.durationMinutes);
                 this.lastSessionId = res.sessionId || '';
+                this.activeSessionId = '';
                 this.sessionNotesText = '';
                 this.showNotes = true;
                 this.notesSaved = false;
@@ -251,6 +256,10 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         }
       })
     );
+
+    // Phase 6 — tab visibility tracking for anti-cheating
+    this.onVisibilityChange = this.onVisibilityChange.bind(this);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
   }
 
   startTimer() {
@@ -366,6 +375,16 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     clearTimeout(this.notesSaveTimeout);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.subscriptions.forEach(s => s.unsubscribe());
+  }
+
+  private onVisibilityChange() {
+    if (!this.state.isRunning || this.state.isBreak || !this.activeSessionId) return;
+    const isHidden = document.hidden;
+    this.statsService.reportTabSwitch(this.activeSessionId, isHidden ? 'left' : 'returned').subscribe({
+      error: () => {}
+    });
+    if (isHidden) this.tabSwitchCount++;
   }
 }

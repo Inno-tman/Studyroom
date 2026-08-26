@@ -36,6 +36,7 @@ public class AppDbContext : DbContext
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
     public DbSet<UserMilestone> UserMilestones => Set<UserMilestone>();
+    public DbSet<TabSwitchEvent> TabSwitchEvents => Set<TabSwitchEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

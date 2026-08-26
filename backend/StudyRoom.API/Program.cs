@@ -124,6 +124,7 @@ builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<INotesRepository, NotesRepository>();
 builder.Services.AddScoped<IStudySessionRepository, StudySessionRepository>();
+builder.Services.AddScoped<ITabSwitchRepository, TabSwitchRepository>();
 builder.Services.AddScoped<IPostStatsRepository, PostStatsRepository>();
 
 builder.Services.AddSingleton<TimerScheduler>();
@@ -463,6 +464,19 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_UserMilestones_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS "IX_UserMilestones_UserId" ON "UserMilestones" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "TabSwitchEvents" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "SessionId" uuid NOT NULL,
+            "EventType" text NOT NULL,
+            "OccurredAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_TabSwitchEvents" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_TabSwitchEvents_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_TabSwitchEvents_StudySessions_SessionId" FOREIGN KEY ("SessionId") REFERENCES "StudySessions" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_TabSwitchEvents_SessionId" ON "TabSwitchEvents" ("SessionId");
+        CREATE INDEX IF NOT EXISTS "IX_TabSwitchEvents_UserId" ON "TabSwitchEvents" ("UserId");
     """);
 }
 
