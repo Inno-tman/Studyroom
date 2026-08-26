@@ -48,6 +48,19 @@ export interface DailyGoalResponse {
   dailyGoalMinutes: number;
 }
 
+export interface StudySchedule {
+  preferredStudyDays: string | null;
+  preferredStudyHours: string | null;
+}
+
+export interface Recommendation {
+  type: string;
+  title: string;
+  description: string;
+  icon: string;
+  actionLink: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatisticsService {
   constructor(private http: HttpClient) {}
@@ -113,5 +126,17 @@ export class StatisticsService {
 
   getTrustScore(sessionId: string): Observable<any> {
     return this.http.get(`${environment.apiUrl}/study-sessions/${sessionId}/trust-score`);
+  }
+
+  getSchedule(): Observable<StudySchedule> {
+    return this.http.get<StudySchedule>(`${environment.apiUrl}/users/schedule`);
+  }
+
+  updateSchedule(schedule: { preferredStudyDays?: string; preferredStudyHours?: string }): Observable<StudySchedule> {
+    return this.http.patch<StudySchedule>(`${environment.apiUrl}/users/schedule`, schedule);
+  }
+
+  getRecommendations(): Observable<Recommendation[]> {
+    return this.http.get<Recommendation[]>(`${environment.apiUrl}/users/recommendations`);
   }
 }

@@ -60,6 +60,13 @@ public class User
     // Phase 4 — daily study goal (minutes), default 2 hours
     public int DailyGoalMinutes { get; set; } = 120;
 
+    // Phase 7 — custom study schedule
+    [MaxLength(200)]
+    public string? PreferredStudyDays { get; set; } // e.g. "Mon,Tue,Wed,Thu,Fri"
+
+    [MaxLength(500)]
+    public string? PreferredStudyHours { get; set; } // e.g. "09:00-12:00,14:00-17:00"
+
     public ICollection<RoomMember> RoomMemberships { get; set; } = new List<RoomMember>();
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<StudySession> StudySessions { get; set; } = new List<StudySession>();

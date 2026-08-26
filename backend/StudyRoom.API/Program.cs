@@ -197,6 +197,7 @@ builder.Services.AddHostedService<NudgeWorker>();
 builder.Services.AddScoped<IMilestoneService, MilestoneService>();
 builder.Services.AddScoped<IWeeklySummaryService, WeeklySummaryService>();
 builder.Services.AddScoped<INudgeService, NudgeService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 
 var app = builder.Build();
 
@@ -252,6 +253,8 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerifiedReason" text NULL;
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "SessionNotes" text NULL;
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "DailyGoalMinutes" integer NOT NULL DEFAULT 120;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "PreferredStudyDays" text NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "PreferredStudyHours" text NULL;
     """);
     await context.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "AiConversations" (

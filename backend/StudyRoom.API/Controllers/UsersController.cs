@@ -21,14 +21,16 @@ public class UsersController : ControllerBase
     private readonly IStatisticsService _statsService;
     private readonly IMilestoneService _milestoneService;
     private readonly IStudySessionRepository _sessionRepo;
+    private readonly IRecommendationService _recommendationService;
 
-    public UsersController(IFriendService friendService, IUserRepository userRepo, IStatisticsService statsService, IMilestoneService milestoneService, IStudySessionRepository sessionRepo)
+    public UsersController(IFriendService friendService, IUserRepository userRepo, IStatisticsService statsService, IMilestoneService milestoneService, IStudySessionRepository sessionRepo, IRecommendationService recommendationService)
     {
         _friendService = friendService;
         _userRepo = userRepo;
         _statsService = statsService;
         _milestoneService = milestoneService;
         _sessionRepo = sessionRepo;
+        _recommendationService = recommendationService;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -129,6 +131,43 @@ public class UsersController : ControllerBase
         });
     }
 
+    [HttpGet("schedule")]
+    public async Task<IActionResult> GetSchedule()
+    {
+        var user = await _userRepo.GetByIdAsync(UserId);
+        if (user == null) return NotFound();
+
+        return Ok(new
+        {
+            preferredStudyDays = user.PreferredStudyDays,
+            preferredStudyHours = user.PreferredStudyHours
+        });
+    }
+
+    [HttpPatch("schedule")]
+    public async Task<IActionResult> UpdateSchedule([FromBody] UpdateScheduleRequest request)
+    {
+        var user = await _userRepo.GetByIdAsync(UserId);
+        if (user == null) return NotFound();
+
+        user.PreferredStudyDays = request.PreferredStudyDays;
+        user.PreferredStudyHours = request.PreferredStudyHours;
+        await _userRepo.UpdateAsync(user);
+
+        return Ok(new
+        {
+            preferredStudyDays = user.PreferredStudyDays,
+            preferredStudyHours = user.PreferredStudyHours
+        });
+    }
+
+    [HttpGet("recommendations")]
+    public async Task<IActionResult> GetRecommendations()
+    {
+        var recs = await _recommendationService.GetRecommendationsAsync(UserId);
+        return Ok(recs);
+    }
+
     private static string BuildDisplayName(User u)
     {
         if (string.IsNullOrWhiteSpace(u.FirstName) && string.IsNullOrWhiteSpace(u.LastName))
@@ -140,4 +179,10 @@ public class UsersController : ControllerBase
 public class UpdateDailyGoalRequest
 {
     public int DailyGoalMinutes { get; set; }
+}
+
+public class UpdateScheduleRequest
+{
+    public string? PreferredStudyDays { get; set; }
+    public string? PreferredStudyHours { get; set; }
 }

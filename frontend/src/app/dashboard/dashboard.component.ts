@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe, NgClass, DecimalPipe } from '@angular/common';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
-import { StatisticsService, Milestone, TodayProgress } from '../core/services/statistics.service';
+import { StatisticsService, Milestone, TodayProgress, Recommendation } from '../core/services/statistics.service';
 import { SignalRService } from '../core/services/signalr.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
@@ -72,6 +72,23 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <div class="milestone-info">
               <span class="milestone-name">{{ m.title }}</span>
               <span class="milestone-desc">{{ m.description }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Smart recommendations ──────────────────────────────── -->
+      <div class="recommendations" *ngIf="recommendations.length > 0">
+        <div class="recs-header">
+          <span class="material-icons">auto_awesome</span>
+          <span class="recs-title">Smart Suggestions</span>
+        </div>
+        <div class="recs-grid">
+          <div class="rec-card" *ngFor="let r of recommendations">
+            <span class="material-icons rec-icon">{{ r.icon }}</span>
+            <div class="rec-info">
+              <span class="rec-name">{{ r.title }}</span>
+              <span class="rec-desc">{{ r.description }}</span>
             </div>
           </div>
         </div>
@@ -226,6 +243,25 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .milestone-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
     .milestone-desc { font-size: var(--font-11); color: var(--text-muted); }
 
+    /* Recommendations */
+    .recommendations { margin-bottom: 20px; }
+    .recs-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .recs-header .material-icons { color: var(--accent); font-size: 20px; }
+    .recs-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .recs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+    .rec-card {
+      display: flex; align-items: flex-start; gap: 10px; padding: 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      transition: border-color 0.15s;
+    }
+    .rec-card:hover { border-color: var(--accent); }
+    .rec-icon { font-size: 22px; color: var(--accent); margin-top: 2px; }
+    .rec-info { flex: 1; min-width: 0; }
+    .rec-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+    .rec-desc { font-size: var(--font-12); color: var(--text-secondary); line-height: 1.4; }
+
     /* Proactive live strip */
     .stats-strip {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px;
@@ -292,6 +328,7 @@ export class DashboardComponent implements OnInit {
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
   todayProgress: TodayProgress | null = null;
   milestones: Milestone[] = [];
+  recommendations: Recommendation[] = [];
 
   get dailyGoalPercent(): number {
     if (!this.todayProgress || this.todayProgress.dailyGoalMinutes <= 0) return 0;
@@ -318,18 +355,20 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      const [myRooms, allRooms, stats, todayProgress, milestones] = await Promise.all([
+      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
         this.roomService.getAll().toPromise(),
         this.statsService.getStats().toPromise(),
         this.statsService.getTodayProgress().toPromise(),
-        this.statsService.getMilestones().toPromise()
+        this.statsService.getMilestones().toPromise(),
+        this.statsService.getRecommendations().toPromise()
       ]);
       this.myRooms = myRooms || [];
       this.allRooms = allRooms || [];
       this.stats = stats || this.stats;
       this.todayProgress = todayProgress || null;
       this.milestones = milestones || [];
+      this.recommendations = recommendations || [];
     } catch { } finally {
       this.loading = false;
     }
@@ -337,14 +376,16 @@ export class DashboardComponent implements OnInit {
     // Keep the streak / study totals fresh when a focus session completes.
     this.signalR.timerCompleted$.subscribe(async () => {
       try {
-        const [refreshed, progress, ms] = await Promise.all([
+        const [refreshed, progress, ms, recs] = await Promise.all([
           this.statsService.getStats().toPromise(),
           this.statsService.getTodayProgress().toPromise(),
-          this.statsService.getMilestones().toPromise()
+          this.statsService.getMilestones().toPromise(),
+          this.statsService.getRecommendations().toPromise()
         ]);
         if (refreshed) this.stats = refreshed;
         if (progress) this.todayProgress = progress;
         if (ms) this.milestones = ms;
+        if (recs) this.recommendations = recs;
       } catch { }
     });
   }
