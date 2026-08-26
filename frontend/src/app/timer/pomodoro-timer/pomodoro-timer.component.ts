@@ -52,15 +52,20 @@ import { Subscription } from 'rxjs';
       </div>
 
       <div class="timer-options" *ngIf="isIdle">
-        <label class="dur">Focus
-          <input type="number" min="1" max="240" [(ngModel)]="focusMin" (change)="onFocusChange()" />
-        </label>
-        <label class="dur">Break
-          <input type="number" min="1" max="120" [(ngModel)]="breakMin" (change)="onBreakChange()" />
-        </label>
-        <label class="dur">Long
-          <input type="number" min="1" max="120" [(ngModel)]="longBreakMin" (change)="onLongBreakChange()" />
-        </label>
+        <div class="presets">
+          <button *ngFor="let p of presets" class="preset-btn" [class.active]="focusMin === p" (click)="applyPreset(p)">{{ p }}m</button>
+        </div>
+        <div class="custom-inputs">
+          <label class="dur">Focus
+            <input type="number" min="1" max="240" [(ngModel)]="focusMin" (change)="onFocusChange()" />
+          </label>
+          <label class="dur">Break
+            <input type="number" min="1" max="120" [(ngModel)]="breakMin" (change)="onBreakChange()" />
+          </label>
+          <label class="dur">Long
+            <input type="number" min="1" max="120" [(ngModel)]="longBreakMin" (change)="onLongBreakChange()" />
+          </label>
+        </div>
       </div>
 
       <label class="auto-toggle">
@@ -113,7 +118,16 @@ import { Subscription } from 'rxjs';
     .control-btn.primary:hover { background: var(--primary-hover); }
     .control-btn .material-icons { font-size: var(--font-24); }
 
-    .timer-options { display: flex; justify-content: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .timer-options { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 16px; }
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .preset-btn {
+      padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border); background: transparent;
+      color: var(--text-secondary); font-size: var(--font-12); font-weight: 600; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preset-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .preset-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+    .custom-inputs { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
     .dur { display: flex; flex-direction: column; font-size: var(--font-11); font-weight: 600; color: var(--text-muted); gap: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
     .dur input { width: 64px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); color: var(--text-primary); font-size: var(--font-14); text-align: center; }
     .dur input:focus { outline: none; border-color: var(--primary); }
@@ -151,6 +165,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   breakMin = 5;
   longBreakMin = 15;
   autoStart = true;
+  readonly presets = [15, 25, 30, 45, 50, 60, 90];
 
   showNotes = false;
   lastSessionId = '';
@@ -316,6 +331,12 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         this.timerService.reset();
       }
     }
+  }
+
+  applyPreset(minutes: number) {
+    this.focusMin = minutes;
+    this.settings.updateStudy({ focusDuration: minutes });
+    this.timerService.setFocusDuration(minutes);
   }
 
   onFocusChange() {

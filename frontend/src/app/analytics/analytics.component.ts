@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { NgFor, NgIf, DecimalPipe, DatePipe } from '@angular/common';
 import { StatisticsService } from '../core/services/statistics.service';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-analytics',
@@ -9,7 +10,17 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
   imports: [NgFor, NgIf, DecimalPipe, DatePipe, LoadingComponent],
   template: `
     <div class="analytics">
-      <h1>Study Analytics</h1>
+      <div class="analytics-header">
+        <h1>Study Analytics</h1>
+        <div class="export-btns">
+          <button class="btn-export" (click)="exportData('csv')">
+            <span class="material-icons">download</span> CSV
+          </button>
+          <button class="btn-export" (click)="exportData('json')">
+            <span class="material-icons">code</span> JSON
+          </button>
+        </div>
+      </div>
       <app-loading [loading]="loading" />
 
       <div class="overview-grid" *ngIf="!loading && overview">
@@ -97,7 +108,17 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
   `,
   styles: [`
     .analytics { max-width: 1000px; margin: 0 auto; padding: 24px 0; }
-    h1 { font-size: var(--font-24); font-weight: 700; color: var(--text-primary); margin-bottom: 20px; }
+    .analytics-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    h1 { font-size: var(--font-24); font-weight: 700; color: var(--text-primary); margin: 0; }
+    .export-btns { display: flex; gap: 8px; }
+    .btn-export {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-secondary); font-size: var(--font-13); font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-export:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-export .material-icons { font-size: 16px; }
     h2 { font-size: var(--font-16); font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
     .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
 
@@ -194,5 +215,18 @@ export class AnalyticsComponent implements OnInit {
     } catch { } finally {
       this.loading = false;
     }
+  }
+
+  exportData(format: string) {
+    const token = localStorage.getItem('studyroom_token');
+    fetch(`${environment.apiUrl}/analytics/export?format=${format}&days=90`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => res.blob()).then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `study-sessions.${format}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
   }
 }
