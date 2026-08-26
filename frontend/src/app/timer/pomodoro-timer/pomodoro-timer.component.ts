@@ -13,7 +13,7 @@ import { Subscription } from 'rxjs';
   standalone: true,
   imports: [NgIf, NgClass, NgFor, FormsModule],
   template: `
-    <div class="timer-card">
+    <div class="timer-card" [class.focus-mode]="focusMode">
       <div class="timer-header">
         <div class="phase" [class.break]="state.isBreak" [class.long]="state.isLongBreak">
           <span class="material-icons">{{ state.isBreak ? (state.isLongBreak ? 'spa' : 'free_breakfast') : 'psychology' }}</span>
@@ -48,6 +48,9 @@ import { Subscription } from 'rxjs';
         </button>
         <button class="control-btn" (click)="resetTimer()" aria-label="Reset">
           <span class="material-icons">stop</span>
+        </button>
+        <button class="control-btn" (click)="toggleFocusMode()" [class.active]="focusMode" aria-label="Focus mode" title="Focus mode (F)">
+          <span class="material-icons">{{ focusMode ? 'fullscreen_exit' : 'fullscreen' }}</span>
         </button>
       </div>
 
@@ -145,6 +148,18 @@ import { Subscription } from 'rxjs';
     }
     .session-notes textarea:focus { outline: none; border-color: var(--primary); }
     .notes-saved { position: absolute; right: 8px; bottom: 8px; font-size: var(--font-11); color: var(--success); font-weight: 600; }
+
+    .timer-card.focus-mode {
+      position: fixed; inset: 0; z-index: 9999; border-radius: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: var(--background); padding: 48px;
+    }
+    .timer-card.focus-mode .timer-display { font-size: 96px; margin-bottom: 32px; }
+    .timer-card.focus-mode .timer-options,
+    .timer-card.focus-mode .auto-toggle,
+    .timer-card.focus-mode .timer-info,
+    .timer-card.focus-mode .session-notes { display: none !important; }
+    .control-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
   `]
 })
 export class PomodoroTimerComponent implements OnInit, OnDestroy {
@@ -171,8 +186,8 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   lastSessionId = '';
   sessionNotesText = '';
   notesSaved = false;
+  focusMode = false;
   private notesSaveTimeout?: ReturnType<typeof setTimeout>;
-
   private subscriptions: Subscription[] = [];
   private isSynced = false;
   private wasRunning = false;
@@ -180,6 +195,7 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   private wasCompleted = false;
   private activeSessionId = '';
   private tabSwitchCount = 0;
+  private onKeyDown!: (e: KeyboardEvent) => void;
 
   get phaseLabel(): string {
     if (this.state.isBreak) return this.state.isLongBreak ? 'Long Break' : 'Break';
@@ -275,6 +291,9 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     // Phase 6 — tab visibility tracking for anti-cheating
     this.onVisibilityChange = this.onVisibilityChange.bind(this);
     document.addEventListener('visibilitychange', this.onVisibilityChange);
+
+    this.onKeyDown = this.handleKeyDown.bind(this);
+    document.addEventListener('keydown', this.onKeyDown);
   }
 
   startTimer() {
@@ -397,7 +416,30 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     clearTimeout(this.notesSaveTimeout);
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    document.removeEventListener('keydown', this.onKeyDown);
     this.subscriptions.forEach(s => s.unsubscribe());
+  }
+
+  private handleKeyDown(e: KeyboardEvent) {
+    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      if (!this.state.isRunning) this.startTimer();
+      else if (this.state.isPaused) this.resumeTimer();
+      else this.pauseTimer();
+    } else if (e.key === 'r' || e.key === 'R') {
+      this.resetTimer();
+    } else if (e.key === 's' || e.key === 'S') {
+      this.skip();
+    } else if (e.key === 'f' || e.key === 'F') {
+      this.toggleFocusMode();
+    } else if (e.key === 'Escape' && this.focusMode) {
+      this.focusMode = false;
+    }
+  }
+
+  toggleFocusMode() {
+    this.focusMode = !this.focusMode;
   }
 
   private onVisibilityChange() {

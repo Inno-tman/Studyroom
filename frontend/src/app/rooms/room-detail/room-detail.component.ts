@@ -33,7 +33,8 @@ const TABS: RoomTab[] = [
   { id: 'focus', label: 'Focus', icon: 'timer' },
   { id: 'notes', label: 'Notes', icon: 'edit_note' },
   { id: 'ai', label: 'AI', icon: 'auto_awesome' },
-  { id: 'meet', label: 'Meet', icon: 'videocam' }
+  { id: 'meet', label: 'Meet', icon: 'videocam' },
+  { id: 'stats', label: 'Stats', icon: 'bar_chart' }
 ];
 
 @Component({
@@ -268,6 +269,54 @@ const TABS: RoomTab[] = [
 
           <div *ngIf="activeTab === 'meet'" class="tab-pane meet-pane">
             <ng-container *ngTemplateOutlet="meetingsBody" />
+          </div>
+
+          <div *ngIf="activeTab === 'stats'" class="tab-pane stats-pane">
+            <div class="room-stats-grid" *ngIf="roomStats">
+              <div class="rs-card">
+                <span class="material-icons rs-icon">schedule</span>
+                <span class="rs-value">{{ formatDuration(roomStats.totalMinutes) }}</span>
+                <span class="rs-label">Total Study Time</span>
+              </div>
+              <div class="rs-card">
+                <span class="material-icons rs-icon">check_circle</span>
+                <span class="rs-value">{{ roomStats.totalSessions }}</span>
+                <span class="rs-label">Sessions</span>
+              </div>
+              <div class="rs-card">
+                <span class="material-icons rs-icon">people</span>
+                <span class="rs-value">{{ roomStats.memberCount }}</span>
+                <span class="rs-label">Members</span>
+              </div>
+              <div class="rs-card">
+                <span class="material-icons rs-icon">flag</span>
+                <span class="rs-value">{{ formatDuration(roomStats.goalMinutes) }}</span>
+                <span class="rs-label">Room Goal</span>
+              </div>
+            </div>
+
+            <div class="room-leaderboard" *ngIf="roomLeaderboard.length > 0">
+              <h3>Weekly Leaderboard</h3>
+              <div class="lb-row" *ngFor="let entry of roomLeaderboard; let i = index" [class.me]="entry.userId === currentUserId">
+                <span class="lb-rank">{{ i + 1 }}</span>
+                <div class="lb-avatar" [class.has-image]="entry.avatarUrl">
+                  <img *ngIf="entry.avatarUrl" [src]="entry.avatarUrl" alt="" />
+                  <span *ngIf="!entry.avatarUrl">{{ entry.username.charAt(0).toUpperCase() }}</span>
+                </div>
+                <span class="lb-name">{{ entry.username }}</span>
+                <span class="lb-time">{{ formatDuration(entry.verifiedMinutes) }}</span>
+              </div>
+            </div>
+
+            <div class="room-hourly" *ngIf="roomHourly.length > 0">
+              <h3>Study by Hour (This Room)</h3>
+              <div class="hourly-chart-sm">
+                <div class="hour-col-sm" *ngFor="let h of roomHourly" [title]="h.hour + ':00 — ' + formatDuration(h.minutes)">
+                  <div class="hour-fill-sm" [style.height.%]="getHourHeight(h.minutes)"></div>
+                  <span class="hour-label-sm" *ngIf="h.hour % 3 === 0">{{ h.hour }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -729,6 +778,34 @@ const TABS: RoomTab[] = [
     .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .focus-pane { padding: 16px; }
 
+    /* ── Stats Tab ──────────────────────────────────────────── */
+    .stats-pane { padding: 20px; overflow-y: auto; }
+    .room-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    .rs-card {
+      background: var(--background); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+    }
+    .rs-icon { font-size: 22px; color: var(--primary); }
+    .rs-value { font-size: var(--font-20); font-weight: 700; color: var(--text-primary); }
+    .rs-label { font-size: var(--font-11); color: var(--text-muted); }
+
+    .room-leaderboard { margin-bottom: 20px; }
+    .room-leaderboard h3, .room-hourly h3 { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
+    .lb-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background 0.15s; }
+    .lb-row:hover { background: var(--background); }
+    .lb-row.me { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+    .lb-rank { width: 24px; font-size: var(--font-13); font-weight: 700; color: var(--text-muted); text-align: center; }
+    .lb-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: var(--font-13); font-weight: 700; color: var(--text-secondary); flex-shrink: 0; overflow: hidden; }
+    .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .lb-name { flex: 1; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .lb-time { font-size: var(--font-13); font-weight: 700; color: var(--primary); }
+
+    .hourly-chart-sm { display: flex; align-items: flex-end; gap: 3px; height: 80px; }
+    .hour-col-sm { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+    .hour-fill-sm { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 2px; opacity: 0.7; transition: height 0.3s ease; }
+    .hour-col-sm:hover .hour-fill-sm { opacity: 1; }
+    .hour-label-sm { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
+
     /* ── Chat ───────────────────────────────────────────────── */
     .messages { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
 
@@ -1184,6 +1261,42 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.unreadCount = 0;
       this.scrollToBottom();
     }
+    if (id === 'stats' && this.roomId) {
+      this.loadRoomStats();
+    }
+  }
+
+  roomStats: any = null;
+  roomLeaderboard: any[] = [];
+  roomHourly: any[] = [];
+  private maxRoomHour = 1;
+
+  getHourHeight(minutes: number): number {
+    return this.maxRoomHour > 0 ? (minutes / this.maxRoomHour) * 100 : 0;
+  }
+
+  async loadRoomStats() {
+    if (!this.roomId) return;
+    try {
+      const [leaderboard, collective] = await Promise.all([
+        this.statsService.getRoomLeaderboard(this.roomId).toPromise(),
+        this.statsService.getRoomCollectiveStats(this.roomId).toPromise()
+      ]);
+      this.roomLeaderboard = leaderboard || [];
+      this.roomStats = collective;
+
+      const hourlyData: Record<number, number> = {};
+      for (let h = 0; h < 24; h++) hourlyData[h] = 0;
+      (leaderboard || []).forEach((e: any) => {
+        if (e.hourlyDistribution) {
+          Object.entries(e.hourlyDistribution).forEach(([h, m]: [string, any]) => {
+            hourlyData[parseInt(h)] = (hourlyData[parseInt(h)] || 0) + m;
+          });
+        }
+      });
+      this.roomHourly = Object.entries(hourlyData).map(([h, m]) => ({ hour: parseInt(h), minutes: m }));
+      this.maxRoomHour = Math.max(1, ...this.roomHourly.map(h => h.minutes));
+    } catch { }
   }
 
   get upcomingMeetings(): Meeting[] {
