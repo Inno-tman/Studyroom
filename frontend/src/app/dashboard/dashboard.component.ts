@@ -395,7 +395,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     }
     .recs-header .material-icons { color: var(--accent); font-size: 20px; }
     .recs-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
-    .recs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+    .recs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
     .rec-card {
       display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
