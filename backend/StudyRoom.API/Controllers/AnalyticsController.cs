@@ -2,6 +2,8 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using StudyRoom.API.Data;
 using StudyRoom.API.Repositories;
 using StudyRoom.API.Services;
 
@@ -14,11 +16,13 @@ public class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsService _analyticsService;
     private readonly IStudySessionRepository _sessionRepo;
+    private readonly AppDbContext _context;
 
-    public AnalyticsController(IAnalyticsService analyticsService, IStudySessionRepository sessionRepo)
+    public AnalyticsController(IAnalyticsService analyticsService, IStudySessionRepository sessionRepo, AppDbContext context)
     {
         _analyticsService = analyticsService;
         _sessionRepo = sessionRepo;
+        _context = context;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -86,6 +90,37 @@ public class AnalyticsController : ControllerBase
                 notes = s.SessionNotes
             });
         return Ok(recent);
+    }
+
+    [HttpGet("activity")]
+    public async Task<IActionResult> GetActivityFeed([FromQuery] int limit = 15)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var activities = new List<object>();
+
+        // Recent sessions
+        var sessions = await _context.StudySessions
+            .Where(s => s.UserId == UserId && s.Completed && s.IsVerified && s.CreatedAt >= cutoff)
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(limit)
+            .Select(s => new { type = "session", date = s.CreatedAt, text = $"Studied for {s.DurationMinutes} min", roomId = s.RoomId, icon = "play_circle" })
+            .ToListAsync();
+        activities.AddRange(sessions);
+
+        // Recent milestones
+        var milestones = await _context.UserMilestones
+            .Where(m => m.UserId == UserId && m.EarnedAt >= cutoff)
+            .OrderByDescending(m => m.EarnedAt)
+            .Take(10)
+            .Select(m => new { type = "milestone", date = m.EarnedAt, text = $"Earned: {m.Title}", roomId = (Guid?)null, icon = m.Icon })
+            .ToListAsync();
+        activities.AddRange(milestones);
+
+        var sorted = activities
+            .OrderByDescending(a => ((dynamic)a).date)
+            .Take(limit);
+
+        return Ok(sorted);
     }
 
     [HttpGet("export")]

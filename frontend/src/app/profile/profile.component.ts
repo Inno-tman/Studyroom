@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { NgIf } from '@angular/common';
+import { NgIf, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { StatisticsService } from '../core/services/statistics.service';
@@ -25,7 +25,7 @@ interface ProfileView {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [NgIf, RouterLink, TimelineComponent],
+  imports: [NgIf, DatePipe, RouterLink, TimelineComponent],
   template: `
     <div class="profile">
       <div class="page-header">
@@ -76,6 +76,29 @@ interface ProfileView {
         </div>
       </div>
 
+      <div class="profile-heatmap" *ngIf="heatmapDays.length > 0">
+        <div class="hm-header">
+          <span class="material-icons">calendar_month</span>
+          <span class="hm-title">30-Day Study Activity</span>
+          <span class="hm-count">{{ heatmapActiveDays }} active days</span>
+        </div>
+        <div class="hm-grid">
+          <div class="hm-cell" *ngFor="let d of heatmapDays" [class.active]="d.minutes > 0" [class.today]="d.isToday"
+            [title]="(d.date | date:'MMM d') + ': ' + formatDurationShort(d.minutes)">
+            <div class="hm-fill" [style.opacity]="getHeatmapOpacity(d.minutes)"></div>
+          </div>
+        </div>
+        <div class="hm-legend">
+          <span>Less</span>
+          <div class="hm-cell-sm"></div>
+          <div class="hm-cell-sm lv1"></div>
+          <div class="hm-cell-sm lv2"></div>
+          <div class="hm-cell-sm lv3"></div>
+          <div class="hm-cell-sm lv4"></div>
+          <span>More</span>
+        </div>
+      </div>
+
       <div class="profile-recent" *ngIf="recentSessions.length > 0">
         <h2>Recent Sessions</h2>
         <div class="profile-recent-list">
@@ -121,6 +144,22 @@ interface ProfileView {
     .stat-value { display: block; font-size: var(--font-28); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
     .stat-label { font-size: var(--font-12); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
+    .profile-heatmap { margin-bottom: 24px; }
+    .hm-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .hm-header .material-icons { font-size: var(--font-20); color: var(--primary); }
+    .hm-title { font-size: var(--font-15); font-weight: 700; color: var(--text-primary); }
+    .hm-count { margin-left: auto; font-size: var(--font-12); font-weight: 600; color: var(--text-muted); }
+    .hm-grid { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 8px; }
+    .hm-cell { width: 14px; height: 14px; border-radius: 3px; background: var(--background); position: relative; }
+    .hm-cell .hm-fill { position: absolute; inset: 0; border-radius: 3px; background: var(--primary); }
+    .hm-cell.today { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .hm-legend { display: flex; align-items: center; gap: 3px; justify-content: flex-end; font-size: 10px; color: var(--text-muted); }
+    .hm-cell-sm { width: 10px; height: 10px; border-radius: 2px; background: var(--background); }
+    .hm-cell-sm.lv1 { background: color-mix(in srgb, var(--primary) 25%, transparent); }
+    .hm-cell-sm.lv2 { background: color-mix(in srgb, var(--primary) 50%, transparent); }
+    .hm-cell-sm.lv3 { background: color-mix(in srgb, var(--primary) 75%, transparent); }
+    .hm-cell-sm.lv4 { background: var(--primary); }
+
     .profile-recent { margin-bottom: 24px; }
     .profile-recent h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
     .profile-recent-list { display: flex; flex-direction: column; gap: 4px; }
@@ -147,6 +186,7 @@ export class ProfileComponent implements OnInit {
   profile: ProfileView | null = null;
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
   recentSessions: any[] = [];
+  heatmapDays: { date: string; minutes: number; isToday: boolean }[] = [];
   viewingOther = false;
   loading = true;
 
@@ -221,10 +261,48 @@ export class ProfileComponent implements OnInit {
         }
         this.stats = await this.statsService.getStats().toPromise() || this.stats;
         this.recentSessions = await this.statsService.getRecentSessions(5).toPromise() || [];
+        const trendData = await this.statsService.getDailyTrend(30).toPromise() || [];
+        this.buildHeatmap(trendData);
       }
     } catch { } finally {
       this.loading = false;
     }
+  }
+
+  get heatmapActiveDays(): number {
+    return this.heatmapDays.filter(d => d.minutes > 0).length;
+  }
+
+  getHeatmapOpacity(minutes: number): number {
+    if (minutes <= 0) return 0;
+    if (minutes < 30) return 0.25;
+    if (minutes < 60) return 0.5;
+    if (minutes < 120) return 0.75;
+    return 1;
+  }
+
+  private buildHeatmap(trendData: any[]) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+    const byDate: Record<string, number> = {};
+    trendData.forEach((d: any) => { byDate[d.date] = d.minutes; });
+    const days: { date: string; minutes: number; isToday: boolean }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ date: key, minutes: byDate[key] || 0, isToday: key === todayStr });
+    }
+    this.heatmapDays = days;
+  }
+
+  formatDurationShort(minutes: number): string {
+    const total = Math.max(0, Math.round(minutes || 0));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h === 0) return `${m}m`;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
   }
 
   private selfDisplayName(me: any): string {

@@ -227,6 +227,23 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           <span>More</span>
         </div>
       </div>
+
+      <!-- ── Activity Feed ──────────────────────────────────── -->
+      <div class="activity-feed" *ngIf="activityFeed.length > 0">
+        <div class="af-header">
+          <span class="material-icons">update</span>
+          <span class="af-title">Recent Activity</span>
+        </div>
+        <div class="af-list">
+          <div class="af-row" *ngFor="let a of activityFeed">
+            <span class="material-icons af-icon">{{ a.icon || 'circle' }}</span>
+            <div class="af-info">
+              <span class="af-text">{{ a.text }}</span>
+              <span class="af-date">{{ a.date | date:'MMM d, h:mm a' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
   `,
   styles: [`
     .dashboard { max-width: 1200px; margin: 0 auto; }
@@ -372,6 +389,22 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .streak-cell-sm.s3 { background: color-mix(in srgb, var(--primary) 75%, transparent); }
     .streak-cell-sm.s4 { background: var(--primary); }
 
+    /* Activity feed */
+    .activity-feed {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px; margin-bottom: 16px;
+    }
+    .af-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .af-header .material-icons { font-size: var(--font-20); color: var(--primary); }
+    .af-title { font-size: var(--font-15); font-weight: 700; color: var(--text-primary); }
+    .af-list { display: flex; flex-direction: column; gap: 4px; }
+    .af-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background 0.15s; }
+    .af-row:hover { background: var(--background); }
+    .af-icon { font-size: var(--font-18); color: var(--success); }
+    .af-info { flex: 1; min-width: 0; }
+    .af-text { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .af-date { display: block; font-size: var(--font-11); color: var(--text-muted); }
+
     /* Segmented tabs */
     .section { margin-bottom: 32px; }
     .section-tabs {
@@ -424,6 +457,7 @@ export class DashboardComponent implements OnInit {
   allRooms: Room[] = [];
   recentSessions: any[] = [];
   streakDays: { date: string; minutes: number; isToday: boolean }[] = [];
+  activityFeed: any[] = [];
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
   todayProgress: TodayProgress | null = null;
   milestones: Milestone[] = [];
@@ -454,7 +488,7 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions, trendData] = await Promise.all([
+      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions, trendData, activity] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
         this.roomService.getAll().toPromise(),
         this.statsService.getStats().toPromise(),
@@ -462,7 +496,8 @@ export class DashboardComponent implements OnInit {
         this.statsService.getMilestones().toPromise(),
         this.statsService.getRecommendations().toPromise(),
         this.statsService.getRecentSessions(10).toPromise(),
-        this.statsService.getDailyTrend(30).toPromise()
+        this.statsService.getDailyTrend(30).toPromise(),
+        this.statsService.getActivityFeed(15).toPromise()
       ]);
       this.myRooms = myRooms || [];
       this.allRooms = allRooms || [];
@@ -472,6 +507,7 @@ export class DashboardComponent implements OnInit {
       this.recommendations = recommendations || [];
       this.recentSessions = recentSessions || [];
       this.buildStreakDays(trendData || []);
+      this.activityFeed = activity || [];
     } catch { } finally {
       this.loading = false;
     }

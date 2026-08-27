@@ -169,4 +169,8 @@ export class StatisticsService {
     if (roomId) params.roomId = roomId;
     return this.http.get<any[]>(`${environment.apiUrl}/analytics/recent-sessions`, { params });
   }
+
+  getActivityFeed(limit: number = 15): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/analytics/activity`, { params: { limit } });
+  }
 }
