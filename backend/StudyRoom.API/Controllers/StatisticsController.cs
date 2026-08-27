@@ -7,7 +7,7 @@ using StudyRoom.API.Services;
 namespace StudyRoom.API.Controllers;
 
 [ApiController]
-[Route("api/users/stats")]
+[Route("api/statistics")]
 [Authorize]
 public class StatisticsController : ControllerBase
 {
@@ -20,8 +20,8 @@ public class StatisticsController : ControllerBase
         _sessionsRepo = sessionsRepo;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetStats()
+    [HttpGet("overview")]
+    public async Task<IActionResult> GetOverview()
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var stats = await _statsService.GetUserStatsAsync(userId);
