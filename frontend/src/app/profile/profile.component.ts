@@ -76,6 +76,20 @@ interface ProfileView {
         </div>
       </div>
 
+      <div class="profile-recent" *ngIf="recentSessions.length > 0">
+        <h2>Recent Sessions</h2>
+        <div class="profile-recent-list">
+          <div class="profile-recent-row" *ngFor="let s of recentSessions">
+            <span class="material-icons pr-icon">play_circle</span>
+            <div class="pr-info">
+              <span class="pr-date">{{ s.date }}</span>
+              <span class="pr-notes" *ngIf="s.notes">{{ s.notes }}</span>
+            </div>
+            <span class="pr-duration">{{ s.durationMinutes }}m</span>
+          </div>
+        </div>
+      </div>
+
       <app-timeline *ngIf="profile" [userId]="profile.id" [userName]="profile?.displayName"></app-timeline>
     </div>
   `,
@@ -107,6 +121,17 @@ interface ProfileView {
     .stat-value { display: block; font-size: var(--font-28); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
     .stat-label { font-size: var(--font-12); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
+    .profile-recent { margin-bottom: 24px; }
+    .profile-recent h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+    .profile-recent-list { display: flex; flex-direction: column; gap: 4px; }
+    .profile-recent-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; transition: background 0.15s; }
+    .profile-recent-row:hover { background: var(--background); }
+    .pr-icon { font-size: var(--font-18); color: var(--success); }
+    .pr-info { flex: 1; min-width: 0; }
+    .pr-date { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .pr-notes { display: block; font-size: var(--font-12); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pr-duration { font-size: var(--font-13); font-weight: 700; color: var(--primary); flex-shrink: 0; }
+
     @media (max-width: 768px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .profile-card { flex-direction: column; text-align: center; }
@@ -121,6 +146,7 @@ export class ProfileComponent implements OnInit {
 
   profile: ProfileView | null = null;
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
+  recentSessions: any[] = [];
   viewingOther = false;
   loading = true;
 
@@ -194,6 +220,7 @@ export class ProfileComponent implements OnInit {
           };
         }
         this.stats = await this.statsService.getStats().toPromise() || this.stats;
+        this.recentSessions = await this.statsService.getRecentSessions(5).toPromise() || [];
       }
     } catch { } finally {
       this.loading = false;

@@ -163,4 +163,10 @@ export class StatisticsService {
   setWeeklyGoal(targetMinutes: number): Observable<any> {
     return this.http.post(`${environment.apiUrl}/analytics/weekly-goals`, { targetMinutes });
   }
+
+  getRecentSessions(limit: number = 20, roomId?: string): Observable<any[]> {
+    const params: any = { limit };
+    if (roomId) params.roomId = roomId;
+    return this.http.get<any[]>(`${environment.apiUrl}/analytics/recent-sessions`, { params });
+  }
 }

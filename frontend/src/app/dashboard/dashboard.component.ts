@@ -25,6 +25,9 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           <a routerLink="/rooms/create" class="hero-create">
             <span class="material-icons">add_box</span> Create Room
           </a>
+          <button class="hero-quick" (click)="quickStudy()" *ngIf="myRooms.length > 0" title="Jump into a random room">
+            <span class="material-icons">bolt</span> Quick Study
+          </button>
         </div>
         <div class="hero-badges">
           <span class="hero-badge">
@@ -116,6 +119,25 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         <div class="stats-strip-item">
           <span class="stat-value">{{ formatDuration(stats.weeklyStudyMinutes) }}</span>
           <span class="stat-label">Last 7 Days</span>
+        </div>
+      </div>
+
+      <!-- ── Recent Sessions ──────────────────────────────────── -->
+      <div class="recent-sessions" *ngIf="recentSessions.length > 0">
+        <div class="recent-header">
+          <span class="material-icons">history</span>
+          <span class="recent-title">Recent Sessions</span>
+          <a routerLink="/analytics" class="recent-link">View All →</a>
+        </div>
+        <div class="recent-list">
+          <div class="recent-row" *ngFor="let s of recentSessions">
+            <span class="material-icons recent-icon">play_circle</span>
+            <div class="recent-info">
+              <span class="recent-date">{{ s.date }}</span>
+              <span class="recent-notes" *ngIf="s.notes">{{ s.notes }}</span>
+            </div>
+            <span class="recent-duration">{{ formatDurationShort(s.durationMinutes) }}</span>
+          </div>
         </div>
       </div>
 
@@ -275,6 +297,36 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .stat-label { font-size: var(--font-12); color: var(--text-muted); }
     .unverified-warn .material-icons { font-size: var(--font-16); color: #f59e0b; }
 
+    /* Hero quick study button */
+    .hero-create { margin-right: 0; }
+    .hero-top { flex-wrap: wrap; }
+    .hero-quick {
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+      color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600;
+      font-size: var(--font-13); display: inline-flex; align-items: center; gap: 6px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .hero-quick:hover { background: rgba(255,255,255,0.28); }
+
+    /* Recent sessions */
+    .recent-sessions {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px; margin-bottom: 16px;
+    }
+    .recent-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .recent-header .material-icons { font-size: var(--font-20); color: var(--primary); }
+    .recent-title { font-size: var(--font-15); font-weight: 700; color: var(--text-primary); }
+    .recent-link { margin-left: auto; font-size: var(--font-12); font-weight: 600; color: var(--primary); text-decoration: none; }
+    .recent-link:hover { text-decoration: underline; }
+    .recent-list { display: flex; flex-direction: column; gap: 4px; }
+    .recent-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background 0.15s; }
+    .recent-row:hover { background: var(--background); }
+    .recent-icon { font-size: var(--font-18); color: var(--success); }
+    .recent-info { flex: 1; min-width: 0; }
+    .recent-date { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
+    .recent-notes { display: block; font-size: var(--font-12); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recent-duration { font-size: var(--font-13); font-weight: 700; color: var(--primary); flex-shrink: 0; }
+
     /* Segmented tabs */
     .section { margin-bottom: 32px; }
     .section-tabs {
@@ -325,6 +377,7 @@ export class DashboardComponent implements OnInit {
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
+  recentSessions: any[] = [];
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
   todayProgress: TodayProgress | null = null;
   milestones: Milestone[] = [];
@@ -355,13 +408,14 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations] = await Promise.all([
+      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
         this.roomService.getAll().toPromise(),
         this.statsService.getStats().toPromise(),
         this.statsService.getTodayProgress().toPromise(),
         this.statsService.getMilestones().toPromise(),
-        this.statsService.getRecommendations().toPromise()
+        this.statsService.getRecommendations().toPromise(),
+        this.statsService.getRecentSessions(10).toPromise()
       ]);
       this.myRooms = myRooms || [];
       this.allRooms = allRooms || [];
@@ -369,6 +423,7 @@ export class DashboardComponent implements OnInit {
       this.todayProgress = todayProgress || null;
       this.milestones = milestones || [];
       this.recommendations = recommendations || [];
+      this.recentSessions = recentSessions || [];
     } catch { } finally {
       this.loading = false;
     }
@@ -376,18 +431,26 @@ export class DashboardComponent implements OnInit {
     // Keep the streak / study totals fresh when a focus session completes.
     this.signalR.timerCompleted$.subscribe(async () => {
       try {
-        const [refreshed, progress, ms, recs] = await Promise.all([
+        const [refreshed, progress, ms, recs, recent] = await Promise.all([
           this.statsService.getStats().toPromise(),
           this.statsService.getTodayProgress().toPromise(),
           this.statsService.getMilestones().toPromise(),
-          this.statsService.getRecommendations().toPromise()
+          this.statsService.getRecommendations().toPromise(),
+          this.statsService.getRecentSessions(10).toPromise()
         ]);
         if (refreshed) this.stats = refreshed;
         if (progress) this.todayProgress = progress;
         if (ms) this.milestones = ms;
         if (recs) this.recommendations = recs;
+        if (recent) this.recentSessions = recent;
       } catch { }
     });
+  }
+
+  quickStudy() {
+    if (this.myRooms.length === 0) return;
+    const room = this.myRooms[Math.floor(Math.random() * this.myRooms.length)];
+    this.router.navigate(['/rooms', room.id]);
   }
 
   navigateToRoom(id: string) {

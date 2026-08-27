@@ -65,6 +65,29 @@ public class AnalyticsController : ControllerBase
         return Ok(goal);
     }
 
+    [HttpGet("recent-sessions")]
+    public async Task<IActionResult> GetRecentSessions([FromQuery] int limit = 20, [FromQuery] Guid? roomId = null)
+    {
+        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
+        var query = sessions
+            .Where(s => s.Completed && s.IsVerified)
+            .AsQueryable();
+        if (roomId.HasValue)
+            query = query.Where(s => s.RoomId == roomId.Value);
+        var recent = query
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(Math.Clamp(limit, 1, 50))
+            .Select(s => new
+            {
+                id = s.Id,
+                date = s.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+                durationMinutes = s.DurationMinutes,
+                roomId = s.RoomId,
+                notes = s.SessionNotes
+            });
+        return Ok(recent);
+    }
+
     [HttpGet("export")]
     public async Task<IActionResult> Export([FromQuery] string format = "csv", [FromQuery] int days = 90)
     {
