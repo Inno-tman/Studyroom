@@ -199,6 +199,7 @@ builder.Services.AddScoped<IWeeklySummaryService, WeeklySummaryService>();
 builder.Services.AddScoped<INudgeService, NudgeService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<ICalendarService, CalendarService>();
 
 var app = builder.Build();
 
@@ -494,6 +495,22 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_WeeklyGoals_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS "IX_WeeklyGoals_UserId" ON "WeeklyGoals" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "CalendarConnections" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Provider" varchar(20) NOT NULL,
+            "AccessToken" varchar(500) NOT NULL,
+            "RefreshToken" varchar(500) NULL,
+            "TokenExpiresAt" timestamp NOT NULL,
+            "CalendarId" varchar(500) NULL,
+            "CalendarName" varchar(200) NULL,
+            "AutoSync" boolean NOT NULL DEFAULT true,
+            "ConnectedAt" timestamp NOT NULL DEFAULT (now()),
+            CONSTRAINT "PK_CalendarConnections" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_CalendarConnections_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_CalendarConnections_UserId" ON "CalendarConnections" ("UserId");
     """);
 }
 

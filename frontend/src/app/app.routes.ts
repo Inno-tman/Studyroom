@@ -101,6 +101,10 @@ export const routes: Routes = [
       {
         path: 'study',
         loadComponent: () => import('./settings/study-settings/study-settings.component').then(m => m.StudySettingsComponent)
+      },
+      {
+        path: 'calendar',
+        loadComponent: () => import('./settings/calendar-settings/calendar-settings.component').then(m => m.CalendarSettingsComponent)
       }
     ]
   },

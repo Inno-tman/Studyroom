@@ -23,6 +23,7 @@ public class StudySessionsController : ControllerBase
     private readonly ITimerScheduler _timerScheduler;
     private readonly ISessionValidationService _validation;
     private readonly IMilestoneService _milestoneService;
+    private readonly ICalendarService _calendarService;
 
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
@@ -32,7 +33,8 @@ public class StudySessionsController : ControllerBase
         INotificationService notificationService,
         ITimerScheduler timerScheduler,
         ISessionValidationService validation,
-        IMilestoneService milestoneService)
+        IMilestoneService milestoneService,
+        ICalendarService calendarService)
     {
         _sessionRepo = sessionRepo;
         _roomRepo = roomRepo;
@@ -42,6 +44,7 @@ public class StudySessionsController : ControllerBase
         _validation = validation;
         _milestoneService = milestoneService;
         _tabSwitchRepo = tabSwitchRepo;
+        _calendarService = calendarService;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -115,6 +118,23 @@ public class StudySessionsController : ControllerBase
             // Phase 4 — check milestones after session completion
             if (latest.IsVerified)
                 await _milestoneService.CheckAndAwardMilestonesAsync(UserId);
+
+            // Phase 15 — sync completed session to connected calendars
+            if (latest.IsVerified && latest.StartedAt.HasValue)
+            {
+                var sessionStart = latest.StartedAt.Value;
+                var sessionEnd = sessionStart.AddMinutes((double)latest.DurationMinutes);
+                var roomName = "";
+                if (!string.IsNullOrEmpty(request.RoomId) && Guid.TryParse(request.RoomId, out var rId))
+                {
+                    var room = await _roomRepo.GetByIdAsync(rId);
+                    roomName = room?.Name ?? "";
+                }
+                var title = string.IsNullOrEmpty(roomName)
+                    ? $"Study Session ({latest.DurationMinutes} min)"
+                    : $"Study: {roomName} ({latest.DurationMinutes} min)";
+                await _calendarService.CreateStudyEventAsync(UserId, title, sessionStart, sessionEnd, roomName);
+            }
 
             _timerScheduler.Cancel(UserId);
 

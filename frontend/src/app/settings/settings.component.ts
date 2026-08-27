@@ -33,6 +33,10 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
             <span class="material-icons">school</span>
             <span>Study</span>
           </a>
+          <a routerLink="calendar" routerLinkActive="active" class="settings-item">
+            <span class="material-icons">calendar_month</span>
+            <span>Calendar</span>
+          </a>
         </nav>
 
         <div class="settings-content">
