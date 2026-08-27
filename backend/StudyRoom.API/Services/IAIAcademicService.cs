@@ -5,4 +5,6 @@ namespace StudyRoom.API.Services;
 public interface IAIAcademicService
 {
     Task<AcademicResponseDto> AskAsync(AcademicQueryDto query);
+
+    Task<GameContentDto> GenerateGameContentAsync(GameContentRequestDto request);
 }

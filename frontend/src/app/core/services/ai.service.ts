@@ -67,12 +67,57 @@ export interface ConversationDetail {
   messages: { id: string; role: string; content: string; createdAt: string }[];
 }
 
+export interface GameContentRequest {
+  game: string;
+  count: number;
+  topic?: string;
+  difficulty?: string;
+}
+
+export interface GameQuizItem {
+  question: string;
+  options: string[];
+  answer: number;
+  category?: string;
+}
+
+export interface GameTrueFalseItem {
+  statement: string;
+  isTrue: boolean;
+}
+
+export interface GameMemoryItem {
+  term: string;
+  definition: string;
+}
+
+export interface GameMathItem {
+  text: string;
+  answer: number;
+}
+
+export interface GameContent {
+  ok: boolean;
+  error?: string;
+  topic?: string;
+  difficulty?: string;
+  quiz: GameQuizItem[];
+  trueFalse: GameTrueFalseItem[];
+  memory: GameMemoryItem[];
+  words: string[];
+  math: GameMathItem[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AIService {
   constructor(private http: HttpClient) {}
 
   ask(query: AcademicQuery): Observable<AcademicResponse> {
     return this.http.post<AcademicResponse>(`${environment.apiUrl}/ai/ask`, query);
+  }
+
+  generateGameContent(request: GameContentRequest): Observable<GameContent> {
+    return this.http.post<GameContent>(`${environment.apiUrl}/ai/games/generate`, request);
   }
 
   createConversation(subject?: string, researchMode = false, phase?: string, roomId?: string): Observable<{ id: string }> {

@@ -46,6 +46,208 @@ public class AIAcademicService : IAIAcademicService
         return await HandleGeneralQuery(query);
     }
 
+    public async Task<GameContentDto> GenerateGameContentAsync(GameContentRequestDto request)
+    {
+        var game = (request.Game ?? string.Empty).ToLowerInvariant();
+        if (game is not ("quiz" or "truefalse" or "memory" or "scramble" or "math"))
+            return new GameContentDto { Ok = false, Error = "Unknown game type." };
+
+        try
+        {
+            var (system, user) = BuildGamePrompt(request, game);
+            var raw = await CallGeminiRawAsync(system, user);
+            var content = ParseGameContent(raw, game, Math.Clamp(request.Count, 1, 30));
+
+            if (content == null)
+                return new GameContentDto { Ok = false, Error = "The AI returned an unreadable response. Built-in questions used." };
+
+            content.Ok = true;
+            content.Topic = request.Topic;
+            content.Difficulty = request.Difficulty;
+            return content;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Game generation timed out for game={Game}.", game);
+            return new GameContentDto { Ok = false, Error = "AI took too long to respond. Built-in questions used." };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Game generation failed for game={Game}.", game);
+            return new GameContentDto
+            {
+                Ok = false,
+                Error = ex.Message.Contains("not configured")
+                    ? "AI is not configured yet. Built-in questions used."
+                    : "AI is unavailable right now. Built-in questions used."
+            };
+        }
+    }
+
+    private static (string System, string User) BuildGamePrompt(GameContentRequestDto request, string game)
+    {
+        var topic = string.IsNullOrWhiteSpace(request.Topic) ? null : request.Topic.Trim();
+        var difficulty = string.IsNullOrWhiteSpace(request.Difficulty) ? "mixed" : request.Difficulty.Trim();
+        var count = Math.Clamp(request.Count, 1, 30);
+
+        var topicLine = topic != null ? $"Topic: {topic}\n" : "";
+        var difficultyLine = $"Difficulty: {difficulty}\n";
+        var freshLine = game switch
+        {
+            "quiz" => "Each question must be factually accurate and use a different topic/fact area unless a Topic was given.",
+            "truefalse" => "Statements must be factually accurate and cover varied facts.",
+            "memory" => "Each pair must match a single term with its concise definition.",
+            "scramble" => "Words must be common, lowercase, and 4-10 letters with no spaces or hyphens.",
+            "math" => "Each problem must be a self-contained word problem whose text does not reveal the numeric answer.",
+            _ => "Content must be varied and factually correct."
+        };
+
+        var schema = game switch
+        {
+            "quiz" => "{\"quiz\":[{\"question\":\"Q?\",\"options\":[\"A\",\"B\",\"C\",\"D\"],\"answer\":<index of correct option, 0-based>,\"category\":\"subject\"}]}",
+            "truefalse" => "{\"items\":[{\"statement\":\"...\",\"isTrue\":true|false}]}",
+            "memory" => "{\"pairs\":[{\"term\":\"...\",\"definition\":\"...\"}]}",
+            "scramble" => "{\"words\":[\"apple\",\"planet\",\"...\"]}",
+            "math" => "{\"problems\":[{\"text\":\"...\",\"answer\":<numeric result, exact number>}]}",
+            _ => "{}"
+        };
+
+        var system = $"""
+You are an educational content generator for a study app called StudyRoom. You create short, accurate, age-appropriate quiz material.
+Rules:
+- Always provide original, well-varied content. Never repeat facts or wording across items.
+- Facts must be correct. Answer options for multiple choice must be plausible but clearly one is correct.
+- {freshLine}
+- Respond with ONLY valid JSON matching the requested schema. No explanations, no markdown fences.
+""";
+
+        var user = $"""
+Generate {count} items.
+{topicLine}{difficultyLine}
+Expected JSON shape:
+{schema}
+""";
+
+        return (system, user);
+    }
+
+    private static GameContentDto? ParseGameContent(string raw, string game, int count)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        var start = raw.IndexOf('{');
+        var end = raw.LastIndexOf('}');
+        if (start < 0 || end <= start) return null;
+        raw = raw.Substring(start, end - start + 1);
+
+        GameContentDto dto;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            dto = new GameContentDto();
+
+            switch (game)
+            {
+                case "quiz":
+                    if (!root.TryGetProperty("quiz", out var quizArr) || quizArr.ValueKind != JsonValueKind.Array)
+                        return null;
+                    foreach (var item in quizArr.EnumerateArray())
+                    {
+                        if (dto.Quiz.Count >= count) break;
+                        if (!item.TryGetProperty("question", out var q) || string.IsNullOrWhiteSpace(q.GetString()))
+                            continue;
+                        if (!item.TryGetProperty("options", out var opts) || opts.ValueKind != JsonValueKind.Array || opts.GetArrayLength() < 3)
+                            continue;
+                        var options = opts.EnumerateArray()
+                            .Select(o => o.GetString()?.Trim())
+                            .Where(o => !string.IsNullOrWhiteSpace(o))
+                            .Select(o => o!)
+                            .ToList();
+                        if (options.Count < 3) continue;
+                        var answer = 0;
+                        if (item.TryGetProperty("answer", out var a) && a.ValueKind == JsonValueKind.Number)
+                            answer = a.GetInt32() >= 0 ? a.GetInt32() : 0;
+                        answer = Math.Clamp(answer, 0, options.Count - 1);
+                        dto.Quiz.Add(new GameQuizItemDto
+                        {
+                            Question = q.GetString()!.Trim(),
+                            Options = options,
+                            Answer = answer,
+                            Category = item.TryGetProperty("category", out var cat) ? cat.GetString() : null
+                        });
+                    }
+                    return dto.Quiz.Count > 0 ? dto : null;
+
+                case "truefalse":
+                    if (!root.TryGetProperty("items", out var tfArr) || tfArr.ValueKind != JsonValueKind.Array)
+                        return null;
+                    foreach (var item in tfArr.EnumerateArray())
+                    {
+                        if (dto.TrueFalse.Count >= count) break;
+                        if (!item.TryGetProperty("statement", out var st) || string.IsNullOrWhiteSpace(st.GetString()))
+                            continue;
+                        var isTrue = item.TryGetProperty("isTrue", out var tv) && tv.ValueKind == JsonValueKind.True;
+                        dto.TrueFalse.Add(new GameTrueFalseItemDto { Statement = st.GetString()!.Trim(), IsTrue = isTrue });
+                    }
+                    return dto.TrueFalse.Count > 0 ? dto : null;
+
+                case "memory":
+                    if (!root.TryGetProperty("pairs", out var pairs) || pairs.ValueKind != JsonValueKind.Array)
+                        return null;
+                    foreach (var item in pairs.EnumerateArray())
+                    {
+                        if (dto.Memory.Count >= count) break;
+                        if (!item.TryGetProperty("term", out var tm) || string.IsNullOrWhiteSpace(tm.GetString()))
+                            continue;
+                        if (!item.TryGetProperty("definition", out var df) || string.IsNullOrWhiteSpace(df.GetString()))
+                            continue;
+                        dto.Memory.Add(new GameMemoryItemDto { Term = tm.GetString()!.Trim(), Definition = df.GetString()!.Trim() });
+                    }
+                    return dto.Memory.Count > 0 ? dto : null;
+
+                case "scramble":
+                    if (!root.TryGetProperty("words", out var words) || words.ValueKind != JsonValueKind.Array)
+                        return null;
+                    foreach (var w in words.EnumerateArray())
+                    {
+                        if (dto.Words.Count >= count) break;
+                        var word = w.GetString()?.Trim().ToLowerInvariant();
+                        if (string.IsNullOrWhiteSpace(word)) continue;
+                        if (word.Any(char.IsWhiteSpace) || word.Any(ch => !char.IsLetter(ch))) continue;
+                        if (word.Length < 4 || word.Length > 10) continue;
+                        if (!dto.Words.Contains(word))
+                            dto.Words.Add(word);
+                    }
+                    return dto.Words.Count > 0 ? dto : null;
+
+                case "math":
+                    if (!root.TryGetProperty("problems", out var probs) || probs.ValueKind != JsonValueKind.Array)
+                        return null;
+                    foreach (var item in probs.EnumerateArray())
+                    {
+                        if (dto.Math.Count >= count) break;
+                        if (!item.TryGetProperty("text", out var tx) || string.IsNullOrWhiteSpace(tx.GetString()))
+                            continue;
+                        if (!item.TryGetProperty("answer", out var ans) || ans.ValueKind != JsonValueKind.Number)
+                            continue;
+                        dto.Math.Add(new GameMathItemDto
+                        {
+                            Text = tx.GetString()!.Trim(),
+                            Answer = ans.GetDouble()
+                        });
+                    }
+                    return dto.Math.Count > 0 ? dto : null;
+            }
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
+        return null;
+    }
+
     private async Task<AcademicResponseDto> HandleGeneralQuery(AcademicQueryDto query)
     {
         var subjectContext = !string.IsNullOrWhiteSpace(query.Subject)
@@ -308,6 +510,81 @@ The full research process:
             Subject = subject,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Calls Gemini and returns the raw text of the first candidate, so callers can parse structured JSON.
+    /// Falls back across known-good models when the preferred model is retired.
+    /// </summary>
+    private async Task<string> CallGeminiRawAsync(string systemPrompt, string userMessage)
+    {
+        var apiKey = _settings.ApiKey;
+        if (string.IsNullOrEmpty(apiKey))
+            apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+
+        if (string.IsNullOrEmpty(apiKey))
+            throw new InvalidOperationException("AI is not configured.");
+
+        var preferred = _settings.Model;
+        if (string.IsNullOrWhiteSpace(preferred) || !preferred.StartsWith("gemini", StringComparison.OrdinalIgnoreCase))
+            preferred = "gemini-2.5-flash";
+
+        var candidates = new List<string> { preferred };
+        foreach (var m in new[] { "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", "gemini-3-flash-preview", "gemini-3.6-flash", "gemini-1.5-flash" })
+            if (!candidates.Contains(m))
+                candidates.Add(m);
+
+        Exception? lastError = null;
+        foreach (var model in candidates)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(apiKey)}";
+
+                var payload = new
+                {
+                    system_instruction = new { parts = new[] { new { text = systemPrompt } } },
+                    contents = new[] { new { role = "user", parts = new[] { new { text = userMessage } } } },
+                    generationConfig = new { temperature = 0.7, maxOutputTokens = 2048, responseMimeType = "application/json" }
+                };
+
+                var request = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+                };
+
+                var response = await _http.SendAsync(request, cts.Token);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(responseJson);
+                return doc.RootElement
+                    .GetProperty("candidates")[0]
+                    .GetProperty("content")
+                    .GetProperty("parts")[0]
+                    .GetProperty("text")
+                    .GetString() ?? string.Empty;
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+            {
+                lastError = ex;
+                _logger.LogWarning("Gemini model {Model} unavailable for game generation, trying next candidate.", model);
+                continue;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Gemini game-generation request timed out for model {Model}.", model);
+                continue;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Gemini game-generation request failed for model {Model}.", model);
+                throw;
+            }
+        }
+
+        throw lastError ?? new InvalidOperationException("AI request failed for all model candidates.");
     }
 
     private static string GenerateFallbackResponse(string question, string? subject)

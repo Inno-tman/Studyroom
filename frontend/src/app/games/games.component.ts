@@ -1,6 +1,8 @@
 import { Component, OnDestroy } from '@angular/core';
-import { NgIf, NgFor } from '@angular/common';
+import { NgIf, NgFor, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { timeout } from 'rxjs';
+import { AIService, GameContent, GameMathItem } from '../core/services/ai.service';
 
 type GameId = 'math' | 'scramble' | 'quiz' | 'memory' | 'truefalse' | 'flags' | 'elements' | null;
 
@@ -95,34 +97,158 @@ const FLAG_BANK: FlagEntry[] = [
   { flag: '🇨🇳', country: 'China' },
   { flag: '🇷🇺', country: 'Russia' },
   { flag: '🇳🇱', country: 'Netherlands' },
-  { flag: '🇹🇷', country: 'Turkey' }
+  { flag: '🇹🇷', country: 'Turkey' },
+  { flag: '🇵🇹', country: 'Portugal' },
+  { flag: '🇬🇷', country: 'Greece' },
+  { flag: '🇳🇴', country: 'Norway' },
+  { flag: '🇫🇮', country: 'Finland' },
+  { flag: '🇩🇰', country: 'Denmark' },
+  { flag: '🇨🇭', country: 'Switzerland' },
+  { flag: '🇦🇹', country: 'Austria' },
+  { flag: '🇧🇪', country: 'Belgium' },
+  { flag: '🇮🇪', country: 'Ireland' },
+  { flag: '🇵🇱', country: 'Poland' },
+  { flag: '🇨🇿', country: 'Czech Republic' },
+  { flag: '🇭🇺', country: 'Hungary' },
+  { flag: '🇷🇴', country: 'Romania' },
+  { flag: '🇺🇦', country: 'Ukraine' },
+  { flag: '🇲🇦', country: 'Morocco' },
+  { flag: '🇳🇬', country: 'Nigeria' },
+  { flag: '🇰🇪', country: 'Kenya' },
+  { flag: '🇦🇷', country: 'Argentina' },
+  { flag: '🇨🇱', country: 'Chile' },
+  { flag: '🇨🇴', country: 'Colombia' },
+  { flag: '🇵🇪', country: 'Peru' },
+  { flag: '🇸🇦', country: 'Saudi Arabia' },
+  { flag: '🇮🇱', country: 'Israel' },
+  { flag: '🇵🇰', country: 'Pakistan' },
+  { flag: '🇧🇩', country: 'Bangladesh' },
+  { flag: '🇮🇩', country: 'Indonesia' },
+  { flag: '🇵🇭', country: 'Philippines' },
+  { flag: '🇹🇭', country: 'Thailand' },
+  { flag: '🇻🇳', country: 'Vietnam' },
+  { flag: '🇳🇿', country: 'New Zealand' }
 ];
 
 const ELEMENT_BANK: ElementEntry[] = [
   { name: 'Hydrogen', symbol: 'H' },
   { name: 'Helium', symbol: 'He' },
   { name: 'Lithium', symbol: 'Li' },
+  { name: 'Beryllium', symbol: 'Be' },
+  { name: 'Boron', symbol: 'B' },
   { name: 'Carbon', symbol: 'C' },
   { name: 'Nitrogen', symbol: 'N' },
   { name: 'Oxygen', symbol: 'O' },
+  { name: 'Fluorine', symbol: 'F' },
+  { name: 'Neon', symbol: 'Ne' },
   { name: 'Sodium', symbol: 'Na' },
   { name: 'Magnesium', symbol: 'Mg' },
   { name: 'Aluminium', symbol: 'Al' },
   { name: 'Silicon', symbol: 'Si' },
+  { name: 'Phosphorus', symbol: 'P' },
   { name: 'Sulfur', symbol: 'S' },
   { name: 'Chlorine', symbol: 'Cl' },
+  { name: 'Argon', symbol: 'Ar' },
   { name: 'Potassium', symbol: 'K' },
   { name: 'Calcium', symbol: 'Ca' },
+  { name: 'Scandium', symbol: 'Sc' },
+  { name: 'Titanium', symbol: 'Ti' },
+  { name: 'Vanadium', symbol: 'V' },
+  { name: 'Chromium', symbol: 'Cr' },
+  { name: 'Manganese', symbol: 'Mn' },
   { name: 'Iron', symbol: 'Fe' },
+  { name: 'Cobalt', symbol: 'Co' },
+  { name: 'Nickel', symbol: 'Ni' },
   { name: 'Copper', symbol: 'Cu' },
   { name: 'Zinc', symbol: 'Zn' },
+  { name: 'Gallium', symbol: 'Ga' },
+  { name: 'Germanium', symbol: 'Ge' },
+  { name: 'Arsenic', symbol: 'As' },
+  { name: 'Selenium', symbol: 'Se' },
+  { name: 'Bromine', symbol: 'Br' },
+  { name: 'Krypton', symbol: 'Kr' },
+  { name: 'Rubidium', symbol: 'Rb' },
+  { name: 'Strontium', symbol: 'Sr' },
+  { name: 'Yttrium', symbol: 'Y' },
+  { name: 'Zirconium', symbol: 'Zr' },
+  { name: 'Niobium', symbol: 'Nb' },
+  { name: 'Molybdenum', symbol: 'Mo' },
+  { name: 'Technetium', symbol: 'Tc' },
+  { name: 'Ruthenium', symbol: 'Ru' },
+  { name: 'Rhodium', symbol: 'Rh' },
+  { name: 'Palladium', symbol: 'Pd' },
   { name: 'Silver', symbol: 'Ag' },
+  { name: 'Cadmium', symbol: 'Cd' },
+  { name: 'Indium', symbol: 'In' },
   { name: 'Tin', symbol: 'Sn' },
+  { name: 'Antimony', symbol: 'Sb' },
+  { name: 'Tellurium', symbol: 'Te' },
+  { name: 'Iodine', symbol: 'I' },
+  { name: 'Xenon', symbol: 'Xe' },
+  { name: 'Caesium', symbol: 'Cs' },
+  { name: 'Barium', symbol: 'Ba' },
+  { name: 'Lanthanum', symbol: 'La' },
+  { name: 'Cerium', symbol: 'Ce' },
+  { name: 'Praseodymium', symbol: 'Pr' },
+  { name: 'Neodymium', symbol: 'Nd' },
+  { name: 'Promethium', symbol: 'Pm' },
+  { name: 'Samarium', symbol: 'Sm' },
+  { name: 'Europium', symbol: 'Eu' },
+  { name: 'Gadolinium', symbol: 'Gd' },
+  { name: 'Terbium', symbol: 'Tb' },
+  { name: 'Dysprosium', symbol: 'Dy' },
+  { name: 'Holmium', symbol: 'Ho' },
+  { name: 'Erbium', symbol: 'Er' },
+  { name: 'Thulium', symbol: 'Tm' },
+  { name: 'Ytterbium', symbol: 'Yb' },
+  { name: 'Lutetium', symbol: 'Lu' },
+  { name: 'Hafnium', symbol: 'Hf' },
+  { name: 'Tantalum', symbol: 'Ta' },
+  { name: 'Tungsten', symbol: 'W' },
+  { name: 'Rhenium', symbol: 'Re' },
+  { name: 'Osmium', symbol: 'Os' },
+  { name: 'Iridium', symbol: 'Ir' },
+  { name: 'Platinum', symbol: 'Pt' },
   { name: 'Gold', symbol: 'Au' },
   { name: 'Mercury', symbol: 'Hg' },
+  { name: 'Thallium', symbol: 'Tl' },
   { name: 'Lead', symbol: 'Pb' },
-  { name: 'Argon', symbol: 'Ar' },
-  { name: 'Neon', symbol: 'Ne' }
+  { name: 'Bismuth', symbol: 'Bi' },
+  { name: 'Polonium', symbol: 'Po' },
+  { name: 'Astatine', symbol: 'At' },
+  { name: 'Radon', symbol: 'Rn' },
+  { name: 'Francium', symbol: 'Fr' },
+  { name: 'Radium', symbol: 'Ra' },
+  { name: 'Actinium', symbol: 'Ac' },
+  { name: 'Thorium', symbol: 'Th' },
+  { name: 'Protactinium', symbol: 'Pa' },
+  { name: 'Uranium', symbol: 'U' },
+  { name: 'Neptunium', symbol: 'Np' },
+  { name: 'Plutonium', symbol: 'Pu' },
+  { name: 'Americium', symbol: 'Am' },
+  { name: 'Curium', symbol: 'Cm' },
+  { name: 'Berkelium', symbol: 'Bk' },
+  { name: 'Californium', symbol: 'Cf' },
+  { name: 'Einsteinium', symbol: 'Es' },
+  { name: 'Fermium', symbol: 'Fm' },
+  { name: 'Mendelevium', symbol: 'Md' },
+  { name: 'Nobelium', symbol: 'No' },
+  { name: 'Lawrencium', symbol: 'Lr' },
+  { name: 'Rutherfordium', symbol: 'Rf' },
+  { name: 'Dubnium', symbol: 'Db' },
+  { name: 'Seaborgium', symbol: 'Sg' },
+  { name: 'Bohrium', symbol: 'Bh' },
+  { name: 'Hassium', symbol: 'Hs' },
+  { name: 'Meitnerium', symbol: 'Mt' },
+  { name: 'Darmstadtium', symbol: 'Ds' },
+  { name: 'Roentgenium', symbol: 'Rg' },
+  { name: 'Copernicium', symbol: 'Cn' },
+  { name: 'Nihonium', symbol: 'Nh' },
+  { name: 'Flerovium', symbol: 'Fl' },
+  { name: 'Moscovium', symbol: 'Mc' },
+  { name: 'Livermorium', symbol: 'Lv' },
+  { name: 'Tennessine', symbol: 'Ts' },
+  { name: 'Oganesson', symbol: 'Og' }
 ];
 
 const SCRAMBLE_WORDS = [
@@ -157,13 +283,44 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
 @Component({
   selector: 'app-games',
   standalone: true,
-  imports: [NgIf, NgFor, FormsModule],
+  imports: [NgIf, NgFor, NgTemplateOutlet, FormsModule],
   template: `
     <div class="games-page">
       <div class="page-header">
         <h1>Educational Games</h1>
         <p class="page-subtitle">Sharpen your mind between study sessions. Scores are saved locally.</p>
       </div>
+
+      <!-- Shared AI question config (used by the AI-capable games) -->
+      <ng-template #aiConfig>
+        <div class="ai-config">
+          <div class="ai-config-title">
+            <span class="material-icons">auto_awesome</span>
+            AI-generated questions
+            <span class="ai-source" [class.ai]="aiStatus === 'ai'">{{ aiSourceLabel }}</span>
+          </div>
+          <div class="ai-config-row">
+            <input
+              class="ai-topic"
+              type="text"
+              [(ngModel)]="aiTopic"
+              placeholder="Topic (e.g. World War II, photosynthesis) — blank = random"
+            />
+            <select class="ai-difficulty" [(ngModel)]="aiDifficulty">
+              <option value="Any">Any difficulty</option>
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+            <label class="ai-toggle">
+              <input type="checkbox" [(ngModel)]="aiEnabled" />
+              Use AI
+            </label>
+          </div>
+          <p class="ai-note">Every play generates a fresh set via AI. Falls back to built-in questions when AI is unavailable or disabled.</p>
+          <div class="ai-loading" *ngIf="aiLoading"><span class="spinner"></span> Generating fresh questions…</div>
+        </div>
+      </ng-template>
 
       <!-- Hub -->
       <ng-container *ngIf="selected === null">
@@ -203,17 +360,18 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               <span class="material-icons">arrow_back</span> All games
             </button>
             <div class="game-title">Quick Math</div>
+            <span class="ai-chip" *ngIf="aiStatus === 'ai' && !aiLoading">AI</span>
             <div class="score-pill">{{ mathScore }}</div>
           </div>
 
-          <div class="hud" *ngIf="mathRunning">
+          <div class="hud" *ngIf="mathRunning && mathMode === 'classic'">
             <div class="timer" [class.low]="mathTimeLeft <= 10">
               <span class="material-icons">timer</span> {{ mathTimeLeft }}s
             </div>
             <div class="level">{{ mathStreak >= 4 ? 'On fire!' : 'Keep going' }} (streak {{ mathStreak }})</div>
           </div>
 
-          <div *ngIf="mathRunning" class="math-problem">
+          <div *ngIf="mathRunning && mathMode === 'classic'" class="math-problem">
             <span>{{ mathA }}</span>
             <span class="op">{{ mathOp }}</span>
             <span>{{ mathB }}</span>
@@ -227,6 +385,28 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               autofocus
             />
           </div>
+
+          <div *ngIf="mathRunning && mathMode === 'stories'" class="math-story">
+            <div class="hud">
+              <div class="round">Problem {{ mathStoryIndex + 1 }} / {{ mathStories.length }}</div>
+              <div class="level">Score {{ mathStoryScore }}</div>
+            </div>
+            <p class="story-text">{{ mathStories[mathStoryIndex].text }}</p>
+            <div class="story-input">
+              <input
+                type="number"
+                [(ngModel)]="mathStoryAnswer"
+                (keydown.enter)="submitMathStory()"
+                placeholder="Your answer"
+                [class.wrong]="mathStoryWrong"
+                autofocus
+              />
+              <button class="btn-primary" (click)="submitMathStory()">Submit</button>
+            </div>
+            <p class="story-feedback" *ngIf="mathStoryWrong">Not quite — try again.</p>
+          </div>
+
+          <ng-container *ngTemplateOutlet="aiConfig"></ng-container>
 
           <div *ngIf="!mathRunning" class="game-over">
             <div class="final-score">
@@ -251,6 +431,7 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               <span class="material-icons">arrow_back</span> All games
             </button>
             <div class="game-title">Word Scramble</div>
+            <span class="ai-chip" *ngIf="aiStatus === 'ai' && !aiLoading">AI</span>
             <div class="score-pill">{{ scrambleScore }}</div>
           </div>
 
@@ -279,6 +460,8 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
             </p>
           </div>
 
+          <ng-container *ngTemplateOutlet="aiConfig"></ng-container>
+
           <div *ngIf="!scrambleRunning || scrambleFinished" class="game-over">
             <div class="final-score">
               <span class="material-icons">emoji_events</span>
@@ -304,6 +487,7 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               <span class="material-icons">arrow_back</span> All games
             </button>
             <div class="game-title">Trivia Quiz</div>
+            <span class="ai-chip" *ngIf="aiStatus === 'ai' && !aiLoading">AI</span>
             <div class="score-pill">{{ quizScore }}</div>
           </div>
 
@@ -339,6 +523,8 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
             </div>
           </div>
 
+          <ng-container *ngTemplateOutlet="aiConfig"></ng-container>
+
           <div *ngIf="!quizRunning || quizFinished" class="game-over">
             <div class="final-score">
               <span class="material-icons">emoji_events</span>
@@ -364,6 +550,7 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               <span class="material-icons">arrow_back</span> All games
             </button>
             <div class="game-title">Memory Match</div>
+            <span class="ai-chip" *ngIf="aiStatus === 'ai' && !aiLoading">AI</span>
             <div class="score-pill">{{ memoryScore || '—' }}</div>
           </div>
 
@@ -384,6 +571,8 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               <span *ngIf="card.flipped" class="memory-face">{{ card.text }}</span>
             </button>
           </div>
+
+          <ng-container *ngTemplateOutlet="aiConfig"></ng-container>
 
           <div *ngIf="!memoryRunning" class="game-over">
             <div class="final-score">
@@ -411,6 +600,7 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               <span class="material-icons">arrow_back</span> All games
             </button>
             <div class="game-title">True/False Sprint</div>
+            <span class="ai-chip" *ngIf="aiStatus === 'ai' && !aiLoading">AI</span>
             <div class="score-pill">{{ tfScore }}</div>
           </div>
 
@@ -442,6 +632,8 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
               </button>
             </div>
           </div>
+
+          <ng-container *ngTemplateOutlet="aiConfig"></ng-container>
 
           <div *ngIf="!tfRunning" class="game-over">
             <div class="final-score">
@@ -818,17 +1010,109 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
     .element-name { color: var(--accent); }
     .element-symbol { font-size: var(--font-22); font-weight: 700; letter-spacing: 0.03em; }
     .elements-options .quiz-option { justify-content: center; }
+
+    /* AI config + chip */
+    .ai-chip {
+      font-size: var(--font-11); font-weight: 800; letter-spacing: 0.04em;
+      color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+      border-radius: 10px; padding: 3px 8px;
+      flex-shrink: 0;
+    }
+    .ai-config {
+      background: color-mix(in srgb, var(--primary) 5%, transparent);
+      border: 1px dashed color-mix(in srgb, var(--primary) 35%, transparent);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+    }
+    .ai-config-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: var(--font-14); font-weight: 700; color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+    .ai-config-title .material-icons { color: var(--primary); font-size: var(--font-18); }
+    .ai-source {
+      margin-left: auto;
+      font-size: var(--font-11); font-weight: 700;
+      color: var(--text-secondary);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 2px 8px;
+    }
+    .ai-source.ai {
+      color: var(--primary);
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+    .ai-config-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .ai-topic {
+      flex: 1 1 220px;
+      padding: 9px 12px;
+      font-size: var(--font-13);
+      background: var(--background);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+    }
+    .ai-topic:focus { outline: none; border-color: var(--primary); }
+    .ai-difficulty {
+      padding: 9px 10px;
+      font-size: var(--font-13);
+      background: var(--background);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+    }
+    .ai-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: var(--font-13); font-weight: 600; color: var(--text-primary);
+      cursor: pointer;
+    }
+    .ai-note { font-size: var(--font-12); color: var(--text-secondary); margin: 10px 0 0; line-height: 1.5; }
+    .ai-loading {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 10px;
+      font-size: var(--font-13); font-weight: 600; color: var(--primary);
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Math story problems */
+    .math-story { text-align: center; padding: 8px 4px; }
+    .story-text {
+      font-size: var(--font-18); font-weight: 600;
+      color: var(--text-primary); line-height: 1.5;
+      margin: 6px 0 22px;
+    }
+    .story-input { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+    .story-input input {
+      width: 200px; padding: 12px 14px;
+      font-size: var(--font-18); text-align: center;
+      background: var(--background); border: 2px solid var(--border);
+      border-radius: 10px; color: var(--text-primary);
+    }
+    .story-input input:focus { outline: none; border-color: var(--primary); }
+    .story-input input.wrong { border-color: #ef4444; }
+    .story-feedback { font-size: var(--font-14); color: #ef4444; font-weight: 600; min-height: 20px; margin: 14px 0 0; }
   `]
 })
 export class GamesComponent implements OnDestroy {
   games: GameMeta[] = [
-    { id: 'math', icon: 'calculate', title: 'Quick Math', desc: 'Solve as many arithmetic problems as you can in 60 seconds.', color: '#6366f1' },
-    { id: 'scramble', icon: 'abc', title: 'Word Scramble', desc: 'Unscramble study-themed words fast. 20 rounds.', color: '#10b981' },
-    { id: 'quiz', icon: 'quiz', title: 'Trivia Quiz', desc: '20 general-knowledge questions across science, history, math and more.', color: '#f59e0b' },
-    { id: 'memory', icon: 'extension', title: 'Memory Match', desc: 'Flip cards and match study terms with their definitions. 6 pairs.', color: '#8b5cf6' },
-    { id: 'truefalse', icon: 'thumbs_up_down', title: 'True/False Sprint', desc: 'Blast through 30 seconds of rapid fact checks.', color: '#ef4444' },
-    { id: 'flags', icon: 'public', title: 'Flag Finder', desc: 'Identify countries from their flags. 10 rounds.', color: '#3b82f6' },
-    { id: 'elements', icon: 'science', title: 'Element Symbols', desc: 'Match chemical elements to their symbols. 10 rounds.', color: '#14b8a6' }
+    { id: 'math', icon: 'calculate', title: 'Quick Math', desc: 'AI story problems, or a classic 60-second arithmetic sprint.', color: '#6366f1' },
+    { id: 'scramble', icon: 'abc', title: 'Word Scramble', desc: 'Unscramble words fast — fresh AI word sets each play.', color: '#10b981' },
+    { id: 'quiz', icon: 'quiz', title: 'Trivia Quiz', desc: '10 general-knowledge questions — fresh AI sets each play.', color: '#f59e0b' },
+    { id: 'memory', icon: 'extension', title: 'Memory Match', desc: 'Flip cards and match study terms to definitions. 6 pairs, AI-fresh rounds.', color: '#8b5cf6' },
+    { id: 'truefalse', icon: 'thumbs_up_down', title: 'True/False Sprint', desc: 'Blast through 30 seconds of rapid fact checks — AI-fresh statements.', color: '#ef4444' },
+    { id: 'flags', icon: 'public', title: 'Flag Finder', desc: 'Identify countries from their flags. Drawn from 50 flags.', color: '#3b82f6' },
+    { id: 'elements', icon: 'science', title: 'Element Symbols', desc: 'Match chemical elements to their symbols. Drawn from all 118 elements.', color: '#14b8a6' }
   ];
   letters = ['A', 'B', 'C', 'D'];
 
@@ -844,6 +1128,12 @@ export class GamesComponent implements OnDestroy {
   mathOp = '+';
   mathAnswer: number | null = null;
   private mathTimer?: any;
+  mathMode: 'classic' | 'stories' = 'classic';
+  mathStories: GameMathItem[] = [];
+  mathStoryIndex = 0;
+  mathStoryScore = 0;
+  mathStoryAnswer: number | null = null;
+  mathStoryWrong = false;
 
   // Scramble
   scrambleRunning = false;
@@ -925,7 +1215,22 @@ export class GamesComponent implements OnDestroy {
   private bestKey = 'studyroom_games_best';
   scrambleTotal = SCRAMBLE_WORDS.length;
 
-  constructor() {
+  // AI question generation — falls back to the built-in banks when unavailable
+  aiEnabled = true;
+  aiLoading = false;
+  aiStatus: 'ai' | 'local' | null = null;
+  aiTopic = '';
+  aiDifficulty = 'Any';
+  private aiCache = new Map<string, GameContent>();
+
+  get aiSourceLabel(): string {
+    if (!this.aiEnabled) return 'AI off';
+    if (this.aiStatus === 'ai') return 'Fresh AI';
+    if (this.aiStatus === 'local') return 'Built-in';
+    return 'AI ready';
+  }
+
+  constructor(private aiService: AIService) {
     this.shuffleQuiz();
   }
 
@@ -966,6 +1271,35 @@ export class GamesComponent implements OnDestroy {
 
   open(id: Exclude<GameId, null>): void {
     this.selected = id;
+    this.aiStatus = null;
+  }
+
+  private async fetchAiContent(game: string, count: number): Promise<GameContent | null> {
+    if (!this.aiEnabled || this.aiLoading) return null;
+    this.aiLoading = true;
+    try {
+      const key = `${game}|${count}|${this.aiTopic.trim().toLowerCase()}|${this.aiDifficulty}`;
+      const cached = this.aiCache.get(key);
+      if (cached) return cached;
+      const content = await this.aiService
+        .generateGameContent({
+          game,
+          count,
+          topic: this.aiTopic.trim() || undefined,
+          difficulty: this.aiDifficulty === 'Any' ? undefined : this.aiDifficulty
+        })
+        .pipe(timeout(30000))
+        .toPromise();
+      if (content && content.ok) {
+        this.aiCache.set(key, content);
+        return content;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      this.aiLoading = false;
+    }
   }
 
   back(): void {
@@ -974,7 +1308,23 @@ export class GamesComponent implements OnDestroy {
   }
 
   // ---------- Quick Math ----------
-  startMath(): void {
+  async startMath(): Promise<void> {
+    if (this.mathRunning || this.aiLoading) return;
+    const content = await this.fetchAiContent('math', 10);
+    if (content && content.math.length >= 3) {
+      this.mathStories = content.math;
+      this.mathMode = 'stories';
+      this.mathStoryIndex = 0;
+      this.mathStoryScore = 0;
+      this.mathStoryAnswer = null;
+      this.mathStoryWrong = false;
+      this.mathScore = 0;
+      this.mathRunning = true;
+      this.aiStatus = 'ai';
+      return;
+    }
+    this.mathMode = 'classic';
+    this.aiStatus = 'local';
     this.mathScore = 0;
     this.mathStreak = 0;
     this.mathTimeLeft = 60;
@@ -990,6 +1340,27 @@ export class GamesComponent implements OnDestroy {
         this.recordBest('math', this.mathScore);
       }
     }, 1000);
+  }
+
+  submitMathStory(): void {
+    if (!this.mathRunning || this.mathMode !== 'stories') return;
+    const item = this.mathStories[this.mathStoryIndex];
+    if (!item) return;
+    const answer = Number(this.mathStoryAnswer);
+    if (this.mathStoryAnswer === null || isNaN(answer)) return;
+    if (Math.abs(answer - item.answer) < 0.001) {
+      this.mathStoryScore += 1;
+      this.mathStoryWrong = false;
+      this.mathStoryAnswer = null;
+      this.mathStoryIndex += 1;
+      if (this.mathStoryIndex >= this.mathStories.length) {
+        this.mathRunning = false;
+        this.mathScore = this.mathStoryScore;
+        this.recordBest('math', this.mathScore);
+      }
+    } else {
+      this.mathStoryWrong = true;
+    }
   }
 
   nextMathQuestion(): void {
@@ -1020,12 +1391,21 @@ export class GamesComponent implements OnDestroy {
   }
 
   // ---------- Word Scramble ----------
-  startScramble(): void {
+  async startScramble(): Promise<void> {
+    if (this.scrambleRunning || this.aiLoading) return;
+    const content = await this.fetchAiContent('scramble', 20);
+    if (content && content.words.length > 0) {
+      this.scrambleWords = this.shuffle([...content.words]).slice(0, 20);
+      this.aiStatus = 'ai';
+    } else {
+      this.scrambleWords = this.shuffle([...SCRAMBLE_WORDS]);
+      this.aiStatus = 'local';
+    }
     this.scrambleRunning = true;
     this.scrambleFinished = false;
     this.scrambleScore = 0;
     this.scrambleRound = 0;
-    this.scrambleWords = [...SCRAMBLE_WORDS].sort(() => Math.random() - 0.5);
+    this.scrambleTotal = this.scrambleWords.length;
     this.loadScrambleRound();
   }
 
@@ -1078,8 +1458,21 @@ export class GamesComponent implements OnDestroy {
     this.quizQuestions = [...TRIVIA_QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 10);
   }
 
-  startQuiz(): void {
-    this.shuffleQuiz();
+  async startQuiz(): Promise<void> {
+    if (this.quizRunning || this.aiLoading) return;
+    const content = await this.fetchAiContent('quiz', 10);
+    if (content && content.quiz.length >= 3) {
+      this.quizQuestions = content.quiz.slice(0, 10).map(q => ({
+        q: q.question,
+        options: q.options,
+        answer: q.answer,
+        category: q.category || 'AI'
+      }));
+      this.aiStatus = 'ai';
+    } else {
+      this.shuffleQuiz();
+      this.aiStatus = 'local';
+    }
     this.quizRunning = true;
     this.quizFinished = false;
     this.quizScore = 0;
@@ -1110,8 +1503,17 @@ export class GamesComponent implements OnDestroy {
   }
 
   // ---------- Memory Match ----------
-  startMemory(): void {
-    const picked = this.shuffle([...MEMORY_PAIRS]).slice(0, this.memoryPairCount);
+  async startMemory(): Promise<void> {
+    if (this.memoryRunning || this.aiLoading) return;
+    const content = await this.fetchAiContent('memory', this.memoryPairCount);
+    let picked: { term: string; def: string }[];
+    if (content && content.memory.length > 0) {
+      picked = content.memory.slice(0, this.memoryPairCount).map(m => ({ term: m.term, def: m.definition }));
+      this.aiStatus = 'ai';
+    } else {
+      picked = this.shuffle([...MEMORY_PAIRS]).slice(0, this.memoryPairCount);
+      this.aiStatus = 'local';
+    }
     let cardId = 0;
     const cards: MemoryCard[] = [];
     picked.forEach((p, i) => {
@@ -1170,15 +1572,23 @@ export class GamesComponent implements OnDestroy {
   }
 
   // ---------- True/False Sprint ----------
-  startTrueFalse(): void {
+  async startTrueFalse(): Promise<void> {
+    if (this.tfRunning || this.aiLoading) return;
+    const content = await this.fetchAiContent('truefalse', 20);
+    if (content && content.trueFalse.length > 0) {
+      this.tfBank = content.trueFalse.map(t => ({ text: t.statement, isTrue: t.isTrue }));
+      this.aiStatus = 'ai';
+    } else {
+      this.tfBank = this.shuffle([...TRUE_FALSE_BANK]);
+      this.aiStatus = 'local';
+    }
     this.tfScore = 0;
     this.tfStreak = 0;
     this.tfTimeLeft = 30;
     this.tfLocked = false;
     this.tfFeedback = '';
-    this.tfBank = this.shuffle([...TRUE_FALSE_BANK]);
     this.tfIndex = 0;
-    this.tfQuestion = this.tfBank[0].text;
+    this.tfQuestion = this.tfBank.length > 0 ? this.tfBank[0].text : '';
     this.tfRunning = true;
     this.tfFinished = false;
     if (this.tfTimer) clearInterval(this.tfTimer);
@@ -1217,6 +1627,7 @@ export class GamesComponent implements OnDestroy {
 
   // ---------- Flag Finder ----------
   startFlags(): void {
+    this.aiStatus = 'local';
     this.flagsBank = this.shuffle([...FLAG_BANK]).slice(0, this.flagsRounds);
     this.flagsIndex = 0;
     this.flagsScore = 0;
@@ -1257,6 +1668,7 @@ export class GamesComponent implements OnDestroy {
 
   // ---------- Element Symbols ----------
   startElements(): void {
+    this.aiStatus = 'local';
     this.elementsBank = this.shuffle([...ELEMENT_BANK]).slice(0, this.elementsRounds);
     this.elementsIndex = 0;
     this.elementsScore = 0;

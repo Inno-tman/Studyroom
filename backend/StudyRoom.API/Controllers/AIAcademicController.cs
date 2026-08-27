@@ -49,6 +49,13 @@ public class AIAcademicController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("games/generate")]
+    public async Task<IActionResult> GenerateGame([FromBody] GameContentRequestDto dto)
+    {
+        var result = await _aiService.GenerateGameContentAsync(dto);
+        return Ok(result);
+    }
+
     [HttpPost("conversations")]
     public async Task<IActionResult> CreateConversation([FromBody] CreateConversationDto dto)
     {
