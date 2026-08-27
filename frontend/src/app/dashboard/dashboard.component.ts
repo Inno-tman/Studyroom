@@ -105,7 +105,9 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           </div>
           <div class="recs-grid">
             <div class="rec-card" *ngFor="let r of recommendations">
-              <span class="material-icons rec-icon">{{ r.icon }}</span>
+              <div class="rec-icon-wrap" [ngClass]="getRecColor(r.icon)">
+                <span class="material-icons rec-icon">{{ r.icon }}</span>
+              </div>
               <div class="rec-info">
                 <span class="rec-name">{{ r.title }}</span>
                 <span class="rec-desc">{{ r.description }}</span>
@@ -387,17 +389,27 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     }
     .recs-header .material-icons { color: var(--accent); font-size: 20px; }
     .recs-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
-    .recs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+    .recs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
     .rec-card {
-      display: flex; align-items: flex-start; gap: 10px; padding: 12px;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-      transition: border-color 0.15s;
+      display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .rec-card:hover { border-color: var(--accent); }
-    .rec-icon { font-size: 22px; color: var(--accent); margin-top: 2px; }
+    .rec-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(56,189,248,0.08); }
+    .rec-icon-wrap {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .rec-icon-wrap .rec-icon { font-size: 20px; }
+    .rec-icon-wrap.blue { background: rgba(37,99,235,0.12); color: var(--primary); }
+    .rec-icon-wrap.green { background: rgba(34,197,94,0.12); color: var(--success); }
+    .rec-icon-wrap.orange { background: rgba(245,158,11,0.12); color: var(--warning); }
+    .rec-icon-wrap.red { background: rgba(239,68,68,0.12); color: var(--error); }
+    .rec-icon-wrap.accent { background: rgba(56,189,248,0.12); color: var(--accent); }
+    .rec-icon-wrap.purple { background: rgba(168,85,247,0.12); color: #A855F7; }
     .rec-info { flex: 1; min-width: 0; }
-    .rec-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
-    .rec-desc { font-size: var(--font-12); color: var(--text-secondary); line-height: 1.4; }
+    .rec-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
+    .rec-desc { font-size: var(--font-12); color: var(--text-secondary); line-height: 1.45; }
 
     /* Recent sessions */
     .recent-sessions {
@@ -629,5 +641,14 @@ export class DashboardComponent implements OnInit {
 
   navigateToRoom(id: string) {
     this.router.navigate(['/rooms', id]);
+  }
+
+  getRecColor(icon: string): string {
+    if (['trending_down', 'warning', 'error_outline'].includes(icon)) return 'red';
+    if (['trending_up', 'check_circle', 'celebration'].includes(icon)) return 'green';
+    if (['schedule', 'timer', 'event'].includes(icon)) return 'orange';
+    if (['lightbulb', 'auto_awesome', 'psychology'].includes(icon)) return 'accent';
+    if (['emoji_events', 'star', 'military_tech'].includes(icon)) return 'purple';
+    return 'blue';
   }
 }
