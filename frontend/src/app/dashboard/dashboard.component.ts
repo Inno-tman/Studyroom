@@ -45,205 +45,217 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         </div>
       </div>
 
-      <!-- ── Daily goal progress ────────────────────────────── -->
-      <div class="daily-goal" *ngIf="todayProgress">
-        <div class="daily-goal-header">
-          <span class="material-icons">flag</span>
-          <span class="daily-goal-title">Today's Goal</span>
-          <span class="daily-goal-amount">{{ formatDurationShort(todayProgress.studiedMinutes) }} / {{ formatDurationShort(todayProgress.dailyGoalMinutes) }}</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" [style.width.%]="dailyGoalPercent"></div>
-        </div>
-        <div class="daily-goal-hint" *ngIf="dailyGoalPercent < 100">
-          {{ dailyGoalPercent | number:'1.0-0' }}% complete — keep going!
-        </div>
-        <div class="daily-goal-hint done" *ngIf="dailyGoalPercent >= 100">
-          <span class="material-icons">celebration</span> Goal reached! Great work today.
-        </div>
+      <!-- ── Tab bar ─────────────────────────────────────────── -->
+      <div class="tab-bar">
+        <button *ngFor="let t of tabs" class="tab-btn" [class.active]="activeTab === t.id" (click)="activeTab = t.id">
+          <span class="material-icons">{{ t.icon }}</span>
+          {{ t.label }}
+        </button>
       </div>
 
-      <!-- ── Recent milestones ───────────────────────────────── -->
-      <div class="milestones" *ngIf="milestones.length > 0">
-        <div class="milestones-header">
-          <span class="material-icons">emoji_events</span>
-          <span class="milestones-title">Recent Achievements</span>
-        </div>
-        <div class="milestones-grid">
-          <div class="milestone-card" *ngFor="let m of milestones.slice(0, 6)">
-            <span class="material-icons milestone-icon">{{ m.icon }}</span>
-            <div class="milestone-info">
-              <span class="milestone-name">{{ m.title }}</span>
-              <span class="milestone-desc">{{ m.description }}</span>
-            </div>
+      <!-- ═══════════════════════════════════════════════════════
+           TAB: Overview — Daily goal + Stats strip
+           ═══════════════════════════════════════════════════════ -->
+      <div *ngIf="activeTab === 'overview'" class="tab-pane">
+        <div class="daily-goal" *ngIf="todayProgress">
+          <div class="daily-goal-header">
+            <span class="material-icons">flag</span>
+            <span class="daily-goal-title">Today's Goal</span>
+            <span class="daily-goal-amount">{{ formatDurationShort(todayProgress.studiedMinutes) }} / {{ formatDurationShort(todayProgress.dailyGoalMinutes) }}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="dailyGoalPercent"></div>
+          </div>
+          <div class="daily-goal-hint" *ngIf="dailyGoalPercent < 100">
+            {{ dailyGoalPercent | number:'1.0-0' }}% complete — keep going!
+          </div>
+          <div class="daily-goal-hint done" *ngIf="dailyGoalPercent >= 100">
+            <span class="material-icons">celebration</span> Goal reached! Great work today.
           </div>
         </div>
-      </div>
 
-      <!-- ── Smart recommendations ──────────────────────────────── -->
-      <div class="recommendations" *ngIf="recommendations.length > 0">
-        <div class="recs-header">
-          <span class="material-icons">auto_awesome</span>
-          <span class="recs-title">Smart Suggestions</span>
-        </div>
-        <div class="recs-grid">
-          <div class="rec-card" *ngFor="let r of recommendations">
-            <span class="material-icons rec-icon">{{ r.icon }}</span>
-            <div class="rec-info">
-              <span class="rec-name">{{ r.title }}</span>
-              <span class="rec-desc">{{ r.description }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Proactive band ───────────────────────────────────── -->
         <div class="stats-strip">
-        <div class="stats-strip-item">
-          <span class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</span>
-          <span class="stat-label">Study Time</span>
-        </div>
-        <div class="stats-strip-item">
-          <span class="stat-value">
-            {{ stats.sessionsCompleted }}
-            <span class="unverified-warn" *ngIf="stats.unverifiedSessions" title="{{ stats.unverifiedSessions }} sessions flagged as unverified">
-              <span class="material-icons">warning</span>
+          <div class="stats-strip-item">
+            <span class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</span>
+            <span class="stat-label">Study Time</span>
+          </div>
+          <div class="stats-strip-item">
+            <span class="stat-value">
+              {{ stats.sessionsCompleted }}
+              <span class="unverified-warn" *ngIf="stats.unverifiedSessions" title="{{ stats.unverifiedSessions }} sessions flagged as unverified">
+                <span class="material-icons">warning</span>
+              </span>
             </span>
-          </span>
-          <span class="stat-label">Sessions</span>
-        </div>
-        <div class="stats-strip-item">
-          <span class="stat-value">{{ stats.dailyStreak }}</span>
-          <span class="stat-label">Day Streak</span>
-        </div>
-        <div class="stats-strip-item">
-          <span class="stat-value">{{ formatDuration(stats.weeklyStudyMinutes) }}</span>
-          <span class="stat-label">Last 7 Days</span>
-        </div>
-      </div>
-
-      <!-- ── Recent Sessions ──────────────────────────────────── -->
-      <div class="recent-sessions" *ngIf="recentSessions.length > 0">
-        <div class="recent-header">
-          <span class="material-icons">history</span>
-          <span class="recent-title">Recent Sessions</span>
-          <a routerLink="/analytics" class="recent-link">View All →</a>
-        </div>
-        <div class="recent-list">
-          <div class="recent-row" *ngFor="let s of recentSessions">
-            <span class="material-icons recent-icon">play_circle</span>
-            <div class="recent-info">
-              <span class="recent-date">{{ s.date }}</span>
-              <span class="recent-notes" *ngIf="s.notes">{{ s.notes }}</span>
-            </div>
-            <span class="recent-duration">{{ formatDurationShort(s.durationMinutes) }}</span>
+            <span class="stat-label">Sessions</span>
+          </div>
+          <div class="stats-strip-item">
+            <span class="stat-value">{{ stats.dailyStreak }}</span>
+            <span class="stat-label">Day Streak</span>
+          </div>
+          <div class="stats-strip-item">
+            <span class="stat-value">{{ formatDuration(stats.weeklyStudyMinutes) }}</span>
+            <span class="stat-label">Last 7 Days</span>
           </div>
         </div>
       </div>
 
-      <!-- ── Segmented sections ───────────────────────────────── -->
-      <div class="section">
-        <div class="section-tabs">
-          <button
-            class="section-tab"
-            [class.active]="tab === 'mine'"
-            (click)="tab = 'mine'"
-          >
-            My Rooms
-            <span class="section-tab-badge">{{ myRooms.length }}</span>
-          </button>
-          <button
-            class="section-tab"
-            [class.active]="tab === 'all'"
-            (click)="tab = 'all'"
-          >
-            Discover
-            <span class="section-tab-badge">{{ allRooms.length }}</span>
-          </button>
-        </div>
-
-        <app-loading [loading]="loading" />
-
-        <div class="room-grid" *ngIf="!loading">
-          <ng-container *ngIf="tab === 'mine'">
-            <div class="room-card" *ngFor="let room of myRooms" (click)="navigateToRoom(room.id)">
-              <div class="room-card-header">
-                <h3>{{ room.name }}</h3>
-                <span class="badge badge-accent">{{ room.subject || 'General' }}</span>
-              </div>
-              <p class="room-desc">{{ room.description || 'No description' }}</p>
-              <div class="room-meta">
-                <span>{{ room.memberCount }} members</span>
-                <span>{{ room.createdAt | date:'mediumDate' }}</span>
-              </div>
-            </div>
-            <div class="room-card empty" *ngIf="myRooms.length === 0">
-              <p>You haven't joined any rooms yet.</p>
-              <a routerLink="/rooms" class="btn-outline">Browse Rooms</a>
-            </div>
-          </ng-container>
-
-          <ng-container *ngIf="tab === 'all'">
-            <div class="room-card" *ngFor="let room of allRooms.slice(0, 4)" (click)="navigateToRoom(room.id)">
-              <div class="room-card-header">
-                <h3>{{ room.name }}</h3>
-                <span class="badge badge-accent">{{ room.subject || 'General' }}</span>
-              </div>
-              <p class="room-desc">{{ room.description || 'No description' }}</p>
-              <div class="room-meta">
-                <span>{{ room.memberCount }} members</span>
-                <span>{{ room.createdAt | date:'mediumDate' }}</span>
-              </div>
-            </div>
-            <div class="room-card empty" *ngIf="allRooms.length === 0">
-              <p>No rooms found yet.</p>
-              <a routerLink="/rooms/create" class="btn-outline">Create the first one</a>
-            </div>
-          </ng-container>
-        </div>
-        </div>
-      </div>
-
-      <!-- ── Streak Calendar ──────────────────────────────────── -->
-      <div class="streak-calendar" *ngIf="streakDays.length > 0">
-        <div class="streak-header">
-          <span class="material-icons">calendar_month</span>
-          <span class="streak-title">Study Streak</span>
-          <span class="streak-count">{{ activeDaysCount }} / 30 active days</span>
-        </div>
-        <div class="streak-grid">
-          <div class="streak-cell" *ngFor="let d of streakDays" [class.active]="d.minutes > 0" [class.today]="d.isToday"
-            [title]="(d.date | date:'MMM d') + ': ' + formatDurationShort(d.minutes)">
-            <div class="streak-fill" [style.opacity]="getStreakOpacity(d.minutes)"></div>
+      <!-- ═══════════════════════════════════════════════════════
+           TAB: My Rooms — room cards
+           ═══════════════════════════════════════════════════════ -->
+      <div *ngIf="activeTab === 'rooms'" class="tab-pane">
+        <div class="section">
+          <div class="section-tabs">
+            <button class="section-tab" [class.active]="roomTab === 'mine'" (click)="roomTab = 'mine'">
+              My Rooms
+              <span class="section-tab-badge">{{ myRooms.length }}</span>
+            </button>
+            <button class="section-tab" [class.active]="roomTab === 'all'" (click)="roomTab = 'all'">
+              Discover
+              <span class="section-tab-badge">{{ allRooms.length }}</span>
+            </button>
           </div>
-        </div>
-        <div class="streak-legend">
-          <span>Less</span>
-          <div class="streak-cell-sm"></div>
-          <div class="streak-cell-sm s1"></div>
-          <div class="streak-cell-sm s2"></div>
-          <div class="streak-cell-sm s3"></div>
-          <div class="streak-cell-sm s4"></div>
-          <span>More</span>
-        </div>
-      </div>
 
-      <!-- ── Activity Feed ──────────────────────────────────── -->
-      <div class="activity-feed" *ngIf="activityFeed.length > 0">
-        <div class="af-header">
-          <span class="material-icons">update</span>
-          <span class="af-title">Recent Activity</span>
-        </div>
-        <div class="af-list">
-          <div class="af-row" *ngFor="let a of activityFeed">
-            <span class="material-icons af-icon">{{ a.icon || 'circle' }}</span>
-            <div class="af-info">
-              <span class="af-text">{{ a.text }}</span>
-              <span class="af-date">{{ a.date | date:'MMM d, h:mm a' }}</span>
-            </div>
+          <app-loading [loading]="loading" />
+
+          <div class="room-grid" *ngIf="!loading">
+            <ng-container *ngIf="roomTab === 'mine'">
+              <div class="room-card" *ngFor="let room of myRooms" (click)="navigateToRoom(room.id)">
+                <div class="room-card-header">
+                  <h3>{{ room.name }}</h3>
+                  <span class="badge badge-accent">{{ room.subject || 'General' }}</span>
+                </div>
+                <p class="room-desc">{{ room.description || 'No description' }}</p>
+                <div class="room-meta">
+                  <span>{{ room.memberCount }} members</span>
+                  <span>{{ room.createdAt | date:'mediumDate' }}</span>
+                </div>
+              </div>
+              <div class="room-card empty" *ngIf="myRooms.length === 0">
+                <p>You haven't joined any rooms yet.</p>
+                <a routerLink="/rooms" class="btn-outline">Browse Rooms</a>
+              </div>
+            </ng-container>
+
+            <ng-container *ngIf="roomTab === 'all'">
+              <div class="room-card" *ngFor="let room of allRooms.slice(0, 4)" (click)="navigateToRoom(room.id)">
+                <div class="room-card-header">
+                  <h3>{{ room.name }}</h3>
+                  <span class="badge badge-accent">{{ room.subject || 'General' }}</span>
+                </div>
+                <p class="room-desc">{{ room.description || 'No description' }}</p>
+                <div class="room-meta">
+                  <span>{{ room.memberCount }} members</span>
+                  <span>{{ room.createdAt | date:'mediumDate' }}</span>
+                </div>
+              </div>
+              <div class="room-card empty" *ngIf="allRooms.length === 0">
+                <p>No rooms found yet.</p>
+                <a routerLink="/rooms/create" class="btn-outline">Create the first one</a>
+              </div>
+            </ng-container>
           </div>
         </div>
       </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           TAB: Progress — Streak + Milestones + Recent sessions
+           ═══════════════════════════════════════════════════════ -->
+      <div *ngIf="activeTab === 'progress'" class="tab-pane">
+        <div class="streak-calendar" *ngIf="streakDays.length > 0">
+          <div class="streak-header">
+            <span class="material-icons">calendar_month</span>
+            <span class="streak-title">Study Streak</span>
+            <span class="streak-count">{{ activeDaysCount }} / 30 active days</span>
+          </div>
+          <div class="streak-grid">
+            <div class="streak-cell" *ngFor="let d of streakDays" [class.active]="d.minutes > 0" [class.today]="d.isToday"
+              [title]="(d.date | date:'MMM d') + ': ' + formatDurationShort(d.minutes)">
+              <div class="streak-fill" [style.opacity]="getStreakOpacity(d.minutes)"></div>
+            </div>
+          </div>
+          <div class="streak-legend">
+            <span>Less</span>
+            <div class="streak-cell-sm"></div>
+            <div class="streak-cell-sm s1"></div>
+            <div class="streak-cell-sm s2"></div>
+            <div class="streak-cell-sm s3"></div>
+            <div class="streak-cell-sm s4"></div>
+            <span>More</span>
+          </div>
+        </div>
+
+        <div class="milestones" *ngIf="milestones.length > 0">
+          <div class="milestones-header">
+            <span class="material-icons">emoji_events</span>
+            <span class="milestones-title">Recent Achievements</span>
+          </div>
+          <div class="milestones-grid">
+            <div class="milestone-card" *ngFor="let m of milestones.slice(0, 6)">
+              <span class="material-icons milestone-icon">{{ m.icon }}</span>
+              <div class="milestone-info">
+                <span class="milestone-name">{{ m.title }}</span>
+                <span class="milestone-desc">{{ m.description }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="recent-sessions" *ngIf="recentSessions.length > 0">
+          <div class="recent-header">
+            <span class="material-icons">history</span>
+            <span class="recent-title">Recent Sessions</span>
+            <a routerLink="/analytics" class="recent-link">View All →</a>
+          </div>
+          <div class="recent-list">
+            <div class="recent-row" *ngFor="let s of recentSessions">
+              <span class="material-icons recent-icon">play_circle</span>
+              <div class="recent-info">
+                <span class="recent-date">{{ s.date }}</span>
+                <span class="recent-notes" *ngIf="s.notes">{{ s.notes }}</span>
+              </div>
+              <span class="recent-duration">{{ formatDurationShort(s.durationMinutes) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════
+           TAB: Activity — Feed + Smart suggestions
+           ═══════════════════════════════════════════════════════ -->
+      <div *ngIf="activeTab === 'activity'" class="tab-pane">
+        <div class="activity-feed" *ngIf="activityFeed.length > 0">
+          <div class="af-header">
+            <span class="material-icons">update</span>
+            <span class="af-title">Recent Activity</span>
+          </div>
+          <div class="af-list">
+            <div class="af-row" *ngFor="let a of activityFeed">
+              <span class="material-icons af-icon">{{ a.icon || 'circle' }}</span>
+              <div class="af-info">
+                <span class="af-text">{{ a.text }}</span>
+                <span class="af-date">{{ a.date | date:'MMM d, h:mm a' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="recommendations" *ngIf="recommendations.length > 0">
+          <div class="recs-header">
+            <span class="material-icons">auto_awesome</span>
+            <span class="recs-title">Smart Suggestions</span>
+          </div>
+          <div class="recs-grid">
+            <div class="rec-card" *ngFor="let r of recommendations">
+              <span class="material-icons rec-icon">{{ r.icon }}</span>
+              <div class="rec-info">
+                <span class="rec-name">{{ r.title }}</span>
+                <span class="rec-desc">{{ r.description }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     .dashboard { max-width: 1200px; margin: 0 auto; }
@@ -271,6 +283,36 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       padding: 6px 10px; font-size: var(--font-12); font-weight: 600;
     }
     .hero-badge .material-icons { font-size: var(--font-16); }
+    .hero-create { margin-right: 0; }
+    .hero-top { flex-wrap: wrap; }
+    .hero-quick {
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+      color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600;
+      font-size: var(--font-13); display: inline-flex; align-items: center; gap: 6px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .hero-quick:hover { background: rgba(255,255,255,0.28); }
+
+    /* ── Tab bar (matches room detail style) ──────────────── */
+    .tab-bar {
+      display: flex; gap: 4px; margin-bottom: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 6px; overflow-x: auto;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 12px; background: none; border: none; border-radius: 8px;
+      color: var(--text-secondary); font-size: var(--font-13); font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn:hover { background: var(--background); color: var(--text-primary); }
+    .tab-btn.active { background: var(--primary); color: white; }
+    .tab-btn .material-icons { font-size: var(--font-18); }
+
+    /* Tab pane wrapper */
+    .tab-pane { animation: fadeIn 0.15s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
     /* Daily goal progress */
     .daily-goal {
@@ -288,6 +330,19 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .daily-goal-hint { font-size: var(--font-12); color: var(--text-muted); }
     .daily-goal-hint.done { color: var(--success); display: flex; align-items: center; gap: 4px; }
     .daily-goal-hint.done .material-icons { font-size: var(--font-16); }
+
+    /* Stats strip */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    }
+    .stats-strip-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .stat-value { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 4px; }
+    .stat-label { font-size: var(--font-12); color: var(--text-muted); }
+    .unverified-warn .material-icons { font-size: var(--font-16); color: #f59e0b; }
 
     /* Milestones */
     .milestones { margin-bottom: 20px; }
@@ -324,30 +379,6 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .rec-info { flex: 1; min-width: 0; }
     .rec-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
     .rec-desc { font-size: var(--font-12); color: var(--text-secondary); line-height: 1.4; }
-
-    /* Proactive live strip */
-    .stats-strip {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px;
-    }
-    .stats-strip-item {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 16px 18px;
-      display: flex; flex-direction: column; gap: 2px;
-    }
-    .stat-value { font-size: var(--font-22); font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 4px; }
-    .stat-label { font-size: var(--font-12); color: var(--text-muted); }
-    .unverified-warn .material-icons { font-size: var(--font-16); color: #f59e0b; }
-
-    /* Hero quick study button */
-    .hero-create { margin-right: 0; }
-    .hero-top { flex-wrap: wrap; }
-    .hero-quick {
-      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
-      color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600;
-      font-size: var(--font-13); display: inline-flex; align-items: center; gap: 6px;
-      cursor: pointer; transition: background 0.15s;
-    }
-    .hero-quick:hover { background: rgba(255,255,255,0.28); }
 
     /* Recent sessions */
     .recent-sessions {
@@ -405,8 +436,8 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .af-text { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); }
     .af-date { display: block; font-size: var(--font-11); color: var(--text-muted); }
 
-    /* Segmented tabs */
-    .section { margin-bottom: 32px; }
+    /* Room section tabs (inside My Rooms tab) */
+    .section { }
     .section-tabs {
       display: inline-flex; gap: 4px; padding: 4px; background: var(--surface);
       border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px;
@@ -443,6 +474,8 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
       .stats-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .hero-top { flex-direction: column; }
       .stat-value { font-size: var(--font-18); }
+      .tab-btn { padding: 8px 10px; font-size: var(--font-12); }
+      .tab-btn .material-icons { font-size: var(--font-16); }
     }
   `]
 })
@@ -462,6 +495,17 @@ export class DashboardComponent implements OnInit {
   todayProgress: TodayProgress | null = null;
   milestones: Milestone[] = [];
   recommendations: Recommendation[] = [];
+
+  activeTab = 'overview';
+  roomTab: 'mine' | 'all' = 'mine';
+  loading = true;
+
+  tabs = [
+    { id: 'overview', icon: 'dashboard', label: 'Overview' },
+    { id: 'rooms',    icon: 'meeting_room', label: 'My Rooms' },
+    { id: 'progress', icon: 'trending_up', label: 'Progress' },
+    { id: 'activity', icon: 'update',      label: 'Activity' },
+  ];
 
   get dailyGoalPercent(): number {
     if (!this.todayProgress || this.todayProgress.dailyGoalMinutes <= 0) return 0;
@@ -483,8 +527,6 @@ export class DashboardComponent implements OnInit {
     if (h === 0) return `${m}m`;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
   }
-  loading = true;
-  tab: 'mine' | 'all' = 'mine';
 
   async ngOnInit() {
     try {
@@ -512,7 +554,6 @@ export class DashboardComponent implements OnInit {
       this.loading = false;
     }
 
-    // Keep the streak / study totals fresh when a focus session completes.
     this.signalR.timerCompleted$.subscribe(async () => {
       try {
         const [refreshed, progress, ms, recs, recent] = await Promise.all([
