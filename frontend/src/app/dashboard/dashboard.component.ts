@@ -200,20 +200,23 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           </div>
         </div>
 
-        <div class="recent-sessions" *ngIf="recentSessions.length > 0">
-          <div class="recent-header">
+        <div class="recent-sessions collapsible" *ngIf="recentSessions.length > 0">
+          <div class="recent-header clickable" (click)="sessionsExpanded = !sessionsExpanded">
             <span class="material-icons">history</span>
             <span class="recent-title">Recent Sessions</span>
-            <a routerLink="/analytics" class="recent-link">View All →</a>
+            <span class="material-icons collapse-chevron" [class.open]="sessionsExpanded">expand_more</span>
+            <a routerLink="/analytics" class="recent-link" (click)="$event.stopPropagation()">View All →</a>
           </div>
-          <div class="recent-list">
-            <div class="recent-row" *ngFor="let s of recentSessions">
-              <span class="material-icons recent-icon">play_circle</span>
-              <div class="recent-info">
-                <span class="recent-date">{{ s.date }}</span>
-                <span class="recent-notes" *ngIf="s.notes">{{ s.notes }}</span>
+          <div class="collapse-body" [class.open]="sessionsExpanded">
+            <div class="recent-list">
+              <div class="recent-row" *ngFor="let s of recentSessions">
+                <span class="material-icons recent-icon">play_circle</span>
+                <div class="recent-info">
+                  <span class="recent-date">{{ s.date }}</span>
+                  <span class="recent-notes" *ngIf="s.notes">{{ s.notes }}</span>
+                </div>
+                <span class="recent-duration">{{ formatDurationShort(s.durationMinutes) }}</span>
               </div>
-              <span class="recent-duration">{{ formatDurationShort(s.durationMinutes) }}</span>
             </div>
           </div>
         </div>
@@ -223,17 +226,20 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
            TAB: Activity — Feed + Smart suggestions
            ═══════════════════════════════════════════════════════ -->
       <div *ngIf="activeTab === 'activity'" class="tab-pane">
-        <div class="activity-feed" *ngIf="activityFeed.length > 0">
-          <div class="af-header">
+        <div class="activity-feed collapsible" *ngIf="activityFeed.length > 0">
+          <div class="af-header clickable" (click)="activityExpanded = !activityExpanded">
             <span class="material-icons">update</span>
             <span class="af-title">Recent Activity</span>
+            <span class="material-icons collapse-chevron" [class.open]="activityExpanded">expand_more</span>
           </div>
-          <div class="af-list">
-            <div class="af-row" *ngFor="let a of activityFeed">
-              <span class="material-icons af-icon">{{ a.icon || 'circle' }}</span>
-              <div class="af-info">
-                <span class="af-text">{{ a.text }}</span>
-                <span class="af-date">{{ a.date | date:'MMM d, h:mm a' }}</span>
+          <div class="collapse-body" [class.open]="activityExpanded">
+            <div class="af-list">
+              <div class="af-row" *ngFor="let a of activityFeed">
+                <span class="material-icons af-icon">{{ a.icon || 'circle' }}</span>
+                <div class="af-info">
+                  <span class="af-text">{{ a.text }}</span>
+                  <span class="af-date">{{ a.date | date:'MMM d, h:mm a' }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -313,6 +319,19 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     /* Tab pane wrapper */
     .tab-pane { animation: fadeIn 0.15s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* ── Collapsible sections ─────────────────────────────── */
+    .collapsible .clickable { cursor: pointer; user-select: none; }
+    .collapsible .clickable:hover { opacity: 0.85; }
+    .collapse-chevron {
+      font-size: var(--font-20) !important; color: var(--text-muted);
+      transition: transform 0.2s ease; margin-left: 4px;
+    }
+    .collapse-chevron.open { transform: rotate(180deg); }
+    .collapse-body {
+      max-height: 0; overflow: hidden; transition: max-height 0.25s ease;
+    }
+    .collapse-body.open { max-height: 2000px; }
 
     /* Daily goal progress */
     .daily-goal {
@@ -499,6 +518,8 @@ export class DashboardComponent implements OnInit {
   activeTab = 'overview';
   roomTab: 'mine' | 'all' = 'mine';
   loading = true;
+  sessionsExpanded = true;
+  activityExpanded = true;
 
   tabs = [
     { id: 'overview', icon: 'dashboard', label: 'Overview' },
