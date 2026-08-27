@@ -385,7 +385,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .milestone-desc { font-size: var(--font-11); color: var(--text-muted); }
 
     /* Recommendations */
-    .recommendations { margin-bottom: 20px; }
+    .recommendations { margin-top: 16px; margin-bottom: 20px; }
     .recs-card {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
       padding: 16px 20px;
