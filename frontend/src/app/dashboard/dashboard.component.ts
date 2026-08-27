@@ -97,6 +97,22 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <span class="stat-label">Last 7 Days</span>
           </div>
         </div>
+
+        <div class="recommendations" *ngIf="recommendations.length > 0">
+          <div class="recs-header">
+            <span class="material-icons">auto_awesome</span>
+            <span class="recs-title">Smart Suggestions</span>
+          </div>
+          <div class="recs-grid">
+            <div class="rec-card" *ngFor="let r of recommendations">
+              <span class="material-icons rec-icon">{{ r.icon }}</span>
+              <div class="rec-info">
+                <span class="rec-name">{{ r.title }}</span>
+                <span class="rec-desc">{{ r.description }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ═══════════════════════════════════════════════════════
@@ -240,22 +256,6 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
                   <span class="af-text">{{ a.text }}</span>
                   <span class="af-date">{{ a.date | date:'MMM d, h:mm a' }}</span>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="recommendations" *ngIf="recommendations.length > 0">
-          <div class="recs-header">
-            <span class="material-icons">auto_awesome</span>
-            <span class="recs-title">Smart Suggestions</span>
-          </div>
-          <div class="recs-grid">
-            <div class="rec-card" *ngFor="let r of recommendations">
-              <span class="material-icons rec-icon">{{ r.icon }}</span>
-              <div class="rec-info">
-                <span class="rec-name">{{ r.title }}</span>
-                <span class="rec-desc">{{ r.description }}</span>
               </div>
             </div>
           </div>
