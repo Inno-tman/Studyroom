@@ -2,7 +2,7 @@ import { Component, OnDestroy } from '@angular/core';
 import { NgIf, NgFor } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-type GameId = 'math' | 'scramble' | 'quiz' | null;
+type GameId = 'math' | 'scramble' | 'quiz' | 'memory' | 'truefalse' | 'flags' | 'elements' | null;
 
 interface GameMeta {
   id: Exclude<GameId, null>;
@@ -18,6 +18,112 @@ interface TriviaQuestion {
   answer: number;
   category: string;
 }
+
+interface MemoryCard {
+  id: number;
+  pairId: number;
+  text: string;
+  flipped: boolean;
+  matched: boolean;
+}
+
+interface FlagEntry {
+  flag: string;
+  country: string;
+}
+
+interface ElementEntry {
+  name: string;
+  symbol: string;
+}
+
+const MEMORY_PAIRS = [
+  { term: 'Photosynthesis', def: 'How plants turn sunlight into energy' },
+  { term: 'Mitochondria', def: 'The powerhouse of the cell' },
+  { term: 'Hypotenuse', def: 'Longest side of a right triangle' },
+  { term: 'Axiom', def: 'A statement accepted as true without proof' },
+  { term: 'Osmosis', def: 'Water diffusing through a membrane' },
+  { term: 'Prime number', def: 'Divisible only by 1 and itself' },
+  { term: 'Ecosystem', def: 'A community of life and its environment' },
+  { term: 'Gravity', def: 'The force that pulls objects toward each other' },
+  { term: 'Molecule', def: 'Two or more atoms bonded together' },
+  { term: 'Metaphor', def: 'A figure of speech comparing two things' },
+  { term: 'Velocity', def: 'Speed with a direction attached' },
+  { term: 'Syllabus', def: 'An outline of what a course covers' }
+];
+
+const TRUE_FALSE_BANK = [
+  { text: 'The Earth revolves around the Sun.', isTrue: true },
+  { text: 'Water boils at 100°C at sea level.', isTrue: true },
+  { text: 'Sharks are mammals.', isTrue: false },
+  { text: 'Mount Everest is the tallest mountain above sea level.', isTrue: true },
+  { text: 'Lightning is hotter than the surface of the Sun.', isTrue: true },
+  { text: 'The human body has 206 bones.', isTrue: true },
+  { text: 'Venus is the closest planet to the Sun.', isTrue: false },
+  { text: 'Einstein won a Nobel Prize for the Theory of Relativity.', isTrue: false },
+  { text: 'A year on Mars is longer than a year on Earth.', isTrue: true },
+  { text: 'Sound travels faster in water than in air.', isTrue: true },
+  { text: 'Tomatoes are technically a fruit.', isTrue: true },
+  { text: 'Octopuses have three hearts.', isTrue: true },
+  { text: 'Bats are blind.', isTrue: false },
+  { text: 'The Nile is the longest river in the world.', isTrue: true },
+  { text: 'A group of lions is called a pride.', isTrue: true },
+  { text: 'Freezing point of water is 0°C.', isTrue: true },
+  { text: 'Human blood is blue inside the body.', isTrue: false },
+  { text: 'The Great Wall of China is visible from space with the naked eye.', isTrue: false },
+  { text: 'Mercury is the closest planet to the Sun.', isTrue: true },
+  { text: 'Dolphins are fish.', isTrue: false }
+];
+
+const FLAG_BANK: FlagEntry[] = [
+  { flag: '🇯🇵', country: 'Japan' },
+  { flag: '🇫🇷', country: 'France' },
+  { flag: '🇧🇷', country: 'Brazil' },
+  { flag: '🇨🇦', country: 'Canada' },
+  { flag: '🇦🇺', country: 'Australia' },
+  { flag: '🇪🇸', country: 'Spain' },
+  { flag: '🇮🇹', country: 'Italy' },
+  { flag: '🇩🇪', country: 'Germany' },
+  { flag: '🇮🇳', country: 'India' },
+  { flag: '🇲🇽', country: 'Mexico' },
+  { flag: '🇿🇦', country: 'South Africa' },
+  { flag: '🇰🇷', country: 'South Korea' },
+  { flag: '🇬🇧', country: 'United Kingdom' },
+  { flag: '🇺🇸', country: 'United States' },
+  { flag: '🇪🇬', country: 'Egypt' },
+  { flag: '🇸🇪', country: 'Sweden' },
+  { flag: '🇨🇳', country: 'China' },
+  { flag: '🇷🇺', country: 'Russia' },
+  { flag: '🇳🇱', country: 'Netherlands' },
+  { flag: '🇹🇷', country: 'Turkey' }
+];
+
+const ELEMENT_BANK: ElementEntry[] = [
+  { name: 'Hydrogen', symbol: 'H' },
+  { name: 'Helium', symbol: 'He' },
+  { name: 'Lithium', symbol: 'Li' },
+  { name: 'Carbon', symbol: 'C' },
+  { name: 'Nitrogen', symbol: 'N' },
+  { name: 'Oxygen', symbol: 'O' },
+  { name: 'Sodium', symbol: 'Na' },
+  { name: 'Magnesium', symbol: 'Mg' },
+  { name: 'Aluminium', symbol: 'Al' },
+  { name: 'Silicon', symbol: 'Si' },
+  { name: 'Sulfur', symbol: 'S' },
+  { name: 'Chlorine', symbol: 'Cl' },
+  { name: 'Potassium', symbol: 'K' },
+  { name: 'Calcium', symbol: 'Ca' },
+  { name: 'Iron', symbol: 'Fe' },
+  { name: 'Copper', symbol: 'Cu' },
+  { name: 'Zinc', symbol: 'Zn' },
+  { name: 'Silver', symbol: 'Ag' },
+  { name: 'Tin', symbol: 'Sn' },
+  { name: 'Gold', symbol: 'Au' },
+  { name: 'Mercury', symbol: 'Hg' },
+  { name: 'Lead', symbol: 'Pb' },
+  { name: 'Argon', symbol: 'Ar' },
+  { name: 'Neon', symbol: 'Ne' }
+];
 
 const SCRAMBLE_WORDS = [
   'focus', 'memorize', 'quantum', 'equation', 'biology', 'grammar', 'history',
@@ -249,6 +355,223 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
           </div>
         </div>
       </ng-container>
+
+      <!-- Memory Match -->
+      <ng-container *ngIf="selected === 'memory'">
+        <div class="card game-window">
+          <div class="game-head">
+            <button class="btn-secondary back" (click)="back()">
+              <span class="material-icons">arrow_back</span> All games
+            </button>
+            <div class="game-title">Memory Match</div>
+            <div class="score-pill">{{ memoryScore || '—' }}</div>
+          </div>
+
+          <div class="hud" *ngIf="memoryRunning">
+            <div class="round">Matched {{ memoryMatched }} / {{ memoryPairCount }}</div>
+            <div class="level">{{ memoryMoves }} moves</div>
+          </div>
+
+          <div *ngIf="memoryRunning" class="memory-grid">
+            <button
+              *ngFor="let card of memoryCards; let i = index"
+              class="memory-card"
+              [class.flipped]="card.flipped"
+              [class.matched]="card.matched"
+              (click)="flipCard(i)"
+            >
+              <span *ngIf="!card.flipped" class="memory-back"><span class="material-icons">help</span></span>
+              <span *ngIf="card.flipped" class="memory-face">{{ card.text }}</span>
+            </button>
+          </div>
+
+          <div *ngIf="!memoryRunning" class="game-over">
+            <div class="final-score">
+              <span class="material-icons">emoji_events</span>
+              <strong>{{ memoryScore }}</strong>
+              <span>points</span>
+            </div>
+            <p *ngIf="memoryFinished" class="result-line">{{ memoryMoves }} moves this round.</p>
+            <p *ngIf="memoryFinished && isNewBest('memory')" class="new-best">New personal best!</p>
+            <div class="game-over-actions">
+              <button class="btn-primary" (click)="startMemory()">
+                {{ memoryFinished ? 'Play again' : 'Start' }}
+              </button>
+              <button class="btn-secondary" (click)="back()">Back to games</button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- True/False Sprint -->
+      <ng-container *ngIf="selected === 'truefalse'">
+        <div class="card game-window">
+          <div class="game-head">
+            <button class="btn-secondary back" (click)="back()">
+              <span class="material-icons">arrow_back</span> All games
+            </button>
+            <div class="game-title">True/False Sprint</div>
+            <div class="score-pill">{{ tfScore }}</div>
+          </div>
+
+          <div class="hud" *ngIf="tfRunning">
+            <div class="timer" [class.low]="tfTimeLeft <= 10">
+              <span class="material-icons">timer</span> {{ tfTimeLeft }}s
+            </div>
+            <div class="level">{{ tfStreak >= 5 ? 'On fire!' : 'Streak ' + tfStreak }}</div>
+          </div>
+
+          <div *ngIf="tfRunning" class="truefalse-scene">
+            <h3 class="quiz-question">{{ tfQuestion }}</h3>
+            <div class="tf-actions">
+              <button
+                class="tf-btn tf-true"
+                [class.flash-correct]="tfFeedback === 'correct' && tfLastAnswer === true"
+                [class.flash-wrong]="tfFeedback === 'wrong' && tfLastAnswer === true"
+                (click)="answerTrueFalse(true)"
+              >
+                <span class="material-icons">check</span> True
+              </button>
+              <button
+                class="tf-btn tf-false"
+                [class.flash-correct]="tfFeedback === 'correct' && tfLastAnswer === false"
+                [class.flash-wrong]="tfFeedback === 'wrong' && tfLastAnswer === false"
+                (click)="answerTrueFalse(false)"
+              >
+                <span class="material-icons">close</span> False
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="!tfRunning" class="game-over">
+            <div class="final-score">
+              <span class="material-icons">emoji_events</span>
+              <strong>{{ tfScore }}</strong>
+              <span>correct</span>
+            </div>
+            <p *ngIf="tfFinished && isNewBest('truefalse')" class="new-best">New personal best!</p>
+            <div class="game-over-actions">
+              <button class="btn-primary" (click)="startTrueFalse()">
+                {{ tfFinished ? 'Play again' : 'Start' }}
+              </button>
+              <button class="btn-secondary" (click)="back()">Back to games</button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Flag Finder -->
+      <ng-container *ngIf="selected === 'flags'">
+        <div class="card game-window">
+          <div class="game-head">
+            <button class="btn-secondary back" (click)="back()">
+              <span class="material-icons">arrow_back</span> All games
+            </button>
+            <div class="game-title">Flag Finder</div>
+            <div class="score-pill">{{ flagsScore }}</div>
+          </div>
+
+          <div class="hud" *ngIf="flagsRunning && !flagsFinished">
+            <div class="round">Flag {{ flagsIndex + 1 }} / {{ flagsRounds }}</div>
+          </div>
+
+          <div *ngIf="flagsRunning && !flagsFinished" class="quiz-scene">
+            <div class="flag-big">{{ flagTarget }}</div>
+            <div class="quiz-options">
+              <button
+                *ngFor="let o of flagsOptions; let i = index"
+                class="quiz-option"
+                [class.correct]="flagsAnswered && i === flagsCorrectIndex"
+                [class.wrong]="flagsAnswered && flagsSelected === i && i !== flagsCorrectIndex"
+                [disabled]="flagsAnswered"
+                (click)="answerFlags(i)"
+              >
+                <span class="option-letter">{{ letters[i] }}</span> {{ o.country }}
+              </button>
+            </div>
+            <div *ngIf="flagsAnswered" class="quiz-feedback">
+              <span [class.correct]="flagsLastCorrect" [class.wrong]="!flagsLastCorrect">
+                {{ flagsLastCorrect ? 'Correct! ' : '' }}It's {{ flagsCorrectCountry }}
+              </span>
+              <button class="btn-primary" (click)="nextFlags()">
+                {{ flagsIndex + 1 >= flagsRounds ? 'See results' : 'Next' }}
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="!flagsRunning || flagsFinished" class="game-over">
+            <div class="final-score">
+              <span class="material-icons">emoji_events</span>
+              <strong>{{ flagsScore }}</strong>
+              <span>of {{ flagsRounds }} correct</span>
+            </div>
+            <p *ngIf="flagsFinished && isNewBest('flags')" class="new-best">New personal best!</p>
+            <div class="game-over-actions">
+              <button class="btn-primary" (click)="startFlags()">
+                {{ flagsFinished ? 'Play again' : 'Start' }}
+              </button>
+              <button class="btn-secondary" (click)="back()">Back to games</button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Element Symbols -->
+      <ng-container *ngIf="selected === 'elements'">
+        <div class="card game-window">
+          <div class="game-head">
+            <button class="btn-secondary back" (click)="back()">
+              <span class="material-icons">arrow_back</span> All games
+            </button>
+            <div class="game-title">Element Symbols</div>
+            <div class="score-pill">{{ elementsScore }}</div>
+          </div>
+
+          <div class="hud" *ngIf="elementsRunning && !elementsFinished">
+            <div class="round">Element {{ elementsIndex + 1 }} / {{ elementsRounds }}</div>
+          </div>
+
+          <div *ngIf="elementsRunning && !elementsFinished" class="quiz-scene">
+            <h3 class="quiz-question">What is the symbol for <span class="element-name">{{ elementTarget }}</span>?</h3>
+            <div class="quiz-options elements-options">
+              <button
+                *ngFor="let e of elementsOptions; let i = index"
+                class="quiz-option"
+                [class.correct]="elementsAnswered && i === elementsCorrectIndex"
+                [class.wrong]="elementsAnswered && elementsSelected === i && i !== elementsCorrectIndex"
+                [disabled]="elementsAnswered"
+                (click)="answerElements(i)"
+              >
+                <span class="option-letter">{{ letters[i] }}</span>
+                <span class="element-symbol">{{ e.symbol }}</span>
+              </button>
+            </div>
+            <div *ngIf="elementsAnswered" class="quiz-feedback">
+              <span [class.correct]="elementsLastCorrect" [class.wrong]="!elementsLastCorrect">
+                {{ elementsLastCorrect ? 'Correct! ' : '' }}{{ elementCorrectName }} → {{ elementCorrectSymbol }}
+              </span>
+              <button class="btn-primary" (click)="nextElements()">
+                {{ elementsIndex + 1 >= elementsRounds ? 'See results' : 'Next' }}
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="!elementsRunning || elementsFinished" class="game-over">
+            <div class="final-score">
+              <span class="material-icons">emoji_events</span>
+              <strong>{{ elementsScore }}</strong>
+              <span>of {{ elementsRounds }} correct</span>
+            </div>
+            <p *ngIf="elementsFinished && isNewBest('elements')" class="new-best">New personal best!</p>
+            <div class="game-over-actions">
+              <button class="btn-primary" (click)="startElements()">
+                {{ elementsFinished ? 'Play again' : 'Start' }}
+              </button>
+              <button class="btn-secondary" (click)="back()">Back to games</button>
+            </div>
+          </div>
+        </div>
+      </ng-container>
     </div>
   `,
   styles: [`
@@ -433,13 +756,79 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
       margin: 0 0 18px;
     }
     .game-over-actions { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
+    .result-line { font-size: var(--font-14); color: var(--text-secondary); margin: 0 0 12px; }
+
+    /* Memory Match */
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .memory-card {
+      min-height: 84px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--background);
+      color: var(--text-primary);
+      font-size: var(--font-13);
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 10px;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .memory-card:hover:not(.flipped):not(.matched) { border-color: var(--primary); transform: translateY(-2px); }
+    .memory-card.flipped { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+    .memory-card.matched {
+      border-color: var(--success);
+      background: color-mix(in srgb, var(--success) 12%, transparent);
+      cursor: default;
+      opacity: 0.9;
+    }
+    .memory-back .material-icons { font-size: var(--font-24); color: var(--text-muted); }
+
+    /* True/False Sprint */
+    .truefalse-scene { text-align: center; padding: 8px 4px; }
+    .tf-actions { display: flex; gap: 14px; justify-content: center; }
+    .tf-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: var(--font-17); font-weight: 700;
+      border-radius: 12px; padding: 14px 34px;
+      border: 2px solid var(--border);
+      background: var(--background);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .tf-btn:hover { transform: translateY(-2px); }
+    .tf-true:hover { border-color: var(--success); }
+    .tf-false:hover { border-color: #ef4444; }
+    .tf-btn.flash-correct { border-color: var(--success); background: color-mix(in srgb, var(--success) 15%, transparent); }
+    .tf-btn.flash-wrong { border-color: #ef4444; background: color-mix(in srgb, #ef4444 15%, transparent); }
+    .tf-true .material-icons { color: var(--success); }
+    .tf-false .material-icons { color: #ef4444; }
+
+    /* Flag Finder */
+    .flag-big { font-size: 96px; text-align: center; margin: 0 0 22px; user-select: none; }
+
+    /* Element Symbols */
+    .element-name { color: var(--accent); }
+    .element-symbol { font-size: var(--font-22); font-weight: 700; letter-spacing: 0.03em; }
+    .elements-options .quiz-option { justify-content: center; }
   `]
 })
 export class GamesComponent implements OnDestroy {
   games: GameMeta[] = [
     { id: 'math', icon: 'calculate', title: 'Quick Math', desc: 'Solve as many arithmetic problems as you can in 60 seconds.', color: '#6366f1' },
     { id: 'scramble', icon: 'abc', title: 'Word Scramble', desc: 'Unscramble study-themed words fast. 20 rounds.', color: '#10b981' },
-    { id: 'quiz', icon: 'quiz', title: 'Trivia Quiz', desc: '20 general-knowledge questions across science, history, math and more.', color: '#f59e0b' }
+    { id: 'quiz', icon: 'quiz', title: 'Trivia Quiz', desc: '20 general-knowledge questions across science, history, math and more.', color: '#f59e0b' },
+    { id: 'memory', icon: 'extension', title: 'Memory Match', desc: 'Flip cards and match study terms with their definitions. 6 pairs.', color: '#8b5cf6' },
+    { id: 'truefalse', icon: 'thumbs_up_down', title: 'True/False Sprint', desc: 'Blast through 30 seconds of rapid fact checks.', color: '#ef4444' },
+    { id: 'flags', icon: 'public', title: 'Flag Finder', desc: 'Identify countries from their flags. 10 rounds.', color: '#3b82f6' },
+    { id: 'elements', icon: 'science', title: 'Element Symbols', desc: 'Match chemical elements to their symbols. 10 rounds.', color: '#14b8a6' }
   ];
   letters = ['A', 'B', 'C', 'D'];
 
@@ -480,6 +869,59 @@ export class GamesComponent implements OnDestroy {
   quizLastCorrect = false;
   quizQuestions: TriviaQuestion[] = [];
 
+  // Memory Match
+  memoryRunning = false;
+  memoryFinished = false;
+  memoryCards: MemoryCard[] = [];
+  memoryFirst: number | null = null;
+  memoryMoves = 0;
+  memoryLocked = false;
+  memoryMatched = 0;
+  memoryScore = 0;
+  memoryPairCount = 6;
+  private memoryFlipTimer?: any;
+
+  // True/False Sprint
+  tfRunning = false;
+  tfFinished = false;
+  tfScore = 0;
+  tfStreak = 0;
+  tfTimeLeft = 30;
+  tfIndex = 0;
+  tfQuestion = '';
+  tfFeedback = '';
+  tfLastAnswer = false;
+  tfLocked = false;
+  private tfBank: { text: string; isTrue: boolean }[] = [];
+  private tfTimer?: any;
+  private tfAdvanceTimer?: any;
+
+  // Flag Finder
+  flagsRunning = false;
+  flagsFinished = false;
+  flagsScore = 0;
+  flagsIndex = 0;
+  flagsRounds = 10;
+  flagsOptions: FlagEntry[] = [];
+  flagsCorrectIndex = 0;
+  flagsSelected: number | null = null;
+  flagsAnswered = false;
+  flagsLastCorrect = false;
+  private flagsBank: FlagEntry[] = [];
+
+  // Element Symbols
+  elementsRunning = false;
+  elementsFinished = false;
+  elementsScore = 0;
+  elementsIndex = 0;
+  elementsRounds = 10;
+  elementsOptions: ElementEntry[] = [];
+  elementsCorrectIndex = 0;
+  elementsSelected: number | null = null;
+  elementsAnswered = false;
+  elementsLastCorrect = false;
+  private elementsBank: ElementEntry[] = [];
+
   private bestKey = 'studyroom_games_best';
   scrambleTotal = SCRAMBLE_WORDS.length;
 
@@ -487,8 +929,39 @@ export class GamesComponent implements OnDestroy {
     this.shuffleQuiz();
   }
 
+  get flagTarget(): string {
+    return this.flagsOptions[this.flagsCorrectIndex]?.flag ?? '';
+  }
+
+  get flagsCorrectCountry(): string {
+    return this.flagsOptions[this.flagsCorrectIndex]?.country ?? '';
+  }
+
+  get elementTarget(): string {
+    return this.elementsOptions[this.elementsCorrectIndex]?.name ?? '';
+  }
+
+  get elementCorrectName(): string {
+    return this.elementsOptions[this.elementsCorrectIndex]?.name ?? '';
+  }
+
+  get elementCorrectSymbol(): string {
+    return this.elementsOptions[this.elementsCorrectIndex]?.symbol ?? '';
+  }
+
   ngOnDestroy(): void {
     if (this.mathTimer) clearInterval(this.mathTimer);
+    if (this.memoryFlipTimer) clearTimeout(this.memoryFlipTimer);
+    if (this.tfTimer) clearInterval(this.tfTimer);
+    if (this.tfAdvanceTimer) clearTimeout(this.tfAdvanceTimer);
+  }
+
+  private shuffle<T>(arr: T[]): T[] {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }
 
   open(id: Exclude<GameId, null>): void {
@@ -634,6 +1107,192 @@ export class GamesComponent implements OnDestroy {
     this.quizIndex += 1;
     this.quizSelected = null;
     this.quizAnswered = false;
+  }
+
+  // ---------- Memory Match ----------
+  startMemory(): void {
+    const picked = this.shuffle([...MEMORY_PAIRS]).slice(0, this.memoryPairCount);
+    let cardId = 0;
+    const cards: MemoryCard[] = [];
+    picked.forEach((p, i) => {
+      cards.push({ id: cardId++, pairId: i, text: p.term, flipped: false, matched: false });
+      cards.push({ id: cardId++, pairId: i, text: p.def, flipped: false, matched: false });
+    });
+    this.memoryCards = this.shuffle(cards);
+    this.memoryFirst = null;
+    this.memoryMoves = 0;
+    this.memoryLocked = false;
+    this.memoryMatched = 0;
+    this.memoryScore = 0;
+    this.memoryRunning = true;
+    this.memoryFinished = false;
+    if (this.memoryFlipTimer) clearTimeout(this.memoryFlipTimer);
+  }
+
+  flipCard(i: number): void {
+    if (this.memoryLocked || !this.memoryRunning) return;
+    const card = this.memoryCards[i];
+    if (card.flipped || card.matched) return;
+
+    if (this.memoryFirst === null) {
+      card.flipped = true;
+      this.memoryFirst = i;
+      return;
+    }
+
+    const first = this.memoryCards[this.memoryFirst];
+    card.flipped = true;
+    this.memoryMoves += 1;
+
+    if (first.pairId === card.pairId) {
+      first.matched = true;
+      card.matched = true;
+      this.memoryFirst = null;
+      this.memoryMatched += 1;
+      if (this.memoryMatched >= this.memoryPairCount) this.finishMemory();
+    } else {
+      this.memoryLocked = true;
+      this.memoryFlipTimer = window.setTimeout(() => {
+        first.flipped = false;
+        card.flipped = false;
+        this.memoryFirst = null;
+        this.memoryLocked = false;
+        this.memoryFlipTimer = undefined;
+      }, 750);
+    }
+  }
+
+  private finishMemory(): void {
+    this.memoryRunning = false;
+    this.memoryFinished = true;
+    this.memoryScore = Math.max(0, 300 - this.memoryMoves * 10);
+    this.recordBest('memory', this.memoryScore);
+  }
+
+  // ---------- True/False Sprint ----------
+  startTrueFalse(): void {
+    this.tfScore = 0;
+    this.tfStreak = 0;
+    this.tfTimeLeft = 30;
+    this.tfLocked = false;
+    this.tfFeedback = '';
+    this.tfBank = this.shuffle([...TRUE_FALSE_BANK]);
+    this.tfIndex = 0;
+    this.tfQuestion = this.tfBank[0].text;
+    this.tfRunning = true;
+    this.tfFinished = false;
+    if (this.tfTimer) clearInterval(this.tfTimer);
+    this.tfTimer = setInterval(() => {
+      this.tfTimeLeft -= 1;
+      if (this.tfTimeLeft <= 0) {
+        clearInterval(this.tfTimer);
+        this.tfTimer = undefined;
+        this.tfRunning = false;
+        this.tfFinished = true;
+        this.recordBest('truefalse', this.tfScore);
+      }
+    }, 1000);
+  }
+
+  answerTrueFalse(value: boolean): void {
+    if (!this.tfRunning || this.tfLocked) return;
+    const correct = value === this.tfBank[this.tfIndex].isTrue;
+    this.tfFeedback = correct ? 'correct' : 'wrong';
+    this.tfLastAnswer = value;
+    if (correct) {
+      this.tfScore += 1;
+      this.tfStreak += 1;
+    } else {
+      this.tfStreak = 0;
+    }
+    this.tfLocked = true;
+    if (this.tfAdvanceTimer) clearTimeout(this.tfAdvanceTimer);
+    this.tfAdvanceTimer = window.setTimeout(() => {
+      this.tfLocked = false;
+      this.tfFeedback = '';
+      this.tfIndex = (this.tfIndex + 1) % this.tfBank.length;
+      this.tfQuestion = this.tfBank[this.tfIndex].text;
+    }, 350);
+  }
+
+  // ---------- Flag Finder ----------
+  startFlags(): void {
+    this.flagsBank = this.shuffle([...FLAG_BANK]).slice(0, this.flagsRounds);
+    this.flagsIndex = 0;
+    this.flagsScore = 0;
+    this.flagsRunning = true;
+    this.flagsFinished = false;
+    this.prepareFlagsRound();
+  }
+
+  private prepareFlagsRound(): void {
+    const target = this.flagsBank[this.flagsIndex];
+    const distractors = this.shuffle([...FLAG_BANK])
+      .filter(c => c.country !== target.country)
+      .slice(0, 3);
+    this.flagsOptions = this.shuffle([target, ...distractors]);
+    this.flagsCorrectIndex = this.flagsOptions.findIndex(o => o.country === target.country);
+    this.flagsSelected = null;
+    this.flagsAnswered = false;
+  }
+
+  answerFlags(i: number): void {
+    if (this.flagsAnswered) return;
+    this.flagsSelected = i;
+    this.flagsAnswered = true;
+    this.flagsLastCorrect = i === this.flagsCorrectIndex;
+    if (this.flagsLastCorrect) this.flagsScore += 1;
+  }
+
+  nextFlags(): void {
+    if (this.flagsIndex + 1 >= this.flagsRounds) {
+      this.flagsRunning = false;
+      this.flagsFinished = true;
+      this.recordBest('flags', this.flagsScore);
+      return;
+    }
+    this.flagsIndex += 1;
+    this.prepareFlagsRound();
+  }
+
+  // ---------- Element Symbols ----------
+  startElements(): void {
+    this.elementsBank = this.shuffle([...ELEMENT_BANK]).slice(0, this.elementsRounds);
+    this.elementsIndex = 0;
+    this.elementsScore = 0;
+    this.elementsRunning = true;
+    this.elementsFinished = false;
+    this.prepareElementsRound();
+  }
+
+  private prepareElementsRound(): void {
+    const target = this.elementsBank[this.elementsIndex];
+    const distractors = this.shuffle([...ELEMENT_BANK])
+      .filter(e => e.name !== target.name)
+      .slice(0, 3);
+    this.elementsOptions = this.shuffle([target, ...distractors]);
+    this.elementsCorrectIndex = this.elementsOptions.findIndex(e => e.name === target.name);
+    this.elementsSelected = null;
+    this.elementsAnswered = false;
+  }
+
+  answerElements(i: number): void {
+    if (this.elementsAnswered) return;
+    this.elementsSelected = i;
+    this.elementsAnswered = true;
+    this.elementsLastCorrect = i === this.elementsCorrectIndex;
+    if (this.elementsLastCorrect) this.elementsScore += 1;
+  }
+
+  nextElements(): void {
+    if (this.elementsIndex + 1 >= this.elementsRounds) {
+      this.elementsRunning = false;
+      this.elementsFinished = true;
+      this.recordBest('elements', this.elementsScore);
+      return;
+    }
+    this.elementsIndex += 1;
+    this.prepareElementsRound();
   }
 
   // ---------- High scores ----------
