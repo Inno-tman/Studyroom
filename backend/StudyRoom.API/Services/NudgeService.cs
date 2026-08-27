@@ -9,6 +9,7 @@ public interface INudgeService
     Task SendDailyNudgesAsync();
     Task SendRoomQuietAlertsAsync();
     Task SendWeeklyAccountabilityPairingAsync();
+    Task SendScheduleRemindersAsync();
 }
 
 public class NudgeService : INudgeService
@@ -170,6 +171,59 @@ public class NudgeService : INudgeService
 
         _logger.LogInformation("[nudge] Sent {Count} accountability pairings", alreadyNotified.Count);
     }
+
+    /// <summary>
+    /// Phase 13a — Schedule-based reminders: check users' PreferredStudyDays/Hours
+    /// and send a reminder 30 minutes before their preferred study window starts.
+    /// </summary>
+    public async Task SendScheduleRemindersAsync()
+    {
+        var now = DateTime.UtcNow;
+        var dayNames = new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+        var today = dayNames[(int)now.DayOfWeek];
+        var currentMinutes = now.Hour * 60 + now.Minute;
+
+        var users = await _context.Users
+            .Where(u => u.PreferredStudyDays != null && u.PreferredStudyHours != null)
+            .ToListAsync();
+
+        foreach (var user in users)
+        {
+            var days = (user.PreferredStudyDays ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
+            if (!days.Contains(today)) continue;
+
+            var windows = (user.PreferredStudyHours ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var window in windows)
+            {
+                var parts = window.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length != 2) continue;
+                if (!TimeSpan.TryParse(parts[0], out var start) || !TimeSpan.TryParse(parts[1], out var end)) continue;
+
+                var startMinutes = (int)start.TotalMinutes;
+                var reminderMinutes = startMinutes - 30;
+
+                // Send reminder if we're within 5 minutes of the reminder time
+                if (currentMinutes >= reminderMinutes && currentMinutes <= reminderMinutes + 5)
+                {
+                    // Check if user already studied today
+                    var studiedToday = await _context.StudySessions.AnyAsync(s =>
+                        s.UserId == user.Id && s.Completed && s.IsVerified &&
+                        s.CreatedAt.Date == now.Date);
+
+                    if (!studiedToday)
+                    {
+                        await _notificationService.CreateAsync(
+                            user.Id,
+                            "reminder",
+                            "Study time approaching!",
+                            $"Your study session starts at {parts[0].Trim()}. Ready to focus?",
+                            icon: "alarm",
+                            link: "/rooms");
+                    }
+                }
+            }
+        }
+    }
 }
 
 public class NudgeWorker : BackgroundService
@@ -212,6 +266,9 @@ public class NudgeWorker : BackgroundService
                 {
                     await nudgeService.SendWeeklyAccountabilityPairingAsync();
                 }
+
+                // Schedule reminders every hour
+                await nudgeService.SendScheduleRemindersAsync();
             }
             catch (Exception ex)
             {

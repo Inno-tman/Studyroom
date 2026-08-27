@@ -201,8 +201,32 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             </div>
           </ng-container>
         </div>
+        </div>
       </div>
-    </div>
+
+      <!-- ── Streak Calendar ──────────────────────────────────── -->
+      <div class="streak-calendar" *ngIf="streakDays.length > 0">
+        <div class="streak-header">
+          <span class="material-icons">calendar_month</span>
+          <span class="streak-title">Study Streak</span>
+          <span class="streak-count">{{ activeDaysCount }} / 30 active days</span>
+        </div>
+        <div class="streak-grid">
+          <div class="streak-cell" *ngFor="let d of streakDays" [class.active]="d.minutes > 0" [class.today]="d.isToday"
+            [title]="(d.date | date:'MMM d') + ': ' + formatDurationShort(d.minutes)">
+            <div class="streak-fill" [style.opacity]="getStreakOpacity(d.minutes)"></div>
+          </div>
+        </div>
+        <div class="streak-legend">
+          <span>Less</span>
+          <div class="streak-cell-sm"></div>
+          <div class="streak-cell-sm s1"></div>
+          <div class="streak-cell-sm s2"></div>
+          <div class="streak-cell-sm s3"></div>
+          <div class="streak-cell-sm s4"></div>
+          <span>More</span>
+        </div>
+      </div>
   `,
   styles: [`
     .dashboard { max-width: 1200px; margin: 0 auto; }
@@ -327,6 +351,27 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .recent-notes { display: block; font-size: var(--font-12); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .recent-duration { font-size: var(--font-13); font-weight: 700; color: var(--primary); flex-shrink: 0; }
 
+    /* Streak calendar */
+    .streak-calendar {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px; margin-bottom: 16px;
+    }
+    .streak-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .streak-header .material-icons { font-size: var(--font-20); color: var(--primary); }
+    .streak-title { font-size: var(--font-15); font-weight: 700; color: var(--text-primary); }
+    .streak-count { margin-left: auto; font-size: var(--font-12); font-weight: 600; color: var(--text-muted); }
+    .streak-grid { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 8px; }
+    .streak-cell { width: 14px; height: 14px; border-radius: 3px; background: var(--background); position: relative; cursor: default; }
+    .streak-cell .streak-fill { position: absolute; inset: 0; border-radius: 3px; background: var(--primary); }
+    .streak-cell.active .streak-fill { background: var(--primary); }
+    .streak-cell.today { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .streak-legend { display: flex; align-items: center; gap: 3px; justify-content: flex-end; font-size: 10px; color: var(--text-muted); }
+    .streak-cell-sm { width: 10px; height: 10px; border-radius: 2px; background: var(--background); }
+    .streak-cell-sm.s1 { background: color-mix(in srgb, var(--primary) 25%, transparent); }
+    .streak-cell-sm.s2 { background: color-mix(in srgb, var(--primary) 50%, transparent); }
+    .streak-cell-sm.s3 { background: color-mix(in srgb, var(--primary) 75%, transparent); }
+    .streak-cell-sm.s4 { background: var(--primary); }
+
     /* Segmented tabs */
     .section { margin-bottom: 32px; }
     .section-tabs {
@@ -378,6 +423,7 @@ export class DashboardComponent implements OnInit {
   myRooms: Room[] = [];
   allRooms: Room[] = [];
   recentSessions: any[] = [];
+  streakDays: { date: string; minutes: number; isToday: boolean }[] = [];
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
   todayProgress: TodayProgress | null = null;
   milestones: Milestone[] = [];
@@ -408,14 +454,15 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions] = await Promise.all([
+      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions, trendData] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
         this.roomService.getAll().toPromise(),
         this.statsService.getStats().toPromise(),
         this.statsService.getTodayProgress().toPromise(),
         this.statsService.getMilestones().toPromise(),
         this.statsService.getRecommendations().toPromise(),
-        this.statsService.getRecentSessions(10).toPromise()
+        this.statsService.getRecentSessions(10).toPromise(),
+        this.statsService.getDailyTrend(30).toPromise()
       ]);
       this.myRooms = myRooms || [];
       this.allRooms = allRooms || [];
@@ -424,6 +471,7 @@ export class DashboardComponent implements OnInit {
       this.milestones = milestones || [];
       this.recommendations = recommendations || [];
       this.recentSessions = recentSessions || [];
+      this.buildStreakDays(trendData || []);
     } catch { } finally {
       this.loading = false;
     }
@@ -451,6 +499,34 @@ export class DashboardComponent implements OnInit {
     if (this.myRooms.length === 0) return;
     const room = this.myRooms[Math.floor(Math.random() * this.myRooms.length)];
     this.router.navigate(['/rooms', room.id]);
+  }
+
+  get activeDaysCount(): number {
+    return this.streakDays.filter(d => d.minutes > 0).length;
+  }
+
+  getStreakOpacity(minutes: number): number {
+    if (minutes <= 0) return 0;
+    if (minutes < 30) return 0.25;
+    if (minutes < 60) return 0.5;
+    if (minutes < 120) return 0.75;
+    return 1;
+  }
+
+  private buildStreakDays(trendData: any[]) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+    const byDate: Record<string, number> = {};
+    trendData.forEach((d: any) => { byDate[d.date] = d.minutes; });
+    const days: { date: string; minutes: number; isToday: boolean }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ date: key, minutes: byDate[key] || 0, isToday: key === todayStr });
+    }
+    this.streakDays = days;
   }
 
   navigateToRoom(id: string) {

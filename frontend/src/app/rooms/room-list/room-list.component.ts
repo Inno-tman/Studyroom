@@ -52,6 +52,11 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
           <option value="History">History</option>
           <option value="Languages">Languages</option>
         </select>
+        <select [(ngModel)]="sortBy" (change)="sortRooms()" class="subject-filter">
+          <option value="newest">Newest</option>
+          <option value="members">Most Members</option>
+          <option value="name">Name A-Z</option>
+        </select>
       </div>
 
       <app-loading [loading]="loading" />
@@ -137,6 +142,7 @@ export class RoomListComponent implements OnInit {
   rooms: Room[] = [];
   search = '';
   subject = '';
+  sortBy = 'newest';
   loading = true;
 
   get activeSubject(): string {
@@ -151,8 +157,22 @@ export class RoomListComponent implements OnInit {
     this.loading = true;
     try {
       this.rooms = await this.roomService.getAll(this.search || undefined, this.subject || undefined).toPromise() || [];
+      this.sortRooms();
     } catch { } finally {
       this.loading = false;
+    }
+  }
+
+  sortRooms() {
+    switch (this.sortBy) {
+      case 'members':
+        this.rooms.sort((a, b) => b.memberCount - a.memberCount);
+        break;
+      case 'name':
+        this.rooms.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      default:
+        this.rooms.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
   }
 
