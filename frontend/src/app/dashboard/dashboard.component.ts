@@ -99,18 +99,20 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         </div>
 
         <div class="recommendations" *ngIf="recommendations.length > 0">
-          <div class="recs-header">
-            <span class="material-icons">auto_awesome</span>
-            <span class="recs-title">Smart Suggestions</span>
-          </div>
-          <div class="recs-grid">
-            <div class="rec-card" *ngFor="let r of recommendations">
-              <div class="rec-icon-wrap" [ngClass]="getRecColor(r.icon)">
-                <span class="material-icons rec-icon">{{ r.icon }}</span>
-              </div>
-              <div class="rec-info">
-                <span class="rec-name">{{ r.title }}</span>
-                <span class="rec-desc">{{ r.description }}</span>
+          <div class="recs-card">
+            <div class="recs-header">
+              <span class="material-icons">auto_awesome</span>
+              <span class="recs-title">Smart Suggestions</span>
+            </div>
+            <div class="recs-grid">
+              <div class="rec-card" *ngFor="let r of recommendations">
+                <div class="rec-icon-wrap" [ngClass]="getRecColor(r.icon)">
+                  <span class="material-icons rec-icon">{{ r.icon }}</span>
+                </div>
+                <div class="rec-info">
+                  <span class="rec-name">{{ r.title }}</span>
+                  <span class="rec-desc">{{ r.description }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -384,8 +386,12 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 
     /* Recommendations */
     .recommendations { margin-bottom: 20px; }
+    .recs-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px;
+    }
     .recs-header {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
     }
     .recs-header .material-icons { color: var(--accent); font-size: 20px; }
     .recs-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
