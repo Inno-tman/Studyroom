@@ -56,6 +56,10 @@ export class AuthService {
     return this.http.put<void>(`${environment.apiUrl}/auth/password`, { currentPassword, newPassword });
   }
 
+  getAccountStatus(): Observable<{ isOnline: boolean; lastSeenAt: string }> {
+    return this.http.get<{ isOnline: boolean; lastSeenAt: string }>(`${environment.apiUrl}/users/status`);
+  }
+
   async saveProfile(dto: UpdateProfileDto): Promise<void> {
     this.error.set('');
     this.success.set('');

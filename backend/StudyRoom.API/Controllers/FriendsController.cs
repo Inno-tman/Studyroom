@@ -24,6 +24,13 @@ public class FriendsController : ControllerBase
         return Ok(friends);
     }
 
+    [HttpGet("presence")]
+    public async Task<IActionResult> GetPresence()
+    {
+        var presence = await _friendService.GetFriendPresenceAsync(UserId);
+        return Ok(presence);
+    }
+
     [HttpGet("requests")]
     public async Task<IActionResult> GetRequests()
     {

@@ -19,6 +19,7 @@ public class StudyRoomHub : Hub
     private readonly IUserRepository _userRepo;
     private readonly ITimerScheduler _timerScheduler;
     private readonly INotificationService _notificationService;
+    private readonly IPresenceService _presenceService;
     private readonly ILogger<StudyRoomHub> _logger;
 
     // Room-scoped: connectionId -> roomId
@@ -29,7 +30,6 @@ public class StudyRoomHub : Hub
     private static readonly Dictionary<string, HashSet<string>> _presenceRooms = new();
     private static readonly Dictionary<string, string> _presenceUsername = new();
     private static readonly Dictionary<string, string> _presenceAvatar = new();
-    private static readonly Dictionary<string, int> _presenceConnections = new();
 
     // Room-scoped YouTube broadcast: roomId -> current video state
     private static readonly Dictionary<string, RoomVideoState> _roomVideos = new();
@@ -47,6 +47,7 @@ public class StudyRoomHub : Hub
         IUserRepository userRepo,
         ITimerScheduler timerScheduler,
         INotificationService notificationService,
+        IPresenceService presenceService,
         ILogger<StudyRoomHub> logger)
     {
         _messageRepo = messageRepo;
@@ -56,6 +57,7 @@ public class StudyRoomHub : Hub
         _userRepo = userRepo;
         _timerScheduler = timerScheduler;
         _notificationService = notificationService;
+        _presenceService = presenceService;
         _logger = logger;
     }
 
@@ -748,8 +750,8 @@ public class StudyRoomHub : Hub
             _userGroups[UserId.ToString()] = group;
 
         await Groups.AddToGroupAsync(Context.ConnectionId, group);
-        lock (_presenceConnections)
-            _presenceConnections[UserId.ToString()] = _presenceConnections.GetValueOrDefault(UserId.ToString()) + 1;
+        _presenceService.Increment(UserId);
+        await MarkLastSeenAsync(UserId);
         await SeedPresenceAvatar();
         await base.OnConnectedAsync();
     }
@@ -829,20 +831,37 @@ public class StudyRoomHub : Hub
         }
     }
 
-        lock (_presenceConnections)
+        var remaining = _presenceService.Decrement(UserId);
+        // No live connections left -> drop this user entirely from presence.
+        if (remaining == 0)
         {
-            _presenceConnections[uid] = Math.Max(0, _presenceConnections.GetValueOrDefault(uid) - 1);
-            // No live connections left -> drop this user entirely from presence.
-            if (_presenceConnections[uid] == 0)
+            lock (_presenceRooms)
             {
-                _presenceConnections.Remove(uid);
                 _presenceRooms.Remove(uid);
                 _presenceUsername.Remove(uid);
                 _presenceAvatar.Remove(uid);
             }
         }
+        await MarkLastSeenAsync(UserId);
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private async Task MarkLastSeenAsync(Guid userId)
+    {
+        try
+        {
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user != null)
+            {
+                user.LastSeenAt = DateTime.UtcNow;
+                await _userRepo.UpdateAsync(user);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update LastSeenAt for user {UserId}", userId);
+        }
     }
 
     private async Task SeedPresenceAvatar()

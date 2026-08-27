@@ -67,6 +67,9 @@ public class User
     [MaxLength(500)]
     public string? PreferredStudyHours { get; set; } // e.g. "09:00-12:00,14:00-17:00"
 
+    // Last known online timestamp, updated on SignalR connect/disconnect
+    public DateTime? LastSeenAt { get; set; }
+
     public ICollection<RoomMember> RoomMemberships { get; set; } = new List<RoomMember>();
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<StudySession> StudySessions { get; set; } = new List<StudySession>();

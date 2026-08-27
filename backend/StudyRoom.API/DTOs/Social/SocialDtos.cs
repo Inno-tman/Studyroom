@@ -26,6 +26,13 @@ public class FriendRequestDto
     public DateTime CreatedAt { get; set; }
 }
 
+public class PresenceStatusDto
+{
+    public Guid UserId { get; set; }
+    public bool IsOnline { get; set; }
+    public DateTime? LastSeenAt { get; set; }
+}
+
 public class PostDto
 {
     public Guid Id { get; set; }

@@ -40,6 +40,9 @@ import { AssistantService } from '../../../core/services/assistant.service';
           <span class="material-icons">chat</span>
           <span *ngIf="notificationService.messageUnreadCount() > 0" class="badge">{{ notificationService.messageUnreadCount() }}</span>
         </a>
+        <a routerLink="/games" routerLinkActive="active" class="nav-item" title="Games">
+          <span class="material-icons">sports_esports</span>
+        </a>
         <a routerLink="/settings" routerLinkActive="active" class="nav-item" title="Settings">
           <span class="material-icons">settings</span>
         </a>

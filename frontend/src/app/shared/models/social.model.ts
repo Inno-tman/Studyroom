@@ -22,6 +22,12 @@ export interface Friend {
   createdAt: string;
 }
 
+export interface FriendPresence {
+  userId: string;
+  isOnline: boolean;
+  lastSeenAt: string;
+}
+
 export interface Comment {
   id: string;
   content: string;

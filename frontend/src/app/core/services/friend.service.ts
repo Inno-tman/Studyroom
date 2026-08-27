@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Friend, UserSearchResult } from '../../shared/models/social.model';
+import { Friend, UserSearchResult, FriendPresence } from '../../shared/models/social.model';
 
 @Injectable({ providedIn: 'root' })
 export class FriendService {
@@ -18,6 +18,14 @@ export class FriendService {
 
   getFriends(): Observable<Friend[]> {
     return this.http.get<Friend[]>(`${environment.apiUrl}/friends`);
+  }
+
+  getFriendPresence(): Observable<FriendPresence[]> {
+    return this.http.get<FriendPresence[]>(`${environment.apiUrl}/friends/presence`);
+  }
+
+  getUsersPresence(userIds: string[]): Observable<FriendPresence[]> {
+    return this.http.post<FriendPresence[]>(`${environment.apiUrl}/users/presence`, { userIds });
   }
 
   getIncomingRequests(): Observable<Friend[]> {

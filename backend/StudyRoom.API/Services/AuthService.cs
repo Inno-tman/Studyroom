@@ -33,12 +33,13 @@ public class AuthService : IAuthService
         if (await _userRepo.EmailExistsAsync(dto.Email))
             throw new InvalidOperationException("Email already registered.");
 
-        var user = new User
-        {
-            Username = dto.Username,
-            Email = dto.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-        };
+var user = new User
+          {
+              Username = dto.Username,
+              Email = dto.Email,
+              PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+              LastSeenAt = DateTime.UtcNow,
+          };
 
         await _userRepo.AddAsync(user);
 
@@ -51,6 +52,9 @@ public class AuthService : IAuthService
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Invalid credentials.");
+
+        user.LastSeenAt = DateTime.UtcNow;
+        await _userRepo.UpdateAsync(user);
 
         return await GenerateAuthResponseAsync(user);
     }
@@ -68,14 +72,15 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            user = new User
-            {
-                Username = await GenerateUniqueUsernameAsync(payload.Email),
-                Email = payload.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
-                AvatarUrl = payload.Picture,
-                GoogleId = payload.Subject
-            };
+user = new User
+              {
+                  Username = await GenerateUniqueUsernameAsync(payload.Email),
+                  Email = payload.Email,
+                  PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                  AvatarUrl = payload.Picture,
+                  GoogleId = payload.Subject,
+                  LastSeenAt = DateTime.UtcNow
+              };
             await _userRepo.AddAsync(user);
         }
         else if (string.IsNullOrEmpty(user.GoogleId))
@@ -83,6 +88,12 @@ public class AuthService : IAuthService
             user.GoogleId = payload.Subject;
             if (string.IsNullOrEmpty(user.AvatarUrl))
                 user.AvatarUrl = payload.Picture;
+            user.LastSeenAt = DateTime.UtcNow;
+            await _userRepo.UpdateAsync(user);
+        }
+        else
+        {
+            user.LastSeenAt = DateTime.UtcNow;
             await _userRepo.UpdateAsync(user);
         }
 

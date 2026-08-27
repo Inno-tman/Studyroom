@@ -3,7 +3,7 @@ import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { FriendService } from '../core/services/friend.service';
-import { Friend, UserSearchResult } from '../shared/models/social.model';
+import { Friend, UserSearchResult, FriendPresence } from '../shared/models/social.model';
 
 @Component({
   selector: 'app-people',
@@ -46,13 +46,24 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
 
         <div *ngIf="results.length > 0" class="results-wrap">
           <div *ngFor="let user of results" class="person-row">
-            <div class="avatar" [class.has-image]="user.avatarUrl">
-              <img *ngIf="user.avatarUrl; else initial" [src]="user.avatarUrl" alt="" />
-              <ng-template #initial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+            <div class="avatar-wrap">
+              <div class="avatar" [class.has-image]="user.avatarUrl">
+                <img *ngIf="user.avatarUrl; else initial" [src]="user.avatarUrl" alt="" />
+                <ng-template #initial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span *ngIf="presenceOf(user.id)" class="presence-dot" [class.online]="presenceOf(user.id)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', profileId(user)]">
               <span class="person-name">{{ user.displayName || user.username }}</span>
               <span class="person-sub">{{ '@' + user.username }}{{ user.schoolName ? ' · ' + user.schoolName : '' }}</span>
+              <span *ngIf="user.mutualCount || user.sharedRoomCount" class="person-chips">
+                <span *ngIf="user.mutualCount" class="chip">
+                  <span class="material-icons">group</span> {{ user.mutualCount }} mutual
+                </span>
+                <span *ngIf="user.sharedRoomCount" class="chip">
+                  <span class="material-icons">meeting_room</span> {{ user.sharedRoomCount }} shared
+                </span>
+              </span>
             </div>
             <div class="row-actions">
               <button
@@ -88,13 +99,24 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           <span class="discover-count">{{ suggestions.length }} people</span>
         </div>
         <div *ngFor="let user of suggestions" class="person-row">
-          <div class="avatar" [class.has-image]="user.avatarUrl">
-            <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
-            <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+          <div class="avatar-wrap">
+            <div class="avatar" [class.has-image]="user.avatarUrl">
+              <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
+              <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+            </div>
+            <span *ngIf="presenceOf(user.id)" class="presence-dot" [class.online]="presenceOf(user.id)?.isOnline"></span>
           </div>
           <div class="person-info">
             <span class="person-name">{{ user.displayName || user.username }}</span>
             <span class="person-sub">{{ '@' + user.username }}</span>
+            <span *ngIf="user.mutualCount || user.sharedRoomCount" class="person-chips">
+              <span *ngIf="user.mutualCount" class="chip">
+                <span class="material-icons">group</span> {{ user.mutualCount }} mutual
+              </span>
+              <span *ngIf="user.sharedRoomCount" class="chip">
+                <span class="material-icons">meeting_room</span> {{ user.sharedRoomCount }} shared
+              </span>
+            </span>
             <span *ngIf="user.reason" class="person-reason">{{ user.reason }}</span>
           </div>
           <button
@@ -120,9 +142,12 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           </div>
           <div *ngIf="requests.length === 0" class="empty">No pending requests.</div>
           <div *ngFor="let req of requests" class="person-row">
-            <div class="avatar" [class.has-image]="req.avatarUrl">
-              <img *ngIf="req.avatarUrl; else reqInitial" [src]="req.avatarUrl" alt="" />
-              <ng-template #reqInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
+            <div class="avatar-wrap">
+              <div class="avatar" [class.has-image]="req.avatarUrl">
+                <img *ngIf="req.avatarUrl; else reqInitial" [src]="req.avatarUrl" alt="" />
+                <ng-template #reqInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span *ngIf="presenceOf(req.userId)" class="presence-dot" [class.online]="presenceOf(req.userId)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', profileId(req)]">
               <span class="person-name">{{ req.displayName || req.username }}</span>
@@ -146,9 +171,12 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
           </div>
           <div *ngIf="sentRequests.length === 0" class="empty">You have no outgoing requests.</div>
           <div *ngFor="let req of sentRequests" class="person-row">
-            <div class="avatar" [class.has-image]="req.avatarUrl">
-              <img *ngIf="req.avatarUrl; else sentInitial" [src]="req.avatarUrl" alt="" />
-              <ng-template #sentInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
+            <div class="avatar-wrap">
+              <div class="avatar" [class.has-image]="req.avatarUrl">
+                <img *ngIf="req.avatarUrl; else sentInitial" [src]="req.avatarUrl" alt="" />
+                <ng-template #sentInitial>{{ (req.displayName || req.username).charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span *ngIf="presenceOf(req.userId)" class="presence-dot" [class.online]="presenceOf(req.userId)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', profileId(req)]">
               <span class="person-name">{{ req.displayName || req.username }}</span>
@@ -159,28 +187,35 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- My Friends -->
-        <div *ngIf="mode === 'friends'" class="card">
-          <div class="card-head">
-            <div class="card-head-icon"><span class="material-icons">group</span></div>
-            <div>
-              <h2>My Friends</h2>
-              <p class="card-subtitle">People you're connected with.</p>
-            </div>
+      <!-- My Friends -->
+      <div *ngIf="mode === 'friends'" class="card full">
+        <div class="card-head">
+          <div class="card-head-icon"><span class="material-icons">group</span></div>
+          <div>
+            <h2>My Friends</h2>
+            <p class="card-subtitle">People you're connected with.</p>
           </div>
-          <div *ngIf="friends.length === 0" class="empty">No friends yet. Add some people above!</div>
-          <div *ngFor="let friend of friends" class="person-row">
+          <span class="discover-count">{{ onlineFriendCount }} online</span>
+        </div>
+        <div *ngIf="friends.length === 0" class="empty">No friends yet. Add some people above!</div>
+        <div *ngFor="let friend of friends" class="person-row">
+          <div class="avatar-wrap">
             <div class="avatar" [class.has-image]="friend.avatarUrl">
               <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
               <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
             </div>
-            <div class="person-info" [routerLink]="['/profile', profileId(friend)]">
-              <span class="person-name">{{ friend.displayName || friend.username }}</span>
-              <span class="person-sub">{{ '@' + friend.username }}</span>
-            </div>
-            <button class="btn-secondary danger" (click)="unfriend(friend)">Remove</button>
+            <span *ngIf="presenceOf(friend.userId)" class="presence-dot" [class.online]="presenceOf(friend.userId)?.isOnline"></span>
           </div>
+          <div class="person-info" [routerLink]="['/profile', profileId(friend)]">
+            <span class="person-name">{{ friend.displayName || friend.username }}</span>
+            <span class="person-sub">
+              {{ '@' + friend.username }}
+              <span *ngIf="!presenceOf(friend.userId)?.isOnline" class="person-seen"> · Last seen {{ lastSeenText(presenceOf(friend.userId)?.lastSeenAt) }}</span>
+            </span>
+          </div>
+          <button class="btn-secondary danger" (click)="unfriend(friend)">Remove</button>
         </div>
       </div>
     </div>
@@ -226,6 +261,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
       padding: 24px;
       margin-bottom: 24px;
     }
+    .card.full { max-width: 100%; }
 
     .card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
     .card-head-icon {
@@ -235,13 +271,14 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
       flex-shrink: 0;
     }
     .card-head-icon .material-icons { font-size: var(--font-22); }
-    .card-head-icon.sent { background: var(--text-secondary); }
+    .card-head-icon.muted { background: var(--text-secondary); }
     .card-head h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin: 0; }
     .card-subtitle { font-size: var(--font-13); color: var(--text-secondary); margin: 2px 0 0; }
     .discover-count {
       margin-left: auto; flex-shrink: 0;
-      font-size: var(--font-12); font-weight: 600; color: var(--text-secondary);
-      background: var(--background); border: 1px solid var(--border);
+      font-size: var(--font-12); font-weight: 600; color: var(--success);
+      background: color-mix(in srgb, var(--success) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
       padding: 4px 10px; border-radius: 12px;
     }
 
@@ -265,10 +302,35 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     }
     .person-row:last-child { border-bottom: none; }
 
+    .avatar-wrap { position: relative; width: 40px; height: 40px; flex-shrink: 0; }
+    .presence-dot {
+      position: absolute; bottom: 0; right: 0;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--text-muted);
+      border: 2px solid var(--surface);
+      box-sizing: border-box;
+    }
+    .presence-dot.online {
+      background: var(--success);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 30%, transparent);
+    }
+
     .person-info { display: flex; flex-direction: column; flex: 1; min-width: 0; cursor: pointer; }
     .person-name { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
     .person-sub { font-size: var(--font-13); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .person-seen { font-size: var(--font-12); color: var(--text-muted); }
     .person-reason { font-size: var(--font-12); color: var(--primary); font-weight: 500; margin-top: 2px; }
+
+    .person-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: var(--font-12); font-weight: 600;
+      color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+      border-radius: 12px; padding: 2px 8px;
+    }
+    .chip .material-icons { font-size: 13px; }
 
     .row-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
 
@@ -284,7 +346,7 @@ import { Friend, UserSearchResult } from '../shared/models/social.model';
     }
   `]
 })
-export class PeopleComponent implements OnInit {
+export class PeopleComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
 
   query = '';
@@ -295,11 +357,14 @@ export class PeopleComponent implements OnInit {
   friends: Friend[] = [];
   loading = false;
   mode: 'discover' | 'friends' = 'discover';
+  private presenceMap = new Map<string, FriendPresence>();
   private refreshTimer?: any;
 
-  async ngOnInit() {
-    await this.loadAll();
-    this.refreshTimer = setInterval(() => this.loadSuggestions(), 60000);
+  ngOnInit(): void {
+    this.loadAll().then(() => this.syncPresence());
+    this.refreshTimer = setInterval(() => {
+      this.loadSuggestions().then(() => this.syncPresence());
+    }, 60000);
   }
 
   ngOnDestroy(): void {
@@ -317,6 +382,7 @@ export class PeopleComponent implements OnInit {
   async showDiscover(): Promise<void> {
     this.mode = 'discover';
     await this.loadSuggestions();
+    await this.syncPresence();
   }
 
   async loadRequests(): Promise<void> {
@@ -331,17 +397,65 @@ export class PeopleComponent implements OnInit {
     this.friends = (await this.friendService.getFriends().toPromise()) || [];
   }
 
-  async search(): Promise<void> {
+  search(): void {
     if (!this.query.trim()) {
       this.results = [];
       return;
     }
     this.loading = true;
-    try {
-      this.results = (await this.friendService.searchUsers(this.query.trim()).toPromise()) || [];
-    } finally {
-      this.loading = false;
+    this.friendService.searchUsers(this.query.trim()).subscribe({
+      next: (r) => {
+        this.results = r || [];
+        this.syncPresence();
+      },
+      error: () => {
+        this.results = [];
+      },
+      complete: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  async syncPresence(): Promise<void> {
+    const ids = new Set<string>();
+    for (const r of this.results) ids.add(r.id);
+    for (const s of this.suggestions) ids.add(s.id);
+    for (const f of [...this.requests, ...this.sentRequests, ...this.friends]) ids.add(f.userId);
+    if (ids.size === 0) {
+      this.presenceMap.clear();
+      return;
     }
+    try {
+      const statuses = (await this.friendService.getUsersPresence([...ids]).toPromise()) || [];
+      const next = new Map<string, FriendPresence>();
+      for (const s of statuses) next.set(s.userId, s);
+      this.presenceMap = next;
+    } catch {
+      this.presenceMap.clear();
+    }
+  }
+
+  presenceOf(userId: string): FriendPresence | undefined {
+    return this.presenceMap.get(userId);
+  }
+
+  get onlineFriendCount(): number {
+    return this.friends.filter(f => this.presenceMap.get(f.userId)?.isOnline).length;
+  }
+
+  lastSeenText(iso?: string): string {
+    if (!iso) return 'recently';
+    const then = new Date(iso).getTime();
+    const diffMs = Date.now() - then;
+    if (diffMs < 0 || diffMs < 60000) return 'just now';
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+    return new Date(iso).toLocaleDateString();
   }
 
   async sendRequest(user: UserSearchResult): Promise<void> {
@@ -358,21 +472,25 @@ export class PeopleComponent implements OnInit {
   async accept(req: Friend): Promise<void> {
     await this.friendService.acceptRequest(req.id).toPromise();
     await this.loadAll();
+    await this.syncPresence();
   }
 
   async decline(req: Friend): Promise<void> {
     await this.friendService.deleteRequest(req.id).toPromise();
     await this.loadAll();
+    await this.syncPresence();
   }
 
   async cancelRequest(req: Friend): Promise<void> {
     await this.friendService.deleteRequest(req.id).toPromise();
     await this.loadAll();
+    await this.syncPresence();
   }
 
   async unfriend(friend: Friend): Promise<void> {
     await this.friendService.removeFriend(friend.userId).toPromise();
     await this.loadAll();
+    await this.syncPresence();
   }
 
   profileId(user: any): string {

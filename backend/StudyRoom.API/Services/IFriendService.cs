@@ -9,6 +9,8 @@ public interface IFriendService
     Task<List<FriendRequestDto>> GetFriendsAsync(Guid userId);
     Task<List<FriendRequestDto>> GetIncomingRequestsAsync(Guid userId);
     Task<List<FriendRequestDto>> GetOutgoingRequestsAsync(Guid userId);
+    Task<List<PresenceStatusDto>> GetFriendPresenceAsync(Guid userId);
+    Task<List<PresenceStatusDto>> GetPresenceForUsersAsync(List<Guid> userIds);
     Task SendRequestAsync(Guid fromUserId, Guid toUserId);
     Task AcceptRequestAsync(Guid requestId, Guid userId);
     Task DeleteRequestAsync(Guid requestId, Guid userId);

@@ -130,6 +130,7 @@ builder.Services.AddScoped<IPostStatsRepository, PostStatsRepository>();
 builder.Services.AddSingleton<TimerScheduler>();
 builder.Services.AddSingleton<ITimerScheduler>(sp => sp.GetRequiredService<TimerScheduler>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TimerScheduler>());
+builder.Services.AddSingleton<IPresenceService, PresenceService>();
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IRoomInvitationRepository, RoomInvitationRepository>();
@@ -260,6 +261,7 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "DailyGoalMinutes" integer NOT NULL DEFAULT 120;
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "PreferredStudyDays" text NULL;
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "PreferredStudyHours" text NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "LastSeenAt" timestamp NULL;
     """);
     await context.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "AiConversations" (

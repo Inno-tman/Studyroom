@@ -22,8 +22,9 @@ public class UsersController : ControllerBase
     private readonly IMilestoneService _milestoneService;
     private readonly IStudySessionRepository _sessionRepo;
     private readonly IRecommendationService _recommendationService;
+    private readonly IPresenceService _presenceService;
 
-    public UsersController(IFriendService friendService, IUserRepository userRepo, IStatisticsService statsService, IMilestoneService milestoneService, IStudySessionRepository sessionRepo, IRecommendationService recommendationService)
+    public UsersController(IFriendService friendService, IUserRepository userRepo, IStatisticsService statsService, IMilestoneService milestoneService, IStudySessionRepository sessionRepo, IRecommendationService recommendationService, IPresenceService presenceService)
     {
         _friendService = friendService;
         _userRepo = userRepo;
@@ -31,6 +32,7 @@ public class UsersController : ControllerBase
         _milestoneService = milestoneService;
         _sessionRepo = sessionRepo;
         _recommendationService = recommendationService;
+        _presenceService = presenceService;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -49,6 +51,25 @@ public class UsersController : ControllerBase
     {
         var results = await _friendService.SuggestUsersAsync(UserId, count);
         return Ok(results);
+    }
+
+    [HttpGet("status")]
+    public async Task<IActionResult> GetStatus()
+    {
+        var user = await _userRepo.GetByIdAsync(UserId);
+        if (user == null) return NotFound();
+        return Ok(new
+        {
+            isOnline = _presenceService.IsOnline(UserId),
+            lastSeenAt = user.LastSeenAt ?? user.CreatedAt
+        });
+    }
+
+    [HttpPost("presence")]
+    public async Task<IActionResult> GetPresence([FromBody] PresenceRequest request)
+    {
+        var presence = await _friendService.GetPresenceForUsersAsync(request?.UserIds ?? new List<Guid>());
+        return Ok(presence);
     }
 
     [HttpGet("{id:guid}")]
@@ -185,4 +206,9 @@ public class UpdateScheduleRequest
 {
     public string? PreferredStudyDays { get; set; }
     public string? PreferredStudyHours { get; set; }
+}
+
+public class PresenceRequest
+{
+    public List<Guid> UserIds { get; set; } = new();
 }

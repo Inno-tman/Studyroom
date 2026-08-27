@@ -10,13 +10,15 @@ public class FriendService : IFriendService
     private readonly IFriendshipRepository _friendRepo;
     private readonly IRoomRepository _roomRepo;
     private readonly INotificationService _notificationService;
+    private readonly IPresenceService _presenceService;
 
-    public FriendService(IUserRepository userRepo, IFriendshipRepository friendRepo, IRoomRepository roomRepo, INotificationService notificationService)
+    public FriendService(IUserRepository userRepo, IFriendshipRepository friendRepo, IRoomRepository roomRepo, INotificationService notificationService, IPresenceService presenceService)
     {
         _userRepo = userRepo;
         _friendRepo = friendRepo;
         _roomRepo = roomRepo;
         _notificationService = notificationService;
+        _presenceService = presenceService;
     }
 
     public async Task<List<UserSearchResultDto>> SearchUsersAsync(string query, Guid userId)
@@ -26,9 +28,20 @@ public class FriendService : IFriendService
         var users = await _userRepo.SearchAsync(query, userId);
         var result = new List<UserSearchResultDto>();
 
+        var myFriendships = await _friendRepo.GetAcceptedAsync(userId);
+        var myFriendIds = myFriendships
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
+            .ToHashSet();
+        var roomMap = await _roomRepo.GetMembershipMapAsync();
+        var myRoomIds = roomMap.TryGetValue(userId, out var myRooms) ? myRooms : new HashSet<Guid>();
+
         foreach (var u in users)
         {
             var rel = await _friendRepo.GetBetweenAsync(userId, u.Id);
+            var theirFriendships = await _friendRepo.GetAcceptedAsync(u.Id);
+            int mutual = theirFriendships.Count(f => myFriendIds.Contains(f.RequesterId == u.Id ? f.AddresseeId : f.RequesterId));
+            var theirRooms = roomMap.TryGetValue(u.Id, out var r) ? r : new HashSet<Guid>();
+            int sharedRooms = theirRooms.Intersect(myRoomIds).Count();
             result.Add(new UserSearchResultDto
             {
                 Id = u.Id,
@@ -36,6 +49,9 @@ public class FriendService : IFriendService
                 DisplayName = BuildDisplayName(u),
                 AvatarUrl = u.AvatarUrl,
                 SchoolName = u.SchoolName,
+                MutualCount = mutual,
+                SharedRoomCount = sharedRooms,
+                Reason = BuildSearchReason(mutual, sharedRooms),
                 Relationship = rel == null ? "None"
                     : rel.Status == "Accepted" ? "Friends"
                     : rel.RequesterId == userId ? "RequestSent"
@@ -263,6 +279,32 @@ public class FriendService : IFriendService
         await _friendRepo.DeleteAsync(rel);
     }
 
+    public async Task<List<PresenceStatusDto>> GetFriendPresenceAsync(Guid userId)
+    {
+        var rels = await _friendRepo.GetFriendIdsAsync(userId);
+        var ids = rels
+            .Select(r => r.RequesterId == userId ? r.AddresseeId : r.RequesterId)
+            .ToList();
+        return await GetPresenceForUsersAsync(ids);
+    }
+
+    public async Task<List<PresenceStatusDto>> GetPresenceForUsersAsync(List<Guid> userIds)
+    {
+        var result = new List<PresenceStatusDto>();
+        foreach (var id in userIds.Distinct().Take(200))
+        {
+            var user = await _userRepo.GetByIdAsync(id);
+            if (user == null) continue;
+            result.Add(new PresenceStatusDto
+            {
+                UserId = id,
+                IsOnline = _presenceService.IsOnline(id),
+                LastSeenAt = user.LastSeenAt ?? user.CreatedAt
+            });
+        }
+        return result;
+    }
+
     private static FriendRequestDto MapFriend(User u, Guid relId) =>
         MapFriend(u, relId, default);
 
@@ -305,7 +347,6 @@ public class FriendService : IFriendService
     private static string BuildReason(int mutual, bool sameSchool, bool sameLocation, int sharedRooms, bool ageNear, bool sameMajor, int interestOverlap)
     {
         var parts = new List<string>();
-        if (mutual > 0) parts.Add($"{mutual} mutual {(mutual == 1 ? "friend" : "friends")}");
         if (sameSchool) parts.Add("same school");
         if (sameLocation) parts.Add("nearby");
         if (sharedRooms > 0) parts.Add($"{sharedRooms} shared {(sharedRooms == 1 ? "room" : "rooms")}");
@@ -313,5 +354,13 @@ public class FriendService : IFriendService
         if (sameMajor) parts.Add("same major");
         if (interestOverlap > 0) parts.Add($"{interestOverlap} shared {(interestOverlap == 1 ? "interest" : "interests")}");
         return parts.Count > 0 ? string.Join(" · ", parts) : "May know each other";
+    }
+
+    private static string BuildSearchReason(int mutual, int sharedRooms)
+    {
+        var parts = new List<string>();
+        if (mutual > 0) parts.Add($"{mutual} mutual {(mutual == 1 ? "friend" : "friends")}");
+        if (sharedRooms > 0) parts.Add($"{sharedRooms} shared {(sharedRooms == 1 ? "room" : "rooms")}");
+        return parts.Count > 0 ? string.Join(" · ", parts) : "";
     }
 }
