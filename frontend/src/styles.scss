@@ -73,6 +73,45 @@ html[data-font-scale="large"] {
   font-size: 15px;
 }
 
+html[data-font-scale="xlarge"] {
+  --font-scale: 1.25;
+  font-size: 16px;
+}
+
+html[data-theme="dark"].high-contrast {
+  --text-secondary: #E2E8F0;
+  --text-muted: #CBD5E1;
+  --border: #475569;
+}
+
+html[data-theme="light"].high-contrast {
+  --text-secondary: #1E293B;
+  --text-muted: #334155;
+  --border: #94A3B8;
+}
+
+html[data-corner="sharp"] .card,
+html[data-corner="sharp"] .panel,
+html[data-corner="sharp"] .room-card,
+html[data-corner="sharp"] .stat-card,
+html[data-corner="sharp"] .welcome-card,
+html[data-corner="sharp"] .profile-card,
+html[data-corner="sharp"] .settings-nav,
+html[data-corner="sharp"] .room-header {
+  border-radius: 6px;
+}
+
+html[data-corner="soft"] .card,
+html[data-corner="soft"] .panel,
+html[data-corner="soft"] .room-card,
+html[data-corner="soft"] .stat-card,
+html[data-corner="soft"] .welcome-card,
+html[data-corner="soft"] .profile-card,
+html[data-corner="soft"] .settings-nav,
+html[data-corner="soft"] .room-header {
+  border-radius: 20px;
+}
+
 html[data-font-style="serif"] body {
   font-family: Georgia, 'Times New Roman', serif;
 }

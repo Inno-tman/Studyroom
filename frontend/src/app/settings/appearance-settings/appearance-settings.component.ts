@@ -13,15 +13,22 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
 
       <div class="setting-row">
         <div class="setting-info">
-          <span class="material-icons setting-icon">{{ settings.theme() === 'dark' ? 'dark_mode' : 'light_mode' }}</span>
+          <span class="material-icons setting-icon">brightness_6</span>
           <div>
-            <div class="setting-name">{{ settings.theme() === 'dark' ? 'Dark Mode' : 'Light Mode' }}</div>
-            <div class="setting-desc">Choose between dark and light themes.</div>
+            <div class="setting-name">Theme</div>
+            <div class="setting-desc">Choose light, dark, or follow your system setting.</div>
           </div>
         </div>
-        <button class="theme-toggle" (click)="settings.toggleTheme()" [class.on]="settings.theme() === 'dark'" aria-label="Toggle theme">
-          <span class="toggle-knob"></span>
-        </button>
+        <div class="segmented" role="group" aria-label="Theme">
+          <button
+            *ngFor="let t of themeOptions"
+            class="segment"
+            [class.active]="settings.theme() === t.value"
+            (click)="settings.setTheme(t.value)"
+          >
+            <span class="material-icons seg-icon">{{ t.icon }}</span>{{ t.label }}
+          </button>
+        </div>
       </div>
 
       <div class="setting-row">
@@ -42,6 +49,28 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
             (click)="settings.updateAppearance({ accentColor: accent.color })"
             [attr.aria-label]="'Set accent to ' + accent.name"
           ></button>
+          <label class="accent-custom" [class.active]="!isPresetAccent()" title="Custom color">
+            <input type="color" [value]="settings.appearance().accentColor" (input)="onCustomColor($event)" aria-label="Pick a custom accent color" />
+            <span class="material-icons">colorize</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="material-icons setting-icon">aspect_ratio</span>
+          <div>
+            <div class="setting-name">Corner Style</div>
+            <div class="setting-desc">Change how rounded cards and panels are.</div>
+          </div>
+        </div>
+        <div class="segmented" role="group" aria-label="Corner style">
+          <button
+            *ngFor="let c of cornerStyles"
+            class="segment"
+            [class.active]="settings.appearance().cornerStyle === c.value"
+            (click)="settings.updateAppearance({ cornerStyle: c.value })"
+          >{{ c.label }}</button>
         </div>
       </div>
 
@@ -103,6 +132,19 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
           </div>
         </div>
         <button class="theme-toggle" (click)="settings.updateAppearance({ reduceMotion: !settings.appearance().reduceMotion })" [class.on]="settings.appearance().reduceMotion" aria-label="Toggle reduce motion">
+          <span class="toggle-knob"></span>
+        </button>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="material-icons setting-icon">contrast</span>
+          <div>
+            <div class="setting-name">High Contrast</div>
+            <div class="setting-desc">Strengthen text and borders for easier reading.</div>
+          </div>
+        </div>
+        <button class="theme-toggle" (click)="settings.updateAppearance({ highContrast: !settings.appearance().highContrast })" [class.on]="settings.appearance().highContrast" aria-label="Toggle high contrast">
           <span class="toggle-knob"></span>
         </button>
       </div>
@@ -172,6 +214,41 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
 
     .accent-dot.active { border-color: var(--text-primary); }
 
+    .accent-custom {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d95, #ff3b30);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .accent-custom:hover { transform: scale(1.15); }
+    .accent-custom.active { border-color: var(--text-primary); }
+    .accent-custom .material-icons {
+      font-size: 14px;
+      color: white;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+    }
+    .accent-custom input[type="color"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+
+    .seg-icon { font-size: 16px; vertical-align: -3px; margin-right: 4px; }
+
     .segmented {
       display: flex;
       background: var(--background);
@@ -205,14 +282,36 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
 export class AppearanceSettingsComponent {
   settings = inject(SettingsService);
   accents = ACCENT_COLORS;
+  themeOptions = [
+    { label: 'Light', value: 'light', icon: 'light_mode' },
+    { label: 'System', value: 'system', icon: 'brightness_auto' },
+    { label: 'Dark', value: 'dark', icon: 'dark_mode' }
+  ] as const;
+  cornerStyles = [
+    { label: 'Sharp', value: 'sharp' },
+    { label: 'Rounded', value: 'rounded' },
+    { label: 'Soft', value: 'soft' }
+  ] as const;
   fontScales = [
     { label: 'Small', value: 'small' },
     { label: 'Medium', value: 'medium' },
-    { label: 'Large', value: 'large' }
+    { label: 'Large', value: 'large' },
+    { label: 'Extra', value: 'xlarge' }
   ] as const;
   fontStyles = [
     { label: 'Modern', value: 'inter' },
     { label: 'Serif', value: 'serif' },
     { label: 'Mono', value: 'mono' }
   ] as const;
+
+  isPresetAccent(): boolean {
+    return ACCENT_COLORS.some(a => a.color === this.settings.appearance().accentColor);
+  }
+
+  onCustomColor(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.value && /^#[0-9A-Fa-f]{6}$/.test(input.value)) {
+      this.settings.updateAppearance({ accentColor: input.value });
+    }
+  }
 }

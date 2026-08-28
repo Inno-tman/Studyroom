@@ -1,11 +1,13 @@
 import { Injectable, signal } from '@angular/core';
 
 export interface AppearancePrefs {
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'system';
   accentColor: string;
   compactMode: boolean;
   reduceMotion: boolean;
-  fontScale: 'small' | 'medium' | 'large';
+  highContrast: boolean;
+  cornerStyle: 'sharp' | 'rounded' | 'soft';
+  fontScale: 'small' | 'medium' | 'large' | 'xlarge';
   fontStyle: 'inter' | 'serif' | 'mono';
 }
 
@@ -39,11 +41,21 @@ export interface StudyPrefs {
 
 export const ACCENT_COLORS: { name: string; color: string; hover: string }[] = [
   { name: 'Blue', color: '#2563EB', hover: '#1d4ed8' },
-  { name: 'Emerald', color: '#10B981', hover: '#059669' },
+  { name: 'Indigo', color: '#6366F1', hover: '#4f46e5' },
   { name: 'Violet', color: '#8B5CF6', hover: '#7c3aed' },
+  { name: 'Fuchsia', color: '#D946EF', hover: '#c026d3' },
+  { name: 'Pink', color: '#EC4899', hover: '#db2777' },
   { name: 'Rose', color: '#F43F5E', hover: '#e11d48' },
+  { name: 'Red', color: '#EF4444', hover: '#dc2626' },
+  { name: 'Orange', color: '#F97316', hover: '#ea580c' },
   { name: 'Amber', color: '#F59E0B', hover: '#d97706' },
-  { name: 'Teal', color: '#14B8A6', hover: '#0d9488' }
+  { name: 'Lime', color: '#84CC16', hover: '#65a30d' },
+  { name: 'Green', color: '#22C55E', hover: '#16a34a' },
+  { name: 'Emerald', color: '#10B981', hover: '#059669' },
+  { name: 'Teal', color: '#14B8A6', hover: '#0d9488' },
+  { name: 'Cyan', color: '#06B6D4', hover: '#0891b2' },
+  { name: 'Sky', color: '#0EA5E9', hover: '#0284c7' },
+  { name: 'Slate', color: '#64748B', hover: '#475569' }
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -53,24 +65,37 @@ export class SettingsService {
   private readonly PREFS_KEY = 'studyroom_prefs';
   private readonly STUDY_KEY = 'studyroom_study';
 
-  theme = signal<'dark' | 'light'>(this.loadTheme());
+  theme = signal<'dark' | 'light' | 'system'>(this.loadTheme());
   appearance = signal<Omit<AppearancePrefs, 'theme'>>(this.loadAppearance());
   prefs = signal<NotificationPrefs>(this.loadPrefs());
   study = signal<StudyPrefs>(this.loadStudy());
 
+  private readonly systemLight = window.matchMedia('(prefers-color-scheme: light)');
+
   constructor() {
     this.applyTheme(this.theme());
     this.applyAppearance(this.appearance());
+    this.systemLight.addEventListener('change', () => {
+      if (this.theme() === 'system') this.applyTheme('system');
+    });
   }
 
-  setTheme(theme: 'dark' | 'light'): void {
+  setTheme(theme: 'dark' | 'light' | 'system'): void {
     this.theme.set(theme);
     localStorage.setItem(this.THEME_KEY, theme);
     this.applyTheme(theme);
   }
 
   toggleTheme(): void {
-    this.setTheme(this.theme() === 'dark' ? 'light' : 'dark');
+    const current = this.resolvedTheme;
+    this.setTheme(current === 'dark' ? 'light' : 'dark');
+  }
+
+  get resolvedTheme(): 'dark' | 'light' {
+    const theme = this.theme();
+    return theme === 'system'
+      ? (this.systemLight.matches ? 'light' : 'dark')
+      : theme;
   }
 
   updateAppearance(partial: Partial<Omit<AppearancePrefs, 'theme'>>): void {
@@ -104,9 +129,9 @@ export class SettingsService {
     return start <= end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
   }
 
-  private loadTheme(): 'dark' | 'light' {
-    const stored = localStorage.getItem(this.THEME_KEY) as 'dark' | 'light' | null;
-    if (stored === 'dark' || stored === 'light') return stored;
+  private loadTheme(): 'dark' | 'light' | 'system' {
+    const stored = localStorage.getItem(this.THEME_KEY) as 'dark' | 'light' | 'system' | null;
+    if (stored === 'dark' || stored === 'light' || stored === 'system') return stored;
     return 'dark';
   }
 
@@ -115,6 +140,8 @@ export class SettingsService {
       accentColor: ACCENT_COLORS[0].color,
       compactMode: false,
       reduceMotion: false,
+      highContrast: false,
+      cornerStyle: 'rounded',
       fontScale: 'medium',
       fontStyle: 'inter'
     };
@@ -170,8 +197,11 @@ export class SettingsService {
     }
   }
 
-  private applyTheme(theme: 'dark' | 'light'): void {
-    document.documentElement.setAttribute('data-theme', theme);
+  private applyTheme(theme: 'dark' | 'light' | 'system'): void {
+    const resolved = theme === 'system'
+      ? (this.systemLight.matches ? 'light' : 'dark')
+      : theme;
+    document.documentElement.setAttribute('data-theme', resolved);
   }
 
   private applyAppearance(appearance: Omit<AppearancePrefs, 'theme'>): void {
@@ -184,7 +214,9 @@ export class SettingsService {
 
     el.classList.toggle('compact-mode', appearance.compactMode);
     el.classList.toggle('reduce-motion', appearance.reduceMotion);
+    el.classList.toggle('high-contrast', appearance.highContrast);
     el.setAttribute('data-font-scale', appearance.fontScale);
     el.setAttribute('data-font-style', appearance.fontStyle);
+    el.setAttribute('data-corner', appearance.cornerStyle);
   }
 }
