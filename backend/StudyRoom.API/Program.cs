@@ -196,6 +196,9 @@ builder.Services.AddHostedService<SessionWatcher>();
 builder.Services.AddHostedService<WeeklySummaryWorker>();
 builder.Services.AddHostedService<NudgeWorker>();
 builder.Services.AddScoped<IMilestoneService, MilestoneService>();
+builder.Services.AddScoped<IXpService, XpService>();
+builder.Services.AddScoped<IFlashcardService, FlashcardService>();
+builder.Services.AddScoped<IRoomTaskService, RoomTaskService>();
 builder.Services.AddScoped<IWeeklySummaryService, WeeklySummaryService>();
 builder.Services.AddScoped<INudgeService, NudgeService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
@@ -474,6 +477,75 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_UserMilestones_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS "IX_UserMilestones_UserId" ON "UserMilestones" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "XpEvents" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Type" text NOT NULL,
+            "Points" integer NOT NULL,
+            "Label" text NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_XpEvents" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_XpEvents_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_XpEvents_UserId" ON "XpEvents" ("UserId");
+        CREATE INDEX IF NOT EXISTS "IX_XpEvents_CreatedAt" ON "XpEvents" ("CreatedAt");
+
+        CREATE TABLE IF NOT EXISTS "FlashcardDecks" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Title" text NOT NULL,
+            "Description" text NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "UpdatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_FlashcardDecks" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_FlashcardDecks_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_FlashcardDecks_UserId" ON "FlashcardDecks" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "Flashcards" (
+            "Id" uuid NOT NULL,
+            "DeckId" uuid NOT NULL,
+            "Front" text NOT NULL,
+            "Back" text NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_Flashcards" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_Flashcards_FlashcardDecks_DeckId" FOREIGN KEY ("DeckId") REFERENCES "FlashcardDecks" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_Flashcards_DeckId" ON "Flashcards" ("DeckId");
+
+        CREATE TABLE IF NOT EXISTS "RoomTasks" (
+            "Id" uuid NOT NULL,
+            "RoomId" uuid NOT NULL,
+            "CreatedBy" uuid NOT NULL,
+            "Title" text NOT NULL,
+            "Description" text NULL,
+            "AssignedToId" uuid NULL,
+            "AssignedToName" text NULL,
+            "IsCompleted" boolean NOT NULL DEFAULT false,
+            "CompletedBy" uuid NULL,
+            "DueDate" timestamp NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "CompletedAt" timestamp with time zone NULL,
+            CONSTRAINT "PK_RoomTasks" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_RoomTasks_Rooms_RoomId" FOREIGN KEY ("RoomId") REFERENCES "Rooms" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_RoomTasks_Users_CreatedBy" FOREIGN KEY ("CreatedBy") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_RoomTasks_Users_AssignedToId" FOREIGN KEY ("AssignedToId") REFERENCES "Users" ("Id") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS "IX_RoomTasks_RoomId" ON "RoomTasks" ("RoomId");
+        CREATE INDEX IF NOT EXISTS "IX_RoomTasks_AssignedToId" ON "RoomTasks" ("AssignedToId");
+
+        CREATE TABLE IF NOT EXISTS "NoteVersions" (
+            "Id" uuid NOT NULL,
+            "NoteId" uuid NOT NULL,
+            "Content" text NOT NULL,
+            "EditedById" uuid NOT NULL,
+            "EditedByName" text NOT NULL,
+            "EditedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_NoteVersions" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_NoteVersions_Notes_NoteId" FOREIGN KEY ("NoteId") REFERENCES "Notes" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_NoteVersions_NoteId" ON "NoteVersions" ("NoteId");
 
         CREATE TABLE IF NOT EXISTS "TabSwitchEvents" (
             "Id" uuid NOT NULL,

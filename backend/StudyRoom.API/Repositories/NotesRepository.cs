@@ -24,4 +24,29 @@ public class NotesRepository : INotesRepository
         _context.Notes.Update(note);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<NoteVersion>> GetVersionsAsync(Guid noteId) =>
+        await _context.NoteVersions
+            .Where(v => v.NoteId == noteId)
+            .OrderByDescending(v => v.EditedAt)
+            .ToListAsync();
+
+    public async Task<NoteVersion?> GetVersionAsync(Guid noteId, Guid versionId) =>
+        await _context.NoteVersions
+            .FirstOrDefaultAsync(v => v.Id == versionId && v.NoteId == noteId);
+
+    public async Task AddVersionAsync(NoteVersion version)
+    {
+        await _context.NoteVersions.AddAsync(version);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<string> GetUserDisplayNameAsync(Guid userId)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return "Unknown";
+        return string.IsNullOrWhiteSpace(user.FirstName) && string.IsNullOrWhiteSpace(user.LastName)
+            ? user.Username
+            : $"{user.FirstName} {user.LastName}".Trim();
+    }
 }

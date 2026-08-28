@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using StudyRoom.API.DTOs.AI;
+using StudyRoom.API.DTOs.Flashcards;
 
 namespace StudyRoom.API.Services;
 
@@ -82,6 +83,132 @@ public class AIAcademicService : IAIAcademicService
                     : "AI is unavailable right now. Built-in questions used."
             };
         }
+    }
+
+    public async Task<GenerateFlashcardsResultDto> GenerateFlashcardsAsync(GenerateFlashcardsRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Content))
+            return new GenerateFlashcardsResultDto { Ok = false, Error = "No source content provided." };
+
+        var count = Math.Clamp(request.Count, 3, 30);
+        var focus = string.IsNullOrWhiteSpace(request.Focus) ? null : request.Focus.Trim();
+
+        var content = request.Content.Trim();
+        if (content.Length > 6000)
+            content = content.Substring(0, 6000);
+
+        try
+        {
+            var (system, user) = BuildFlashcardPrompt(content, count, focus);
+            var raw = await CallGeminiRawAsync(system, user);
+            var result = ParseFlashcards(raw, count);
+
+            if (result == null)
+                return new GenerateFlashcardsResultDto { Ok = false, Error = "The AI returned an unreadable response. Try again or add cards manually." };
+
+            result.Ok = true;
+            result.SuggestedTitle = focus ?? TrimToTitle(content);
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Flashcard generation timed out.");
+            return new GenerateFlashcardsResultDto { Ok = false, Error = "AI took too long to respond. Try again or add cards manually." };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Flashcard generation failed.");
+            return new GenerateFlashcardsResultDto
+            {
+                Ok = false,
+                Error = ex.Message.Contains("not configured")
+                    ? "AI is not configured yet. Add cards manually."
+                    : "AI is unavailable right now. Add cards manually."
+            };
+        }
+    }
+
+    private static (string System, string User) BuildFlashcardPrompt(string content, int count, string? focus)
+    {
+        var brief = content.Length > 700 ? content.Substring(0, 700) + "…" : content;
+
+        var system = $"""
+You are an expert flashcard creator for a study app called StudyRoom. You turn study material into clear, focused flashcards.
+Rules:
+- Create exactly {count} flashcards from the source notes.
+- Front: a concise question, term, or prompt (under 160 characters).
+- Back: a complete but concise answer/definition (under 500 characters).
+- Cards must be genuinely useful for memorizing the material — cover distinct concepts, don't duplicate.
+- Prefer English as the primary language; keep Math/Code snippets verbatim where present.
+- {(!string.IsNullOrWhiteSpace(focus) ? $"Stay focused on: {focus}." : "Cover the most important concepts in the notes.")}
+- Respond with ONLY valid JSON matching this schema, no markdown fences:
+{"{\"cards\":[{\"front\":\"...\",\"back\":\"...\"}],\"title\":\"A short deck title\"}"}
+""";
+
+        var user = $"""
+Source material (may be truncated):
+---
+{content}
+---
+Source preview:
+{brief}
+Generate {count} flashcards now.
+""";
+
+        return (system, user);
+    }
+
+    private static GenerateFlashcardsResultDto? ParseFlashcards(string raw, int count)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        var start = raw.IndexOf('{');
+        var end = raw.LastIndexOf('}');
+        if (start < 0 || end <= start) return null;
+        raw = raw.Substring(start, end - start + 1);
+
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+
+            var result = new GenerateFlashcardsResultDto();
+            if (root.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String)
+                result.SuggestedTitle = title.GetString()?.Trim() ?? "";
+
+            if (!root.TryGetProperty("cards", out var cards) || cards.ValueKind != JsonValueKind.Array)
+                return null;
+
+            foreach (var item in cards.EnumerateArray())
+            {
+                if (result.Cards.Count >= count) break;
+                if (!item.TryGetProperty("front", out var f) || string.IsNullOrWhiteSpace(f.GetString())) continue;
+                if (!item.TryGetProperty("back", out var b) || string.IsNullOrWhiteSpace(b.GetString())) continue;
+
+                var front = f.GetString()!.Trim();
+                var back = b.GetString()!.Trim();
+                if (front.Length == 0 || back.Length == 0) continue;
+                if (result.Cards.Any(c => string.Equals(c.Front, front, StringComparison.OrdinalIgnoreCase))) continue;
+
+                result.Cards.Add(new FlashcardDto
+                {
+                    Front = front,
+                    Back = back
+                });
+            }
+
+            return result.Cards.Count > 0 ? result : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string TrimToTitle(string content)
+    {
+        var line = content.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "Study deck";
+        return line.Length > 60 ? line.Substring(0, 60).TrimEnd() : line;
     }
 
     private static (string System, string User) BuildGamePrompt(GameContentRequestDto request, string game)

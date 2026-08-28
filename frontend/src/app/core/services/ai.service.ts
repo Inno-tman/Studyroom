@@ -108,6 +108,25 @@ export interface GameContent {
   math: GameMathItem[];
 }
 
+export interface FlashcardGenRequest {
+  content: string;
+  count?: number;
+  focus?: string;
+}
+
+export interface FlashcardGenItem {
+  id: string;
+  front: string;
+  back: string;
+}
+
+export interface FlashcardGenResult {
+  ok: boolean;
+  error?: string;
+  cards: FlashcardGenItem[];
+  suggestedTitle: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AIService {
   constructor(private http: HttpClient) {}
@@ -118,6 +137,10 @@ export class AIService {
 
   generateGameContent(request: GameContentRequest): Observable<GameContent> {
     return this.http.post<GameContent>(`${environment.apiUrl}/ai/games/generate`, request);
+  }
+
+  generateFlashcards(request: FlashcardGenRequest): Observable<FlashcardGenResult> {
+    return this.http.post<FlashcardGenResult>(`${environment.apiUrl}/flashcards/generate`, request);
   }
 
   createConversation(subject?: string, researchMode = false, phase?: string, roomId?: string): Observable<{ id: string }> {

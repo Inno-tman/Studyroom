@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe, NgClass, DecimalPipe } from '@angular/common';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
-import { StatisticsService, Milestone, TodayProgress, Recommendation } from '../core/services/statistics.service';
+import { StatisticsService, Milestone, TodayProgress, Recommendation, GamificationProfile } from '../core/services/statistics.service';
 import { SignalRService } from '../core/services/signalr.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
@@ -41,6 +41,10 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           <span class="hero-badge">
             <span class="material-icons">group</span>
             {{ myRooms.length }} rooms
+          </span>
+          <span class="hero-badge level-badge" *ngIf="gamification.level > 1">
+            <span class="material-icons">workspace_premium</span>
+            Level {{ gamification.level }}
           </span>
         </div>
       </div>
@@ -96,6 +100,50 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <span class="stat-value">{{ formatDuration(stats.weeklyStudyMinutes) }}</span>
             <span class="stat-label">Last 7 Days</span>
           </div>
+        </div>
+
+        <div class="xp-card">
+          <div class="xp-left">
+            <div class="xp-level-ring">
+              <span>{{ gamification.level }}</span>
+            </div>
+            <div class="xp-info">
+              <span class="xp-title">Level {{ gamification.level }}</span>
+              <span class="xp-sub">{{ gamification.totalXp }} total XP</span>
+            </div>
+          </div>
+          <div class="xp-progress-wrap">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="gamificationPercent"></div>
+            </div>
+            <div class="xp-meta">
+              <span>{{ gamification.badgeCount }} badges earned</span>
+              <span>{{ gamification.xpIntoLevel }} / {{ gamification.xpForNextLevel }} XP to level {{ gamification.level + 1 }}</span>
+            </div>
+          </div>
+          <a routerLink="/people?view=leaderboard" class="xp-link">
+            <span class="material-icons">leaderboard</span>
+            Friends
+          </a>
+        </div>
+
+        <div class="tools-row">
+          <a routerLink="/flashcards" class="tool-card">
+            <span class="material-icons tool-icon">style</span>
+            <div class="tool-info">
+              <span class="tool-name">Flashcards</span>
+              <span class="tool-desc">Study decks + AI-generated cards</span>
+            </div>
+            <span class="material-icons tool-arrow">chevron_right</span>
+          </a>
+          <a routerLink="/games" class="tool-card">
+            <span class="material-icons tool-icon">sports_esports</span>
+            <div class="tool-info">
+              <span class="tool-name">Educational Games</span>
+              <span class="tool-desc">Quiz, memory, math challenges</span>
+            </div>
+            <span class="material-icons tool-arrow">chevron_right</span>
+          </a>
         </div>
 
         <div class="recommendations" *ngIf="recommendations.length > 0">
@@ -367,6 +415,51 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .stat-label { font-size: var(--font-12); color: var(--text-muted); }
     .unverified-warn .material-icons { font-size: var(--font-16); color: #f59e0b; }
 
+    /* Level & XP */
+    .xp-card {
+      margin-top: 16px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .xp-left { display: flex; align-items: center; gap: 12px; }
+    .xp-level-ring {
+      width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+      background: var(--primary); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: var(--font-18); font-weight: 700;
+    }
+    .xp-info { display: flex; flex-direction: column; }
+    .xp-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .xp-sub { font-size: var(--font-12); color: var(--text-muted); }
+    .xp-progress-wrap { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
+    .xp-meta { display: flex; justify-content: space-between; font-size: var(--font-12); color: var(--text-muted); flex-wrap: wrap; gap: 4px; }
+    .xp-link {
+      display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+      border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text-secondary); font-size: var(--font-13); font-weight: 600;
+      text-decoration: none; flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .xp-link:hover { background: var(--surface-hover); color: var(--accent); border-color: var(--accent); }
+    .xp-link .material-icons { font-size: 18px; }
+
+    /* Study tools */
+    .tools-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
+    .tool-card {
+      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      text-decoration: none; transition: border-color 0.15s, transform 0.15s;
+    }
+    .tool-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .tool-icon {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent); display: flex; align-items: center; justify-content: center;
+    }
+    .tool-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .tool-name { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .tool-desc { font-size: var(--font-12); color: var(--text-muted); }
+    .tool-arrow { color: var(--text-muted); font-size: 20px; }
+
     /* Milestones */
     .milestones { margin-bottom: 20px; }
     .milestones-header {
@@ -532,6 +625,10 @@ export class DashboardComponent implements OnInit {
   todayProgress: TodayProgress | null = null;
   milestones: Milestone[] = [];
   recommendations: Recommendation[] = [];
+  gamification: GamificationProfile = {
+    totalXp: 0, level: 1, xpIntoLevel: 0, xpForNextLevel: 100,
+    currentStreak: 0, badgeCount: 0, thisWeekMinutes: 0, recentEvents: []
+  };
 
   activeTab = 'overview';
   roomTab: 'mine' | 'all' = 'mine';
@@ -549,6 +646,11 @@ export class DashboardComponent implements OnInit {
   get dailyGoalPercent(): number {
     if (!this.todayProgress || this.todayProgress.dailyGoalMinutes <= 0) return 0;
     return Math.min(100, Math.round(this.todayProgress.studiedMinutes / this.todayProgress.dailyGoalMinutes * 100));
+  }
+
+  get gamificationPercent(): number {
+    if (!this.gamification || this.gamification.xpForNextLevel <= 0) return 0;
+    return Math.min(100, Math.round(this.gamification.xpIntoLevel / this.gamification.xpForNextLevel * 100));
   }
 
   formatDuration(minutes: number): string {
@@ -569,7 +671,7 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions, trendData, activity] = await Promise.all([
+      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions, trendData, activity, gamification] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
         this.roomService.getAll().toPromise(),
         this.statsService.getStats().toPromise(),
@@ -578,7 +680,8 @@ export class DashboardComponent implements OnInit {
         this.statsService.getRecommendations().toPromise(),
         this.statsService.getRecentSessions(10).toPromise(),
         this.statsService.getDailyTrend(30).toPromise(),
-        this.statsService.getActivityFeed(15).toPromise()
+        this.statsService.getActivityFeed(15).toPromise(),
+        this.statsService.getGamification().toPromise()
       ]);
       this.myRooms = myRooms || [];
       this.allRooms = allRooms || [];
@@ -589,24 +692,27 @@ export class DashboardComponent implements OnInit {
       this.recentSessions = recentSessions || [];
       this.buildStreakDays(trendData || []);
       this.activityFeed = activity || [];
+      if (gamification) this.gamification = gamification;
     } catch { } finally {
       this.loading = false;
     }
 
     this.signalR.timerCompleted$.subscribe(async () => {
       try {
-        const [refreshed, progress, ms, recs, recent] = await Promise.all([
+        const [refreshed, progress, ms, recs, recent, gami] = await Promise.all([
           this.statsService.getStats().toPromise(),
           this.statsService.getTodayProgress().toPromise(),
           this.statsService.getMilestones().toPromise(),
           this.statsService.getRecommendations().toPromise(),
-          this.statsService.getRecentSessions(10).toPromise()
+          this.statsService.getRecentSessions(10).toPromise(),
+          this.statsService.getGamification().toPromise()
         ]);
         if (refreshed) this.stats = refreshed;
         if (progress) this.todayProgress = progress;
         if (ms) this.milestones = ms;
         if (recs) this.recommendations = recs;
         if (recent) this.recentSessions = recent;
+        if (gami) this.gamification = gami;
       } catch { }
     });
   }

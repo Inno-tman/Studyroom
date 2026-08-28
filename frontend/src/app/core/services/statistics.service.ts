@@ -61,6 +61,39 @@ export interface Recommendation {
   actionLink: string | null;
 }
 
+export interface XpEvent {
+  id: string;
+  type: string;
+  points: number;
+  label?: string;
+  createdAt: string;
+}
+
+export interface GamificationProfile {
+  totalXp: number;
+  level: number;
+  xpIntoLevel: number;
+  xpForNextLevel: number;
+  currentStreak: number;
+  badgeCount: number;
+  thisWeekMinutes: number;
+  recentEvents: XpEvent[];
+}
+
+export interface FriendLeaderboardRow {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  isMe: boolean;
+  rank: number;
+  weeklyXp: number;
+  totalXp: number;
+  level: number;
+  thisWeekMinutes: number;
+  streak: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatisticsService {
   constructor(private http: HttpClient) {}
@@ -172,5 +205,13 @@ export class StatisticsService {
 
   getActivityFeed(limit: number = 15): Observable<any[]> {
     return this.http.get<any[]>(`${environment.apiUrl}/analytics/activity`, { params: { limit } });
+  }
+
+  getGamification(): Observable<GamificationProfile> {
+    return this.http.get<GamificationProfile>(`${environment.apiUrl}/gamification/me`);
+  }
+
+  getFriendLeaderboard(): Observable<FriendLeaderboardRow[]> {
+    return this.http.get<FriendLeaderboardRow[]>(`${environment.apiUrl}/gamification/leaderboard`);
   }
 }

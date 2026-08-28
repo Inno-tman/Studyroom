@@ -1,8 +1,8 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { NgIf, DatePipe } from '@angular/common';
+import { NgIf, NgFor, DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
-import { StatisticsService } from '../core/services/statistics.service';
+import { StatisticsService, GamificationProfile } from '../core/services/statistics.service';
 import { UserService } from '../core/services/user.service';
 import { TimelineComponent } from '../timeline/timeline.component';
 import { UserStats } from '../shared/models/stats.model';
@@ -25,7 +25,7 @@ interface ProfileView {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [NgIf, DatePipe, RouterLink, TimelineComponent],
+  imports: [NgIf, NgFor, DatePipe, RouterLink, TimelineComponent],
   template: `
     <div class="profile">
       <div class="page-header">
@@ -72,6 +72,27 @@ interface ProfileView {
           <div class="stat-card">
             <span class="stat-value">{{ formatDuration(stats.weeklyStudyMinutes) }}</span>
             <span class="stat-label">This Week</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="gamification-section" *ngIf="!viewingOther">
+        <div class="gamification-card">
+          <div class="gp-level">
+            <div class="gp-level-ring">{{ gamification.level }}</div>
+            <div class="gp-level-info">
+              <span class="gp-level-title">Level {{ gamification.level }}</span>
+              <span class="gp-level-sub">{{ gamification.totalXp }} total XP · {{ gamification.badgeCount }} badges</span>
+            </div>
+          </div>
+          <div class="gp-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="gamificationPercent"></div>
+            </div>
+            <div class="gp-progress-meta">
+              <span>{{ gamification.xpIntoLevel }} / {{ gamification.xpForNextLevel }} XP</span>
+              <span>{{ gamification.currentStreak }} day streak</span>
+            </div>
           </div>
         </div>
       </div>
@@ -137,6 +158,26 @@ interface ProfileView {
     .stats-section { margin-top: 32px; }
     .stats-section h2 { font-size: var(--font-18); font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
 
+    .gamification-section { margin-top: 20px; }
+    .gamification-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 18px 22px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    }
+    .gp-level { display: flex; align-items: center; gap: 12px; }
+    .gp-level-ring {
+      width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0;
+      background: var(--primary); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: var(--font-20); font-weight: 800;
+    }
+    .gp-level-info { display: flex; flex-direction: column; }
+    .gp-level-title { font-size: var(--font-15); font-weight: 700; color: var(--text-primary); }
+    .gp-level-sub { font-size: var(--font-12); color: var(--text-muted); }
+    .gp-progress { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
+    .gp-progress-meta { display: flex; justify-content: space-between; font-size: var(--font-12); color: var(--text-muted); }
+    .progress-bar { width: 100%; height: 8px; background: var(--background); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; transition: width 0.6s ease; }
+
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
@@ -187,8 +228,17 @@ export class ProfileComponent implements OnInit {
   stats: UserStats = { totalStudyMinutes: 0, sessionsCompleted: 0, dailyStreak: 0, weeklyStudyMinutes: 0 };
   recentSessions: any[] = [];
   heatmapDays: { date: string; minutes: number; isToday: boolean }[] = [];
+  gamification: GamificationProfile = {
+    totalXp: 0, level: 1, xpIntoLevel: 0, xpForNextLevel: 100,
+    currentStreak: 0, badgeCount: 0, thisWeekMinutes: 0, recentEvents: []
+  };
   viewingOther = false;
   loading = true;
+
+  get gamificationPercent(): number {
+    if (!this.gamification || this.gamification.xpForNextLevel <= 0) return 0;
+    return Math.min(100, Math.round(this.gamification.xpIntoLevel / this.gamification.xpForNextLevel * 100));
+  }
 
   formatDuration(minutes: number): string {
     const total = Math.max(0, Math.round(minutes || 0));
@@ -263,6 +313,8 @@ export class ProfileComponent implements OnInit {
         this.recentSessions = await this.statsService.getRecentSessions(5).toPromise() || [];
         const trendData = await this.statsService.getDailyTrend(30).toPromise() || [];
         this.buildHeatmap(trendData);
+        const gami = await this.statsService.getGamification().toPromise();
+        if (gami) this.gamification = gami;
       }
     } catch { } finally {
       this.loading = false;

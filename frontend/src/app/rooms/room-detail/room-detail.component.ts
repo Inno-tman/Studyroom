@@ -25,6 +25,7 @@ import { NotesEditorComponent } from '../../notes/notes-editor/notes-editor.comp
 import { PomodoroTimerComponent } from '../../timer/pomodoro-timer/pomodoro-timer.component';
 import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.component';
 import { MeetingRoomComponent } from '../../meeting/meeting-room/meeting-room.component';
+import { RoomTasksPanelComponent, TaskMember } from '../room-tasks/room-tasks-panel.component';
 
 interface RoomTab { id: string; label: string; icon: string; }
 
@@ -33,6 +34,7 @@ const TABS: RoomTab[] = [
   { id: 'focus', label: 'Focus', icon: 'timer' },
   { id: 'notes', label: 'Notes', icon: 'edit_note' },
   { id: 'ai', label: 'AI', icon: 'auto_awesome' },
+  { id: 'tasks', label: 'Tasks', icon: 'checklist' },
   { id: 'meet', label: 'Meet', icon: 'videocam' },
   { id: 'stats', label: 'Stats', icon: 'bar_chart' }
 ];
@@ -40,7 +42,7 @@ const TABS: RoomTab[] = [
 @Component({
   selector: 'app-room-detail',
   standalone: true,
-  imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent, MeetingRoomComponent],
+  imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent, MeetingRoomComponent, RoomTasksPanelComponent],
   template: `
     <div class="room-detail" [style.background-image]="room?.backgroundUrl ? 'url(' + room?.backgroundUrl + ')' : 'none'">
       <!-- ── Header ─────────────────────────────────────────── -->
@@ -265,6 +267,10 @@ const TABS: RoomTab[] = [
 
           <div *ngIf="activeTab === 'ai'" class="tab-pane ai-pane">
             <app-ai-chat-panel [subject]="room?.subject || ''" [notesContext]="notesContext" [roomId]="room?.id || ''" />
+          </div>
+
+          <div *ngIf="activeTab === 'tasks'" class="tab-pane tasks-pane">
+            <app-room-tasks-panel [roomId]="roomId" [members]="taskMembers" />
           </div>
 
           <div *ngIf="activeTab === 'meet'" class="tab-pane meet-pane">
@@ -776,6 +782,8 @@ const TABS: RoomTab[] = [
     .notes-pane ::ng-deep app-notes-editor { flex: 1; display: flex; flex-direction: column; }
     .ai-pane { height: 600px; }
     .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .tasks-pane { height: 600px; overflow-y: auto; padding: 16px; box-sizing: border-box; }
+    .tasks-pane ::ng-deep app-room-tasks-panel { flex: 1; }
     .focus-pane { padding: 16px; }
 
     /* ── Stats Tab ──────────────────────────────────────────── */
@@ -1153,13 +1161,22 @@ const TABS: RoomTab[] = [
     }
 
     @media (max-width: 1200px) and (min-width: 901px) {
-      .chat-pane, .notes-pane, .ai-pane { height: 520px; }
+      .chat-pane, .notes-pane, .ai-pane, .tasks-pane { height: 520px; }
     }
   `]
 })
 export class RoomDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+
+  get taskMembers(): TaskMember[] {
+    return this.members.map(m => ({
+      id: m.id,
+      username: m.username,
+      displayName: m.username,
+      avatarUrl: m.avatarUrl
+    }));
+  }
   private roomService = inject(RoomService);
   private meetingService = inject(MeetingService);
   private signalR = inject(SignalRService);

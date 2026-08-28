@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<RoomMember> RoomMembers => Set<RoomMember>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Note> Notes => Set<Note>();
+    public DbSet<NoteVersion> NoteVersions => Set<NoteVersion>();
     public DbSet<StudySession> StudySessions => Set<StudySession>();
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiMessage> AiMessages => Set<AiMessage>();
@@ -36,6 +37,10 @@ public class AppDbContext : DbContext
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
     public DbSet<UserMilestone> UserMilestones => Set<UserMilestone>();
+    public DbSet<XpEvent> XpEvents => Set<XpEvent>();
+    public DbSet<FlashcardDeck> FlashcardDecks => Set<FlashcardDeck>();
+    public DbSet<Flashcard> Flashcards => Set<Flashcard>();
+    public DbSet<RoomTask> RoomTasks => Set<RoomTask>();
     public DbSet<TabSwitchEvent> TabSwitchEvents => Set<TabSwitchEvent>();
     public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
     public DbSet<CalendarConnection> CalendarConnections => Set<CalendarConnection>();
@@ -76,6 +81,12 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(n => n.RoomId).IsUnique();
             entity.HasOne(n => n.Room).WithOne(r => r.Note).HasForeignKey<Note>(n => n.RoomId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NoteVersion>(entity =>
+        {
+            entity.HasIndex(v => v.NoteId);
+            entity.HasOne(v => v.Note).WithMany().HasForeignKey(v => v.NoteId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<StudySession>(entity =>
@@ -176,11 +187,45 @@ public class AppDbContext : DbContext
             entity.HasOne(m => m.Creator).WithMany().HasForeignKey(m => m.CreatedBy).OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<UserMilestone>(entity =>
+        {
+            entity.HasIndex(m => m.UserId);
+            entity.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<MeetingAttendee>(entity =>
         {
             entity.HasKey(a => new { a.MeetingId, a.UserId });
             entity.HasOne(a => a.Meeting).WithMany().HasForeignKey(a => a.MeetingId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<XpEvent>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FlashcardDeck>(entity =>
+        {
+            entity.HasIndex(d => d.UserId);
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Flashcard>(entity =>
+        {
+            entity.HasIndex(c => c.DeckId);
+            entity.HasOne(c => c.Deck).WithMany(d => d.Cards).HasForeignKey(c => c.DeckId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RoomTask>(entity =>
+        {
+            entity.HasIndex(t => t.RoomId);
+            entity.HasIndex(t => t.AssignedToId);
+            entity.HasOne(t => t.Room).WithMany().HasForeignKey(t => t.RoomId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(t => t.Creator).WithMany().HasForeignKey(t => t.CreatedBy).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(t => t.Assignee).WithMany().HasForeignKey(t => t.AssignedToId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

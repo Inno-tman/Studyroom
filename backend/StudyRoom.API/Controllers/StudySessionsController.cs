@@ -22,8 +22,9 @@ public class StudySessionsController : ControllerBase
     private readonly INotificationService _notificationService;
     private readonly ITimerScheduler _timerScheduler;
     private readonly ISessionValidationService _validation;
-    private readonly IMilestoneService _milestoneService;
+private readonly IMilestoneService _milestoneService;
     private readonly ICalendarService _calendarService;
+    private readonly IXpService _xpService;
 
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
@@ -34,7 +35,8 @@ public class StudySessionsController : ControllerBase
         ITimerScheduler timerScheduler,
         ISessionValidationService validation,
         IMilestoneService milestoneService,
-        ICalendarService calendarService)
+        ICalendarService calendarService,
+        IXpService xpService)
     {
         _sessionRepo = sessionRepo;
         _roomRepo = roomRepo;
@@ -43,8 +45,8 @@ public class StudySessionsController : ControllerBase
         _timerScheduler = timerScheduler;
         _validation = validation;
         _milestoneService = milestoneService;
-        _tabSwitchRepo = tabSwitchRepo;
         _calendarService = calendarService;
+        _xpService = xpService;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -118,6 +120,13 @@ public class StudySessionsController : ControllerBase
             // Phase 4 — check milestones after session completion
             if (latest.IsVerified)
                 await _milestoneService.CheckAndAwardMilestonesAsync(UserId);
+
+            // Phase 16 — award XP for verified focus time (1 XP per minute)
+            if (latest.IsVerified && latest.DurationMinutes > 0)
+            {
+                var xp = Math.Max(1, (int)Math.Round(latest.DurationMinutes));
+                await _xpService.AwardAsync(UserId, "focus", xp, "Focus session completed");
+            }
 
             // Phase 15 — sync completed session to connected calendars
             if (latest.IsVerified && latest.StartedAt.HasValue)

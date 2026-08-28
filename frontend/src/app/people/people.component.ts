@@ -1,8 +1,9 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FriendService } from '../core/services/friend.service';
+import { StatisticsService, FriendLeaderboardRow } from '../core/services/statistics.service';
 import { Friend, UserSearchResult, FriendPresence } from '../shared/models/social.model';
 
 @Component({
@@ -22,6 +23,9 @@ import { Friend, UserSearchResult, FriendPresence } from '../shared/models/socia
         </button>
         <button class="view-btn" [class.active]="mode === 'friends'" (click)="mode = 'friends'">
           <span class="material-icons">group</span> Friends
+        </button>
+        <button class="view-btn" [class.active]="mode === 'leaderboard'" (click)="showLeaderboard()">
+          <span class="material-icons">leaderboard</span> Leaderboard
         </button>
       </div>
 
@@ -218,6 +222,62 @@ import { Friend, UserSearchResult, FriendPresence } from '../shared/models/socia
           <button class="btn-secondary danger" (click)="unfriend(friend)">Remove</button>
         </div>
       </div>
+
+      <!-- Leaderboard -->
+      <div *ngIf="mode === 'leaderboard'" class="card full">
+        <div class="card-head">
+          <div class="card-head-icon"><span class="material-icons">leaderboard</span></div>
+          <div>
+            <h2>Friends Leaderboard</h2>
+            <p class="card-subtitle">Weekly XP earned by you and your friends — focus sessions fuel the climb.</p>
+          </div>
+          <span class="discover-count">7-day round</span>
+        </div>
+
+        <div class="lb-strip">
+          <div class="lb-me">
+            <div class="lb-avatar">
+              <img *ngIf="myRow?.avatarUrl; else meInitial" [src]="myRow?.avatarUrl" alt="" />
+              <ng-template #meInitial>{{ (myRow?.displayName || myRow?.username || 'Me').charAt(0).toUpperCase() }}</ng-template>
+            </div>
+            <div class="lb-me-info">
+              <span class="lb-me-rank">#{{ myRow?.rank || '–' }}</span>
+              <span class="lb-me-name">{{ myRow?.displayName || myRow?.username || 'You' }}</span>
+              <span class="lb-me-xp">{{ myRow?.weeklyXp || 0 }} XP this week · Level {{ myRow?.level || 1 }}</span>
+            </div>
+          </div>
+          <div class="lb-me-bar">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="myRow ? pctOf(myRow.weeklyXp) : 0"></div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="leaderboard.length === 0" class="empty">No ranked friends yet — complete a focus session to earn your first XP.</div>
+        <div *ngFor="let row of leaderboard" class="lb-row" [class.me]="row.isMe" (click)="openProfile(row)">
+          <span class="lb-rank" [class.top3]="row.rank <= 3">
+            <span *ngIf="row.rank === 1" class="material-icons rank-icon">military_tech</span>
+            <span *ngIf="row.rank === 2" class="material-icons rank-icon">emoji_events</span>
+            <span *ngIf="row.rank === 3" class="material-icons rank-icon">workspace_premium</span>
+            <span *ngIf="row.rank > 3">{{ row.rank }}</span>
+          </span>
+          <div class="lb-avatar">
+            <img *ngIf="row.avatarUrl; else lbInitial" [src]="row.avatarUrl" alt="" />
+            <ng-template #lbInitial>{{ row.displayName.charAt(0).toUpperCase() }}</ng-template>
+          </div>
+          <div class="lb-info">
+            <span class="lb-name">
+              {{ row.displayName }}
+              <span *ngIf="row.isMe" class="lb-me-tag">You</span>
+            </span>
+            <span class="lb-sub">Level {{ row.level }} · {{ row.streak }} day streak · {{ row.thisWeekMinutes }} min this week</span>
+            <div class="lb-bar">
+              <div class="lb-bar-fill" [style.width.%]="pctOf(row.weeklyXp)"></div>
+            </div>
+          </div>
+          <span class="lb-xp">{{ row.weeklyXp }} XP</span>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -344,10 +404,66 @@ import { Friend, UserSearchResult, FriendPresence } from '../shared/models/socia
       .cards-row { grid-template-columns: 1fr; }
       .cards-row .card { margin-bottom: 24px; }
     }
+
+    /* Leaderboard */
+    .progress-bar { width: 100%; height: 8px; background: var(--background); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; transition: width 0.6s ease; }
+    .lb-strip {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+    }
+    .lb-me { display: flex; align-items: center; gap: 12px; }
+    .lb-avatar {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      background: var(--primary); color: white; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-size: var(--font-15); font-weight: 700;
+    }
+    .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .lb-me-info { display: flex; flex-direction: column; }
+    .lb-me-rank { font-size: var(--font-11); color: var(--accent); font-weight: 700; }
+    .lb-me-name { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .lb-me-xp { font-size: var(--font-12); color: var(--text-muted); }
+    .lb-me-bar { flex: 1; min-width: 200px; }
+
+    .lb-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 4px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s;
+      border-radius: 8px;
+    }
+    .lb-row:hover { background: var(--surface-hover); }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row.me {
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+      border-radius: 10px; padding: 10px 8px;
+    }
+    .lb-rank {
+      width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: var(--font-13); color: var(--text-muted);
+      background: var(--surface);
+    }
+    .lb-rank.top3 .rank-icon { font-size: 18px; }
+    .lb-rank .rank-icon { color: #f59e0b; }
+    .lb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .lb-name { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+    .lb-me-tag {
+      font-size: var(--font-10); font-weight: 700; text-transform: uppercase;
+      background: var(--primary); color: white; padding: 1px 6px; border-radius: 6px;
+    }
+    .lb-sub { font-size: var(--font-11); color: var(--text-muted); }
+    .lb-bar { height: 6px; border-radius: 3px; background: var(--surface); overflow: hidden; max-width: 280px; }
+    .lb-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+    .lb-xp { font-size: var(--font-13); font-weight: 700; color: var(--text-primary); flex-shrink: 0; }
   `]
 })
 export class PeopleComponent implements OnInit, OnDestroy {
   private friendService = inject(FriendService);
+  private statsService = inject(StatisticsService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   query = '';
   results: UserSearchResult[] = [];
@@ -356,15 +472,57 @@ export class PeopleComponent implements OnInit, OnDestroy {
   sentRequests: Friend[] = [];
   friends: Friend[] = [];
   loading = false;
-  mode: 'discover' | 'friends' = 'discover';
+  mode: 'discover' | 'friends' | 'leaderboard' = 'discover';
+  leaderboard: FriendLeaderboardRow[] = [];
   private presenceMap = new Map<string, FriendPresence>();
   private refreshTimer?: any;
 
   ngOnInit(): void {
+    const view = this.route.snapshot.queryParamMap.get('view');
+    if (view === 'leaderboard') {
+      this.mode = 'leaderboard';
+      this.loadLeaderboard();
+      return;
+    }
     this.loadAll().then(() => this.syncPresence());
     this.refreshTimer = setInterval(() => {
       this.loadSuggestions().then(() => this.syncPresence());
     }, 60000);
+  }
+
+  get myRow(): FriendLeaderboardRow | undefined {
+    return this.leaderboard.find(r => r.isMe);
+  }
+
+  get maxWeeklyXp(): number {
+    return Math.max(1, ...this.leaderboard.map(r => r.weeklyXp));
+  }
+
+  pctOf(xp: number): number {
+    return Math.max(0, Math.min(100, Math.round((xp / this.maxWeeklyXp) * 100)));
+  }
+
+  async showLeaderboard(): Promise<void> {
+    this.mode = 'leaderboard';
+    await this.loadLeaderboard();
+    await this.syncPresence();
+  }
+
+  async loadLeaderboard(): Promise<void> {
+    this.leaderboard = (await this.statsService.getFriendLeaderboard().toPromise()) || [];
+  }
+
+  openProfile(row: FriendLeaderboardRow): void {
+    if (row.isMe) {
+      this.mode = 'friends';
+      return;
+    }
+    this.router.navigate(['/profile', row.userId]);
+  }
+
+  showDiscover(): void {
+    this.mode = 'discover';
+    this.loadSuggestions().then(() => this.syncPresence());
   }
 
   ngOnDestroy(): void {
@@ -377,12 +535,6 @@ export class PeopleComponent implements OnInit, OnDestroy {
 
   async loadSuggestions(): Promise<void> {
     this.suggestions = (await this.friendService.getSuggestions().toPromise()) || [];
-  }
-
-  async showDiscover(): Promise<void> {
-    this.mode = 'discover';
-    await this.loadSuggestions();
-    await this.syncPresence();
   }
 
   async loadRequests(): Promise<void> {
