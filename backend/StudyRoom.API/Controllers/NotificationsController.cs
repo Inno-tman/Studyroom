@@ -47,6 +47,7 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateNotificationDto dto)
     {
         var notification = await _notificationService.CreateAsync(

@@ -65,8 +65,13 @@ public class WeeklyGoalDto
 public class AnalyticsService : IAnalyticsService
 {
     private readonly AppDbContext _context;
+    private readonly IStreakCalculator _streakCalculator;
 
-    public AnalyticsService(AppDbContext context) => _context = context;
+    public AnalyticsService(AppDbContext context, IStreakCalculator streakCalculator)
+    {
+        _context = context;
+        _streakCalculator = streakCalculator;
+    }
 
     public async Task<AnalyticsOverviewDto> GetOverviewAsync(Guid userId)
     {
@@ -96,8 +101,8 @@ public class AnalyticsService : IAnalyticsService
             .Distinct()
             .CountAsync();
 
-        var streak = await ComputeStreakAsync(userId);
-        var longestStreak = await ComputeLongestStreakAsync(userId);
+        var streak = await _streakCalculator.GetCurrentStreakAsync(userId);
+        var longestStreak = await _streakCalculator.GetLongestStreakAsync(userId);
 
         // Determine favorite time of day
         var hourlyDist = await _context.StudySessions
@@ -277,54 +282,5 @@ public class AnalyticsService : IAnalyticsService
             TargetMinutes = targetMinutes,
             ActualMinutes = Math.Round(actualMinutes, 2)
         };
-    }
-
-    private async Task<int> ComputeStreakAsync(Guid userId)
-    {
-        var dates = await _context.StudySessions
-            .Where(s => s.UserId == userId && s.Completed && s.IsVerified)
-            .Select(s => s.CreatedAt.Date)
-            .Distinct()
-            .OrderByDescending(d => d)
-            .ToListAsync();
-
-        if (dates.Count == 0) return 0;
-
-        int streak = 0;
-        var expected = DateTime.UtcNow.Date;
-        foreach (var d in dates)
-        {
-            if (d == expected || d == expected.AddDays(-1)) { streak++; expected = d; }
-            else break;
-        }
-        return streak;
-    }
-
-    private async Task<int> ComputeLongestStreakAsync(Guid userId)
-    {
-        var dates = (await _context.StudySessions
-            .Where(s => s.UserId == userId && s.Completed && s.IsVerified)
-            .Select(s => s.CreatedAt.Date)
-            .Distinct()
-            .OrderBy(d => d)
-            .ToListAsync()).ToList();
-
-        if (dates.Count == 0) return 0;
-
-        int longest = 1;
-        int current = 1;
-        for (int i = 1; i < dates.Count; i++)
-        {
-            if ((dates[i] - dates[i - 1]).TotalDays == 1)
-            {
-                current++;
-                longest = Math.Max(longest, current);
-            }
-            else
-            {
-                current = 1;
-            }
-        }
-        return longest;
     }
 }

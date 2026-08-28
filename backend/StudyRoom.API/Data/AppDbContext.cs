@@ -44,6 +44,7 @@ public class AppDbContext : DbContext
     public DbSet<TabSwitchEvent> TabSwitchEvents => Set<TabSwitchEvent>();
     public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
     public DbSet<CalendarConnection> CalendarConnections => Set<CalendarConnection>();
+    public DbSet<CalendarStudyEvent> CalendarStudyEvents => Set<CalendarStudyEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -226,6 +227,12 @@ public class AppDbContext : DbContext
             entity.HasOne(t => t.Room).WithMany().HasForeignKey(t => t.RoomId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(t => t.Creator).WithMany().HasForeignKey(t => t.CreatedBy).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(t => t.Assignee).WithMany().HasForeignKey(t => t.AssignedToId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<CalendarStudyEvent>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.Provider, e.CalendarId, e.DayUtc }).IsUnique();
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

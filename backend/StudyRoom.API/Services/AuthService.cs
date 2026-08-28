@@ -122,6 +122,24 @@ user = new User
         user.Interests = string.IsNullOrWhiteSpace(dto.Interests) ? null : dto.Interests.Trim();
         user.Bio = string.IsNullOrWhiteSpace(dto.Bio) ? null : dto.Bio.Trim();
 
+        if (!string.IsNullOrWhiteSpace(dto.TimeZoneId))
+        {
+            var tz = dto.TimeZoneId.Trim();
+            try
+            {
+                TimeZoneInfo.FindSystemTimeZoneById(tz);
+                user.TimeZoneId = tz;
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                user.TimeZoneId = null;
+            }
+            catch (InvalidTimeZoneException)
+            {
+                user.TimeZoneId = null;
+            }
+        }
+
         await _userRepo.UpdateAsync(user);
 
         return await GenerateAuthResponseAsync(user);
@@ -215,6 +233,7 @@ user = new User
             Major = user.Major,
             Interests = user.Interests,
             Bio = user.Bio,
+            TimeZoneId = user.TimeZoneId,
             Role = user.Role,
             ProfileComplete = IsProfileComplete(user),
             Token = token,

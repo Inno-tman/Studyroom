@@ -1,14 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using StudyRoom.API.Data;
 using StudyRoom.API.Models;
+using StudyRoom.API.Services;
 
 namespace StudyRoom.API.Repositories;
 
 public class StudySessionRepository : IStudySessionRepository
 {
     private readonly AppDbContext _context;
+    private readonly IStreakCalculator _streakCalculator;
 
-    public StudySessionRepository(AppDbContext context) => _context = context;
+    public StudySessionRepository(AppDbContext context, IStreakCalculator streakCalculator)
+    {
+        _context = context;
+        _streakCalculator = streakCalculator;
+    }
 
     public async Task AddAsync(StudySession session)
     {
@@ -28,6 +34,18 @@ public class StudySessionRepository : IStudySessionRepository
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();
 
+    public async Task<StudySession?> GetActiveSessionAsync(Guid userId, Guid? roomId = null)
+    {
+        var query = _context.StudySessions
+            .Where(s => s.UserId == userId && !s.Completed);
+        if (roomId.HasValue)
+            query = query.Where(s => s.RoomId == roomId.Value);
+
+        return await query
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<decimal> GetTotalStudyMinutesAsync(Guid userId) =>
         await _context.StudySessions
             .Where(s => s.UserId == userId && s.Completed && s.IsVerified)
@@ -45,32 +63,8 @@ public class StudySessionRepository : IStudySessionRepository
             .SumAsync(s => s.DurationMinutes);
     }
 
-    public async Task<int> GetCurrentStreakAsync(Guid userId)
-    {
-        var sessions = await _context.StudySessions
-            .Where(s => s.UserId == userId && s.Completed && s.IsVerified)
-            .Select(s => s.CreatedAt.Date)
-            .Distinct()
-            .OrderByDescending(d => d)
-            .ToListAsync();
-
-        if (sessions.Count == 0) return 0;
-
-        int streak = 0;
-        var expectedDate = DateTime.UtcNow.Date;
-
-        foreach (var date in sessions)
-        {
-            if (date == expectedDate || date == expectedDate.AddDays(-1))
-            {
-                streak++;
-                expectedDate = date;
-            }
-            else break;
-        }
-
-        return streak;
-    }
+    public async Task<int> GetCurrentStreakAsync(Guid userId) =>
+        await _streakCalculator.GetCurrentStreakAsync(userId);
 
     public async Task<List<StudySession>> GetStaleSessionsAsync(DateTime olderThan) =>
         await _context.StudySessions
@@ -120,22 +114,7 @@ public class StudySessionRepository : IStudySessionRepository
             var avatar = user?.AvatarUrl;
 
             // compute streak for this user in this room
-            var streakDates = await _context.StudySessions
-                .Where(s => s.UserId == row.UserId && s.RoomId == roomId && s.Completed && s.IsVerified)
-                .Select(s => s.CreatedAt.Date)
-                .Distinct()
-                .OrderByDescending(d => d)
-                .ToListAsync();
-            int streak = 0;
-            if (streakDates.Count > 0)
-            {
-                var expected = DateTime.UtcNow.Date;
-                foreach (var d in streakDates)
-                {
-                    if (d == expected || d == expected.AddDays(-1)) { streak++; expected = d; }
-                    else break;
-                }
-            }
+            var streak = await _streakCalculator.GetRoomStreakAsync(row.UserId, roomId);
 
             result.Add((row.UserId, uname, avatar, row.VerifiedMinutes, row.Sessions, streak));
         }

@@ -11,6 +11,7 @@ export interface User {
   major?: string;
   interests?: string;
   bio?: string;
+  timeZoneId?: string;
   role: string;
   profileComplete?: boolean;
   token: string;
@@ -41,4 +42,5 @@ export interface UpdateProfileDto {
   major?: string;
   interests?: string;
   bio?: string;
+  timeZoneId?: string;
 }

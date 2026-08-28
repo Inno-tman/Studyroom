@@ -186,7 +186,7 @@ public class CalendarController : ControllerBase
     [HttpPost("sync")]
     public async Task<IActionResult> SyncNow([FromBody] SyncRequest request)
     {
-        var result = await _calendarService.CreateStudyEventAsync(
+        await _calendarService.CreateManualEventAsync(
             UserId, request.Title, request.Start, request.End, request.Description);
         return Ok(new { synced = true });
     }

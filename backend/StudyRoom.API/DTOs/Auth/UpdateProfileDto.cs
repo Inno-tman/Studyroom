@@ -32,4 +32,7 @@ public class UpdateProfileDto
 
     [MaxLength(1000)]
     public string? Bio { get; set; }
+
+    [MaxLength(64)]
+    public string? TimeZoneId { get; set; }
 }

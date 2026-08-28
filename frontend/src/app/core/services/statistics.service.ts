@@ -12,6 +12,11 @@ export interface CompleteSessionResult {
   verifiedReason?: string;
 }
 
+export interface StartSessionResult {
+  success: boolean;
+  sessionId?: string;
+}
+
 export interface LeaderboardEntry {
   userId: string;
   username: string;
@@ -109,8 +114,8 @@ export class StatisticsService {
     );
   }
 
-  startSession(roomId: string, durationMinutes: number): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/study-sessions/start`, { roomId, durationMinutes });
+  startSession(roomId: string, durationMinutes: number): Observable<StartSessionResult> {
+    return this.http.post<StartSessionResult>(`${environment.apiUrl}/study-sessions/start`, { roomId, durationMinutes });
   }
 
   startBreak(roomId: string, durationMinutes: number, isLong: boolean): Observable<any> {

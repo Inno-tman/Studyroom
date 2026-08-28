@@ -13,8 +13,13 @@ public interface IMilestoneService
 public class MilestoneService : IMilestoneService
 {
     private readonly AppDbContext _context;
+    private readonly IStreakCalculator _streakCalculator;
 
-    public MilestoneService(AppDbContext context) => _context = context;
+    public MilestoneService(AppDbContext context, IStreakCalculator streakCalculator)
+    {
+        _context = context;
+        _streakCalculator = streakCalculator;
+    }
 
     public async Task<List<UserMilestone>> GetUserMilestonesAsync(Guid userId) =>
         await _context.UserMilestones
@@ -36,7 +41,7 @@ public class MilestoneService : IMilestoneService
         var totalSessions = await _context.StudySessions
             .CountAsync(s => s.UserId == userId && s.Completed && s.IsVerified);
 
-        var streak = await ComputeStreakAsync(userId);
+        var streak = await _streakCalculator.GetCurrentStreakAsync(userId);
 
         var candidates = new List<(string Type, string Title, string Desc, string Icon, bool Earned)>();
 
@@ -76,26 +81,5 @@ public class MilestoneService : IMilestoneService
         }
 
         await _context.SaveChangesAsync();
-    }
-
-    private async Task<int> ComputeStreakAsync(Guid userId)
-    {
-        var dates = await _context.StudySessions
-            .Where(s => s.UserId == userId && s.Completed && s.IsVerified)
-            .Select(s => s.CreatedAt.Date)
-            .Distinct()
-            .OrderByDescending(d => d)
-            .ToListAsync();
-
-        if (dates.Count == 0) return 0;
-
-        int streak = 0;
-        var expected = DateTime.UtcNow.Date;
-        foreach (var d in dates)
-        {
-            if (d == expected || d == expected.AddDays(-1)) { streak++; expected = d; }
-            else break;
-        }
-        return streak;
     }
 }

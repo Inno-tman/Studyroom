@@ -41,6 +41,7 @@ Story groups:
 - As a user, I want to **create a study room** (name, subject, description, privacy setting) so that I can invite people to study together.
 - As a user, I want to **make my room private with a join code** so that only invited people can join.
 - As a user, I want to **join a room**, including **with a join code for private rooms**, so that I can participate in a study group.
+- As a room host, I want brute-force attempts on my room's **join code to be rate-limited** so that strangers can't guess their way into a private room.
 - As a user, I want to **leave a room** so that I can stop participating.
 - As a room creator, I want to **assign co-host roles to members** so that I can share moderation duties.
 - As a room host/co-host, I want to **edit the room** (name, description, subject) so that the room stays up to date.
@@ -63,8 +64,10 @@ Story groups:
 - As a room member, I want to **see who else in the room is focusing right now** (live "focusing" counter) so that I feel part of a collective effort.
 - As a user, I want my completed focus sessions to be **recorded and count toward my study statistics** so that my effort is tracked.
 - As a user, I want to **add notes to a completed session** so that I can remember what I covered.
-- As a user, I want focus sessions to be **validated as "verified"** (reasonable duration, not too many sessions, not too many tab switches) so that my stats are honest.
-- As a user, I want a **trust score per session** (decreased by tab-switching) so that I can understand how my focus quality is assessed.
+- As a user, I want focus sessions to be **tracked per room** (one open session per room, resumed if I restart) so that studying in several rooms doesn't get tangled.
+- As a user, I want focus sessions to be **validated as "verified"** (reasonable duration, not too many minutes in a day, not too many tab-switch round-trips) so that my stats are honest.
+- As a user, I want a **trust score per session** (reduced by tab-switch round-trips) so that I can understand how my focus quality is assessed.
+- As a user, I want completing a session to be **safe to trigger more than once** so that a duplicate request or a lost client call can never double-count my time.
 - As a user, I want sessions that run when the app is closed to be **auto-finalized by the server** so that I still get credit when I actually studied.
 
 ## 7. Shared Notes
@@ -227,17 +230,17 @@ Story groups:
 ## 24. Calendar
 
 - As a user, I want to **connect my Google Calendar or Microsoft Outlook** so that study events appear in my agenda.
-- As a user, I want **completed focus sessions automatically added to my connected calendar** (with auto-sync toggle) so that my schedule stays accurate without manual work.
+- As a user, I want **verified study time automatically added to my connected calendar as a single daily event** (extended for later sessions the same day, with auto-sync toggle) so that my schedule stays accurate without manual work.
 - As a user, I want a **manual sync button** so that I can push records on demand.
 - As a user, I want to **disconnect a calendar** so that I can revoke access.
 
 ## 25. Nudges & Summaries
 
-- As a user, I want a **daily nudge** (at 8 PM if I haven't studied) personalized to my streak/goal status so that I don't break momentum.
-- As a room host, I want **quiet-room alerts** when my room has had no study activity in 24 hours so that I can revive the group.
+- As a user, I want a **daily nudge** (at 8 PM in my own time zone if I haven't studied) personalized to my streak/goal status so that I don't break momentum.
+- As a room host, I want **quiet-room alerts** when my room has had no study activity in 24 hours (at my local 0/6/12/18) so that I can revive the group.
 - As a user, I want **accountability-partner suggestions** (weekly pairing of active, non-friends sharing a room) so that I can study with someone.
 - As a user, I want **schedule reminders** before my preferred study windows so that I start on time.
-- As a user, I want a **weekly summary** (verified minutes, sessions, streak, most-active room) every Sunday evening so that I can review my week.
+- As a user, I want a **weekly summary** (verified minutes, sessions, streak, most-active room) every Sunday evening in my own time zone so that I can review my week.
 
 ## 26. Settings
 
@@ -246,6 +249,7 @@ Story groups:
 - As a user, I want to customize **appearance** (light/system/dark theme, accent color, corner style, text size, font, compact mode, reduce motion, high contrast) so that the app fits my preferences.
 - As a user, I want to configure **notifications** (desktop permission, sound type/volume, previews, quiet hours, per-event toggles) so that I control interruptions.
 - As a user, I want to set my **study preferences** (focus/break duration, daily goal minutes, auto-start next session) so that the timer fits my workflow.
+- As a user, I want my **time zone detected automatically** and stored with my profile so that nudges, reminders, and summaries arrive at sensible local times.
 - As a user, I want to manage my **calendar connections** so that integrations stay under my control.
 
 ## 27. Global Shell

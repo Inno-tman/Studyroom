@@ -290,37 +290,38 @@ Understanding of standard notation:
 ### UC-19 · Start a focus session
 - **Primary actor:** Room member
 - **Trigger:** User starts the timer in the Focus tab (or quick-study).
-- **Preconditions:** Member; a session is not already in progress (an in-progress session is resumed).
-- **Success guarantee:** Timer runs; room sees the user as focusing; server schedules completion.
+- **Preconditions:** Member; the room has no in-progress session (an in-progress session for the room is resumed).
+- **Success guarantee:** Timer runs; room sees the user as focusing; server schedules completion; the `sessionId` is returned for tab-switch reporting.
 - **Main flow:**
   1. User starts with a chosen duration.
-  2. System reuses/creates the open session, schedules server-side completion, and broadcasts `TimerStarted` + updates the "focusing" count.
-  3. Frontend runs the countdown (breaks optional; auto-start-next toggle respected).
+  2. System reuses the room's in-progress session (updating duration + start) **or** creates a fresh one; returns `sessionId`; schedules server-side completion; broadcasts `TimerStarted` + updates the "focusing" count.
+  3. Frontend runs the countdown (breaks optional; auto-start-next toggle respected) and reports later tab switches against the `sessionId`.
 - **Alternate flows:**
   * Alt 1 – Friends in the room: accepted friends present receive a "Someone you know is studying" notification.
 
 ### UC-20 · Complete a focus session
 - **Primary actor:** Room member
 - **Trigger:** Timer reaches zero or the user completes early.
-- **Preconditions:** An active session exists.
-- **Success guarantee:** Session recorded, validated, and — if verified — rewarded (XP + milestones + calendar sync + notification).
+- **Preconditions:** An active session for the room exists.
+- **Success guarantee:** Session recorded exactly once, validated, and — if verified — rewarded (XP + milestones + calendar sync + notification).
 - **Main flow:**
-  1. System computes elapsed minutes and marks the session complete.
-  2. Validation runs (duration bounds, daily cap, tab-switch allowance) → verified or not with a `VerifiedReason`.
-  3. **If verified:** milestones checked, XP awarded (1/min), calendar event created (auto-sync on), "Focus session complete" notification sent.
+  1. System computes elapsed minutes and **claims the session atomically** (`Completed`, `DurationMinutes`, `IsVerified`, `AwardProcessed` set in one operation; concurrent duplicate requests/retries lose the race and get "no active session").
+  2. Validation runs (duration bounds, minutes-aware daily cap, tab-switch round-trip allowance) → verified or not with a `VerifiedReason`.
+  3. **If verified (and not already awarded):** milestones checked, XP awarded (1/min), one daily calendar event created/extended (auto-sync on), "Focus session complete" notification sent.
   4. `TimerCompleted` broadcast; streak/leaderboard/analytics refresh.
 - **Alternate flows:**
-  * Alt 1 – Invalid session (too long / too short / too many today / too many tab-switches): it still records, but earns no XP/badges/calendar entry and its stats are flagged unverified.
+  * Alt 1 – Invalid session (too long / too short / >600 verified min today / too many tab-switch round-trips): it still records, but earns no XP/badges/calendar entry and its stats are flagged unverified.
   * Alt 2 – Client closed mid-session: if older than 6 hours, the server auto-finalizes as unverified (`idle_timeout`) and notifies the user.
+  * Alt 3 – Duplicate completion: a second complete (or pause/reset) for the same room finds nothing to finalize; nothing is awarded twice.
 
 ### UC-21 · Pause/reset/break
 - **Primary actor:** Room member
 - **Trigger:** User pauses, resets the timer, or starts a break.
 - **Preconditions:** An active timer/session exists.
-- **Success guarantee:** Timer state broadcast; active session finalized for pause/reset; break timer scheduled.
+- **Success guarantee:** Timer state broadcast; active sessions finalized for pause/reset/break; break timer scheduled.
 - **Main flow:**
   1. User triggers the action.
-  2. System cancels the server timer; pause/reset finalize and validate the active session; breaks schedule a new timer.
+  2. System cancels the room's server timer; pause/reset **and break** pass the room's active focus session through the finalizer (validated + awarded once); breaks then schedule a new timer.
   3. `TimerPaused` / `TimerReset` / `TimerStarted` broadcast to the room.
 
 ### UC-22 · Add session notes
@@ -333,7 +334,7 @@ Understanding of standard notation:
 - **Primary actor:** Student (session owner)
 - **Trigger:** User inspects a session.
 - **Preconditions:** Session belongs to the user.
-- **Success guarantee:** Trust score (`max(0, 100 − 5×tabSwitches)`) and verification state shown.
+- **Success guarantee:** Trust score (`max(30, 100 − 2 × roundTrips)`) and verification state shown.
 
 ## 7. Shared Notes
 
@@ -814,12 +815,13 @@ Understanding of standard notation:
 - **Primary actor:** Student
 - **Trigger:** A verified session completes (system-side), or user clicks Sync Now.
 - **Preconditions:** At least one auto-sync connection.
-- **Success guarantee:** A study event (transparent/free) is created on each connected calendar; expired tokens refreshed first.
+- **Success guarantee:** One study event (transparent/free) exists per connected calendar **per day**; a later session the same day **extends** (PATCHes) the event's end time rather than duplicating; expired tokens refreshed first.
 - **Main flow:**
-  1. On completion (or manual sync) the system loops active connections.
-  2. It refreshes tokens expiring within 5 min, then creates the event per provider.
+  1. On completion the system loops active connections and refreshes tokens expiring within 5 min.
+  2. For each provider it looks up the day's `CalendarStudyEvents` marker: if present, PATCH the event end time; if absent, create the event and store the marker.
 - **Alternate flows:**
   * Alt 1 – One provider fails: logged; other providers still complete.
+  * Alt 2 – Manual Sync Now: creates a standalone event from the request (title/description passthrough, no aggregation).
 
 ### UC-74 · Disconnect a calendar
 - **Primary actor:** Student
@@ -865,6 +867,28 @@ Listed as sequence-level guarantees that power the realtime features above.
 ### UC-80 · Timer/broadcast realtime fan-out
 - **Primary actor:** Any member (timers), Host (broadcast)
 - **Success guarantee:** Timer start/pause/reset/complete and focus counts broadcast to the room; host-only video broadcast/control/stop rules enforced; reconnect resync guaranteed.
+
+### UC-81 · Admin creates a notification
+- **Primary actor:** Admin
+- **Trigger:** Admin broadcasts a message to any user.
+- **Preconditions:** Caller role is `Admin`.
+- **Success guarantee:** A notification row is created for the target user and fanned out (SignalR + web push).
+- **Main flow:**
+  1. Admin POSTs `/api/notifications` (type/title/body/recipient).
+  2. System authorizes the `Admin` role — any non-admin caller gets `403` and nothing is created (the frontend never calls this endpoint).
+  3. Notification created and fanned out to `user_{id}`.
+
+### UC-82 · Receive timezone-aware reminders
+- **Primary actor:** User / Room host
+- **Trigger:** A scheduled delivery moment arrives.
+- **Preconditions:** A `TimeZoneId` is stored on the profile (browser-detected IANA id; fallback UTC); notification preferences allow the type.
+- **Success guarantee:** Daily nudge, room-quiet alerts, schedule reminders, and the weekly summary arrive at the correct **local** wall-clock time for the user (or room host), regardless of where the servers run.
+- **Main flow:**
+  1. Profile save persists the browser-detected time zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) via `UpdateProfileDto`.
+  2. The hourly sweep computes "now" in that zone: the daily nudge fires at local 20:00 (no verified session yet today), schedule reminders 30 min before preferred windows, and quiet-room alerts at the host's local 0/6/12/18.
+  3. The weekly summary fires at the user's local Sunday 20:00 and is guarded against duplicates (no `weekly_summary` notification in the last 24h).
+- **Alternate flows:**
+  * Alt 1 – Missing/invalid `TimeZoneId`: falls back to UTC (delivery may then occur at UTC wall clock).
 
 ---
 

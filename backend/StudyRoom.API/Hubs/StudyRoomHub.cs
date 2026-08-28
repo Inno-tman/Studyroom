@@ -20,6 +20,7 @@ public class StudyRoomHub : Hub
     private readonly ITimerScheduler _timerScheduler;
     private readonly INotificationService _notificationService;
     private readonly IPresenceService _presenceService;
+    private readonly ISessionFinalizerService _finalizer;
     private readonly ILogger<StudyRoomHub> _logger;
 
     // Room-scoped: connectionId -> roomId
@@ -48,6 +49,7 @@ public class StudyRoomHub : Hub
         ITimerScheduler timerScheduler,
         INotificationService notificationService,
         IPresenceService presenceService,
+        ISessionFinalizerService finalizer,
         ILogger<StudyRoomHub> logger)
     {
         _messageRepo = messageRepo;
@@ -58,6 +60,7 @@ public class StudyRoomHub : Hub
         _timerScheduler = timerScheduler;
         _notificationService = notificationService;
         _presenceService = presenceService;
+        _finalizer = finalizer;
         _logger = logger;
     }
 
@@ -467,13 +470,13 @@ public class StudyRoomHub : Hub
             startedAt = DateTime.UtcNow
         });
 
-        // Reuse an in-progress session if one exists (handles resume / auto-start of
-        // the same phase); otherwise start a fresh one.
-        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-        var existing = sessions.FirstOrDefault(s => !s.Completed);
+        // One open focus session per room: reuse the room's in-progress session
+        // (handles resume / auto-start of the same phase) or start a fresh one.
+        var roomGuid = Guid.Parse(roomId);
+        var existing = await _sessionRepo.GetActiveSessionAsync(UserId, roomGuid);
         if (existing != null)
         {
-            existing.RoomId = Guid.Parse(roomId);
+            existing.DurationMinutes = durationMinutes;
             existing.StartedAt = DateTime.UtcNow;
             await _sessionRepo.UpdateAsync(existing);
             _logger.LogInformation("[timer] StartTimer user={UserId} reused session {SessionId}", UserId, existing.Id);
@@ -483,7 +486,7 @@ public class StudyRoomHub : Hub
             var s = new StudySession
             {
                 UserId = UserId,
-                RoomId = Guid.Parse(roomId),
+                RoomId = roomGuid,
                 DurationMinutes = durationMinutes,
                 StartedAt = DateTime.UtcNow,
                 Completed = false
@@ -492,7 +495,7 @@ public class StudyRoomHub : Hub
             _logger.LogInformation("[timer] StartTimer user={UserId} created session {SessionId} room={RoomId} minutes={Minutes}", UserId, s.Id, roomId, durationMinutes);
         }
 
-        _timerScheduler.ScheduleFocus(UserId, Guid.Parse(roomId), durationMinutes);
+        _timerScheduler.ScheduleFocus(UserId, roomGuid, durationMinutes);
 
         // Phase 2a – focus count tracking
         TrackFocusStart(roomId);
@@ -514,6 +517,10 @@ public class StudyRoomHub : Hub
             startedAt = DateTime.UtcNow
         });
 
+        // A break concludes the focus phase: finalize the room's focus session
+        // (awarding verified elapsed time) before scheduling the break.
+        await _finalizer.FinalizeActiveAsync(UserId, Guid.Parse(roomId));
+
         _timerScheduler.ScheduleBreak(UserId, Guid.Parse(roomId), durationMinutes, isLong);
     }
 
@@ -525,8 +532,8 @@ public class StudyRoomHub : Hub
             pausedBy = Username
         });
 
-        await FinalizeActiveSessionAsync();
-        _timerScheduler.Cancel(UserId);
+        await _finalizer.FinalizeActiveAsync(UserId, Guid.Parse(roomId));
+        _timerScheduler.Cancel(UserId, Guid.Parse(roomId));
 
         TrackFocusEnd();
         await BroadcastFocusCount(roomId);
@@ -540,8 +547,8 @@ public class StudyRoomHub : Hub
             resetBy = Username
         });
 
-        await FinalizeActiveSessionAsync();
-        _timerScheduler.Cancel(UserId);
+        await _finalizer.FinalizeActiveAsync(UserId, Guid.Parse(roomId));
+        _timerScheduler.Cancel(UserId, Guid.Parse(roomId));
 
         TrackFocusEnd();
         await BroadcastFocusCount(roomId);
@@ -555,51 +562,18 @@ public class StudyRoomHub : Hub
             completedBy = Username
         });
 
-        _timerScheduler.Cancel(UserId);
-        await FinalizeActiveSessionAsync();
+        _timerScheduler.Cancel(UserId, Guid.Parse(roomId));
+        var finalized = await _finalizer.FinalizeActiveAsync(UserId, Guid.Parse(roomId));
 
         TrackFocusEnd();
         await BroadcastFocusCount(roomId);
 
-        await _notificationService.CreateAsync(
-            UserId, "timer", "Focus session complete",
-            "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
-    }
-
-    private async Task FinalizeActiveSessionAsync()
-    {
-        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-        var latest = sessions.FirstOrDefault(s => !s.Completed);
-        if (latest != null)
+        if (finalized != null)
         {
-            latest.DurationMinutes = ComputeElapsedMinutes(latest);
-            latest.Completed = true;
-
-            using var scope = Context.GetHttpContext()!.RequestServices.CreateScope();
-            var validation = scope.ServiceProvider.GetRequiredService<ISessionValidationService>();
-            await validation.ValidateSessionAsync(latest);
-
-            await _sessionRepo.UpdateAsync(latest);
-            _logger.LogInformation("[timer] finalized session {SessionId} user={UserId} minutes={Minutes} verified={Verified}", latest.Id, UserId, latest.DurationMinutes, latest.IsVerified);
-
-            // Phase 4 — check milestones after each session
-            if (latest.IsVerified)
-            {
-                var milestones = scope.ServiceProvider.GetRequiredService<IMilestoneService>();
-                await milestones.CheckAndAwardMilestonesAsync(UserId);
-            }
+            await _notificationService.CreateAsync(
+                UserId, "timer", "Focus session complete",
+                "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
         }
-        else
-        {
-            _logger.LogWarning("[timer] finalize found NO in-progress session for user={UserId}", UserId);
-        }
-    }
-
-    private static decimal ComputeElapsedMinutes(StudySession s)
-    {
-        var start = s.StartedAt ?? s.CreatedAt;
-        var minutes = (DateTime.UtcNow - start).TotalMinutes;
-        return Math.Round((decimal)Math.Max(0, minutes), 2);
     }
 
     public async Task UpdateNotes(string roomId, string content)

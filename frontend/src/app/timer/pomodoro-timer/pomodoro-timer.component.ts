@@ -229,12 +229,16 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
         const breakBegan = s.isRunning && s.isBreak && (!this.wasBreak || !this.wasRunning);
 
         // Each focus session (manual or auto-started) creates a StudySession so
-        // study time + streak are counted.
+        // study time + streak are counted. Capture the returned session id so
+        // tab-switch reporting is attached to the right session.
         if (focusBegan) {
           this.isSynced = true;
           this.activeSessionId = '';
           this.tabSwitchCount = 0;
           this.statsService.startSession(this.roomId, s.focusDuration).subscribe({
+            next: res => {
+              if (res?.success && res.sessionId) this.activeSessionId = res.sessionId;
+            },
             error: err => console.error('[timer] startSession HTTP failed', err)
           });
         }
@@ -318,7 +322,11 @@ export class PomodoroTimerComponent implements OnInit, OnDestroy {
     // the remaining time or the rest of the session is never recorded.
     const remainingMin = Math.max(1, Math.ceil(this.state.remainingSeconds / 60));
     this.isSynced = true;
+    this.activeSessionId = '';
     this.statsService.startSession(this.roomId, remainingMin).subscribe({
+      next: res => {
+        if (res?.success && res.sessionId) this.activeSessionId = res.sessionId;
+      },
       error: err => console.error('[timer] resume startSession HTTP failed', err)
     });
     this.timerService.start();

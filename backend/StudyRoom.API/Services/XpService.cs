@@ -16,8 +16,13 @@ public interface IXpService
 public class XpService : IXpService
 {
     private readonly AppDbContext _context;
+    private readonly IStreakCalculator _streakCalculator;
 
-    public XpService(AppDbContext context) => _context = context;
+    public XpService(AppDbContext context, IStreakCalculator streakCalculator)
+    {
+        _context = context;
+        _streakCalculator = streakCalculator;
+    }
 
     public async Task AwardAsync(Guid userId, string type, int points, string? label = null)
     {
@@ -61,7 +66,7 @@ public class XpService : IXpService
         var badgeCount = await _context.UserMilestones
             .CountAsync(m => m.UserId == userId);
 
-        var streak = await ComputeStreakAsync(userId);
+        var streak = await _streakCalculator.GetCurrentStreakAsync(userId);
 
         var weekStart = DateTime.UtcNow.AddDays(-7).Date;
         var thisWeekMinutes = await _context.StudySessions
@@ -114,7 +119,7 @@ public class XpService : IXpService
             var minutes = await _context.StudySessions
                 .Where(s => s.UserId == id && s.Completed && s.IsVerified && s.CreatedAt >= weekStart)
                 .SumAsync(s => s.DurationMinutes);
-            var streak = await ComputeStreakAsync(id);
+            var streak = await _streakCalculator.GetCurrentStreakAsync(id);
 
             rows.Add(new FriendLeaderboardRowDto
             {
@@ -155,26 +160,5 @@ public class XpService : IXpService
         }
 
         return (level, remaining, need);
-    }
-
-    private async Task<int> ComputeStreakAsync(Guid userId)
-    {
-        var dates = await _context.StudySessions
-            .Where(s => s.UserId == userId && s.Completed && s.IsVerified)
-            .Select(s => s.CreatedAt.Date)
-            .Distinct()
-            .OrderByDescending(d => d)
-            .ToListAsync();
-
-        if (dates.Count == 0) return 0;
-
-        int streak = 0;
-        var expected = DateTime.UtcNow.Date;
-        foreach (var d in dates)
-        {
-            if (d == expected || d == expected.AddDays(-1)) { streak++; expected = d; }
-            else break;
-        }
-        return streak;
     }
 }

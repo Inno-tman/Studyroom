@@ -339,6 +339,7 @@ export class ProfileSettingsComponent implements OnInit {
   }
 
   async save(): Promise<void> {
+    const tz = this.detectTimeZone();
     await this.auth.saveProfile({
       username: this.username.trim(),
       firstName: this.firstName.trim() || undefined,
@@ -349,7 +350,16 @@ export class ProfileSettingsComponent implements OnInit {
       major: this.major.trim() || undefined,
       interests: this.interests.trim() || undefined,
       avatarUrl: this.avatarUrl.trim() || undefined,
-      bio: this.bio.trim() || undefined
+      bio: this.bio.trim() || undefined,
+      timeZoneId: tz || undefined
     });
+  }
+
+  private detectTimeZone(): string {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch {
+      return '';
+    }
   }
 }

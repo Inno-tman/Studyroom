@@ -14,6 +14,7 @@ public class AuthResponseDto
     public string? Major { get; set; }
     public string? Interests { get; set; }
     public string? Bio { get; set; }
+    public string? TimeZoneId { get; set; }
     public string Role { get; set; } = string.Empty;
     public bool ProfileComplete { get; set; }
     public string Token { get; set; } = string.Empty;

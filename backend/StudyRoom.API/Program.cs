@@ -103,6 +103,28 @@ builder.Services.AddRateLimiter(options =>
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));
+    // YouTube search is its own budget so heavy browsing of a room's video tab
+    // cannot starve the shared "search" budget used by profile/schedule queries.
+    options.AddPolicy("youtube", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+            ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+    // Private-room join-code attempts are authenticated; limit per user to slow
+    // brute-forcing of 6-character codes.
+    options.AddPolicy("join", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+            ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
 });
 
 builder.Services.AddCors(options =>
@@ -145,6 +167,8 @@ builder.Services.AddScoped<IRoomInvitationService, RoomInvitationService>();
 builder.Services.AddScoped<IDirectMessageService, DirectMessageService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISessionValidationService, SessionValidationService>();
+builder.Services.AddScoped<IStreakCalculator, StreakCalculator>();
+builder.Services.AddScoped<ISessionFinalizerService, SessionFinalizerService>();
 builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 builder.Services.AddScoped<IMeetingService, MeetingService>();
 
@@ -265,6 +289,8 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "PreferredStudyDays" text NULL;
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "PreferredStudyHours" text NULL;
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "LastSeenAt" timestamp NULL;
+        ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "TimeZoneId" text NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "AwardProcessed" boolean NOT NULL DEFAULT false;
     """);
     await context.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "AiConversations" (
@@ -587,6 +613,20 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_CalendarConnections_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS "IX_CalendarConnections_UserId" ON "CalendarConnections" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "CalendarStudyEvents" (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Provider" varchar(20) NOT NULL,
+            "CalendarId" varchar(500) NULL,
+            "DayUtc" timestamp NOT NULL,
+            "EventProviderId" varchar(500) NOT NULL,
+            "LastEndUtc" timestamp NOT NULL,
+            CONSTRAINT "PK_CalendarStudyEvents" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_CalendarStudyEvents_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_CalendarStudyEvents_UserId_Provider_CalendarId_DayUtc" ON "CalendarStudyEvents" ("UserId", "Provider", "CalendarId", "DayUtc");
+        CREATE INDEX IF NOT EXISTS "IX_CalendarStudyEvents_UserId" ON "CalendarStudyEvents" ("UserId");
     """);
 }
 

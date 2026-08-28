@@ -48,6 +48,10 @@ public class User
     [MaxLength(1000)]
     public string? Bio { get; set; }
 
+    /// <summary>IANA time zone id (e.g. "Europe/Berlin") used for local-time nudges, summaries and reminders.</summary>
+    [MaxLength(64)]
+    public string? TimeZoneId { get; set; }
+
     [MaxLength(200)]
     public string? RefreshToken { get; set; }
 

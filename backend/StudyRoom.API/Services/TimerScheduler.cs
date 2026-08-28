@@ -1,18 +1,17 @@
 using System.Collections.Concurrent;
-using System.Timers;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using StudyRoom.API.Hubs;
-using StudyRoom.API.Models;
-using StudyRoom.API.Repositories;
+using StudyRoom.API.Services;
 
 namespace StudyRoom.API.Services;
 
 /// <summary>
-/// In-process scheduler that fires a study timer's completion (marks the session,
-/// refreshes stats, and pushes a notification) at the scheduled wall-clock end time,
-/// independent of whether the client tab is still open.
+/// In-process scheduler that fires a study timer's completion (finalizes the
+/// session, refreshes stats, and pushes a notification) at the scheduled
+/// wall-clock end time, independent of whether the client tab is still open.
+/// Timers are keyed by (user, room) so a user can run one focus timer per room.
 /// </summary>
 public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
 {
@@ -25,14 +24,16 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
         public DateTime EndTime { get; set; }
     }
 
-    private readonly ConcurrentDictionary<Guid, Entry> _schedules = new();
+    private readonly ConcurrentDictionary<string, Entry> _schedules = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private System.Timers.Timer? _timer;
 
     public TimerScheduler(IServiceScopeFactory scopeFactory) => _scopeFactory = scopeFactory;
 
+    private static string Key(Guid userId, Guid? roomId) => $"{userId}:{roomId?.ToString() ?? "*"}";
+
     public void ScheduleFocus(Guid userId, Guid? roomId, int durationMinutes) =>
-        _schedules[userId] = new Entry
+        _schedules[Key(userId, roomId)] = new Entry
         {
             UserId = userId,
             RoomId = roomId,
@@ -42,7 +43,7 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
         };
 
     public void ScheduleBreak(Guid userId, Guid? roomId, int durationMinutes, bool isLong) =>
-        _schedules[userId] = new Entry
+        _schedules[Key(userId, roomId)] = new Entry
         {
             UserId = userId,
             RoomId = roomId,
@@ -51,7 +52,16 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
             EndTime = DateTime.UtcNow.AddMinutes(durationMinutes)
         };
 
-    public void Cancel(Guid userId) => _schedules.TryRemove(userId, out _);
+    public void Cancel(Guid userId, Guid? roomId = null)
+    {
+        if (roomId.HasValue)
+        {
+            _schedules.TryRemove(Key(userId, roomId), out _);
+            return;
+        }
+        foreach (var key in _schedules.Keys.Where(k => k.StartsWith(userId + ":")))
+            _schedules.TryRemove(key, out _);
+    }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -86,25 +96,13 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
         {
             using var scope = _scopeFactory.CreateScope();
             var hub = scope.ServiceProvider.GetRequiredService<IHubContext<StudyRoomHub>>();
-            var sessionRepo = scope.ServiceProvider.GetRequiredService<IStudySessionRepository>();
             var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
-            var validation = scope.ServiceProvider.GetRequiredService<ISessionValidationService>();
+            var finalizer = scope.ServiceProvider.GetRequiredService<ISessionFinalizerService>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<TimerScheduler>>();
 
             if (!entry.IsBreak)
             {
-                var sessions = await sessionRepo.GetByUserIdAsync(entry.UserId);
-                var latest = sessions.FirstOrDefault(s => !s.Completed);
-                if (latest != null)
-                {
-                    var start = latest.StartedAt ?? latest.CreatedAt;
-                    var minutes = (DateTime.UtcNow - start).TotalMinutes;
-                    latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
-                    latest.Completed = true;
-                    await validation.ValidateSessionAsync(latest);
-                    await sessionRepo.UpdateAsync(latest);
-                    logger.LogInformation("[timer-scheduler] finalized session {SessionId} user={UserId} minutes={Minutes} verified={Verified}", latest.Id, entry.UserId, latest.DurationMinutes, latest.IsVerified);
-                }
+                var finalized = await finalizer.FinalizeActiveAsync(entry.UserId, entry.RoomId);
 
                 if (entry.RoomId.HasValue)
                 {
@@ -115,9 +113,12 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
                 await hub.Clients.User(entry.UserId.ToString())
                     .SendAsync("TimerEnded", new { phase = "focus", isLong = false });
 
-                await notifications.CreateAsync(
-                    entry.UserId, "timer", "Focus session complete",
-                    "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
+                if (finalized != null)
+                {
+                    await notifications.CreateAsync(
+                        entry.UserId, "timer", "Focus session complete",
+                        "Nice work! Take a breather.", icon: "timer", link: "/dashboard");
+                }
             }
             else
             {
@@ -138,7 +139,7 @@ public class TimerScheduler : ITimerScheduler, IHostedService, IDisposable
             {
                 using var errorScope = _scopeFactory.CreateScope();
                 errorScope.ServiceProvider.GetRequiredService<ILogger<TimerScheduler>>()
-                    .LogError(ex, "[timer-scheduler] FireAsync failed for user={UserId} isBreak={IsBreak}", entry.UserId, entry.IsBreak);
+                    .LogError(ex, "[timer-scheduler] FireAsync failed for user={UserId} isBreak={IsBreak} room={RoomId}", entry.UserId, entry.IsBreak, entry.RoomId);
             }
             catch { }
         }

@@ -10,7 +10,7 @@ namespace StudyRoom.API.Controllers;
 [ApiController]
 [Route("api/youtube")]
 [Authorize]
-[EnableRateLimiting("search")]
+[EnableRateLimiting("youtube")]
 public class YoutubeController : ControllerBase
 {
     private readonly IHttpClientFactory _http;

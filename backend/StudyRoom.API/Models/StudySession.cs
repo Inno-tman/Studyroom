@@ -22,6 +22,14 @@ public class StudySession
     [MaxLength(50)]
     public string? VerifiedReason { get; set; }
 
+    /// <summary>
+    /// Idempotency flag: set exactly once when the session is finalized (XP,
+    /// milestones, calendar sync). Guards against double-awarding when the HTTP
+    /// complete, the timer scheduler and the hub all race to finalize the same
+    /// session.
+    /// </summary>
+    public bool AwardProcessed { get; set; }
+
     [MaxLength(2000)]
     public string? SessionNotes { get; set; }
 

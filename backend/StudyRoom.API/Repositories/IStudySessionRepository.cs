@@ -7,6 +7,7 @@ public interface IStudySessionRepository
     Task AddAsync(StudySession session);
     Task UpdateAsync(StudySession session);
     Task<List<StudySession>> GetByUserIdAsync(Guid userId);
+    Task<StudySession?> GetActiveSessionAsync(Guid userId, Guid? roomId = null);
     Task<decimal> GetTotalStudyMinutesAsync(Guid userId);
     Task<int> GetSessionsCompletedAsync(Guid userId);
     Task<decimal> GetWeeklyStudyMinutesAsync(Guid userId);

@@ -21,10 +21,7 @@ public class StudySessionsController : ControllerBase
     private readonly IHubContext<StudyRoomHub> _hubContext;
     private readonly INotificationService _notificationService;
     private readonly ITimerScheduler _timerScheduler;
-    private readonly ISessionValidationService _validation;
-private readonly IMilestoneService _milestoneService;
-    private readonly ICalendarService _calendarService;
-    private readonly IXpService _xpService;
+    private readonly ISessionFinalizerService _finalizer;
 
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
@@ -33,20 +30,14 @@ private readonly IMilestoneService _milestoneService;
         IHubContext<StudyRoomHub> hubContext,
         INotificationService notificationService,
         ITimerScheduler timerScheduler,
-        ISessionValidationService validation,
-        IMilestoneService milestoneService,
-        ICalendarService calendarService,
-        IXpService xpService)
+        ISessionFinalizerService finalizer)
     {
         _sessionRepo = sessionRepo;
         _roomRepo = roomRepo;
         _hubContext = hubContext;
         _notificationService = notificationService;
         _timerScheduler = timerScheduler;
-        _validation = validation;
-        _milestoneService = milestoneService;
-        _calendarService = calendarService;
-        _xpService = xpService;
+        _finalizer = finalizer;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -60,17 +51,20 @@ private readonly IMilestoneService _milestoneService;
             if (string.IsNullOrWhiteSpace(request.RoomId) || !Guid.TryParse(request.RoomId, out var roomId))
                 return BadRequest(new { error = "Invalid roomId" });
 
-            var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-            var existing = sessions.FirstOrDefault(s => !s.Completed);
+            // One open focus session per room: reuse the room's active session
+            // if present (resume / auto-start), otherwise create a fresh one.
+            var existing = await _sessionRepo.GetActiveSessionAsync(UserId, roomId);
+            StudySession session;
             if (existing != null)
             {
-                existing.RoomId = roomId;
+                existing.DurationMinutes = request.DurationMinutes;
                 existing.StartedAt = DateTime.UtcNow;
                 await _sessionRepo.UpdateAsync(existing);
+                session = existing;
             }
             else
             {
-                var s = new StudySession
+                session = new StudySession
                 {
                     UserId = UserId,
                     RoomId = roomId,
@@ -78,7 +72,7 @@ private readonly IMilestoneService _milestoneService;
                     StartedAt = DateTime.UtcNow,
                     Completed = false
                 };
-                await _sessionRepo.AddAsync(s);
+                await _sessionRepo.AddAsync(session);
             }
 
             _timerScheduler.ScheduleFocus(UserId, roomId, request.DurationMinutes);
@@ -92,7 +86,7 @@ private readonly IMilestoneService _milestoneService;
                     startedAt = DateTime.UtcNow
                 });
 
-            return Ok(new { success = true });
+            return Ok(new { success = true, sessionId = session.Id.ToString() });
         }
         catch (Exception ex)
         {
@@ -105,52 +99,18 @@ private readonly IMilestoneService _milestoneService;
     {
         try
         {
-            var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-            var latest = sessions.FirstOrDefault(s => !s.Completed);
-            if (latest == null)
+            Guid? roomId = Guid.TryParse(request.RoomId, out var r) ? r : (Guid?)null;
+
+            var finalized = await _finalizer.FinalizeActiveAsync(UserId, roomId);
+            if (finalized == null)
                 return Ok(new { success = false, message = "No active session found" });
 
-            var start = latest.StartedAt ?? latest.CreatedAt;
-            var minutes = (DateTime.UtcNow - start).TotalMinutes;
-            latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
-            latest.Completed = true;
-            await _validation.ValidateSessionAsync(latest);
-            await _sessionRepo.UpdateAsync(latest);
+            _timerScheduler.Cancel(UserId, roomId);
 
-            // Phase 4 — check milestones after session completion
-            if (latest.IsVerified)
-                await _milestoneService.CheckAndAwardMilestonesAsync(UserId);
-
-            // Phase 16 — award XP for verified focus time (1 XP per minute)
-            if (latest.IsVerified && latest.DurationMinutes > 0)
+            if (roomId.HasValue)
             {
-                var xp = Math.Max(1, (int)Math.Round(latest.DurationMinutes));
-                await _xpService.AwardAsync(UserId, "focus", xp, "Focus session completed");
-            }
-
-            // Phase 15 — sync completed session to connected calendars
-            if (latest.IsVerified && latest.StartedAt.HasValue)
-            {
-                var sessionStart = latest.StartedAt.Value;
-                var sessionEnd = sessionStart.AddMinutes((double)latest.DurationMinutes);
-                var roomName = "";
-                if (!string.IsNullOrEmpty(request.RoomId) && Guid.TryParse(request.RoomId, out var rId))
-                {
-                    var room = await _roomRepo.GetByIdAsync(rId);
-                    roomName = room?.Name ?? "";
-                }
-                var title = string.IsNullOrEmpty(roomName)
-                    ? $"Study Session ({latest.DurationMinutes} min)"
-                    : $"Study: {roomName} ({latest.DurationMinutes} min)";
-                await _calendarService.CreateStudyEventAsync(UserId, title, sessionStart, sessionEnd, roomName);
-            }
-
-            _timerScheduler.Cancel(UserId);
-
-            if (!string.IsNullOrEmpty(request.RoomId))
-            {
-                await _hubContext.Clients.Group("room_" + request.RoomId)
-                    .SendAsync("TimerCompleted", new { roomId = request.RoomId, completedBy = Username });
+                await _hubContext.Clients.Group("room_" + roomId.Value)
+                    .SendAsync("TimerCompleted", new { roomId = roomId.Value, completedBy = Username });
             }
 
             await _notificationService.CreateAsync(
@@ -160,10 +120,10 @@ private readonly IMilestoneService _milestoneService;
             return Ok(new
             {
                 success = true,
-                sessionId = latest.Id.ToString(),
-                durationMinutes = latest.DurationMinutes,
-                isVerified = latest.IsVerified,
-                verifiedReason = latest.VerifiedReason
+                sessionId = finalized.Id.ToString(),
+                durationMinutes = finalized.DurationMinutes,
+                isVerified = finalized.IsVerified,
+                verifiedReason = finalized.VerifiedReason
             });
         }
         catch (Exception ex)
@@ -177,6 +137,10 @@ private readonly IMilestoneService _milestoneService;
     {
         if (string.IsNullOrWhiteSpace(request.RoomId) || !Guid.TryParse(request.RoomId, out var roomId))
             return BadRequest(new { error = "Invalid roomId" });
+
+        // A break concludes the current focus phase: finalize the room's active
+        // focus session (awarding verified elapsed time) before scheduling.
+        await _finalizer.FinalizeActiveAsync(UserId, roomId);
 
         _timerScheduler.ScheduleBreak(UserId, roomId, request.DurationMinutes, request.IsLong);
 
@@ -197,19 +161,10 @@ private readonly IMilestoneService _milestoneService;
     [HttpPost("reset")]
     public async Task<IActionResult> ResetSession([FromBody] SessionRequest request)
     {
-        _timerScheduler.Cancel(UserId);
+        Guid? roomId = Guid.TryParse(request.RoomId, out var r) ? r : (Guid?)null;
 
-        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-        var latest = sessions.FirstOrDefault(s => !s.Completed);
-        if (latest != null)
-        {
-            var start = latest.StartedAt ?? latest.CreatedAt;
-            var minutes = (DateTime.UtcNow - start).TotalMinutes;
-            latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
-            latest.Completed = true;
-            await _validation.ValidateSessionAsync(latest);
-            await _sessionRepo.UpdateAsync(latest);
-        }
+        await _finalizer.FinalizeActiveAsync(UserId, roomId);
+        _timerScheduler.Cancel(UserId, roomId);
 
         if (!string.IsNullOrEmpty(request.RoomId))
         {
@@ -223,19 +178,10 @@ private readonly IMilestoneService _milestoneService;
     [HttpPost("pause")]
     public async Task<IActionResult> PauseSession([FromBody] SessionRequest request)
     {
-        _timerScheduler.Cancel(UserId);
+        Guid? roomId = Guid.TryParse(request.RoomId, out var r) ? r : (Guid?)null;
 
-        var sessions = await _sessionRepo.GetByUserIdAsync(UserId);
-        var latest = sessions.FirstOrDefault(s => !s.Completed);
-        if (latest != null)
-        {
-            var start = latest.StartedAt ?? latest.CreatedAt;
-            var minutes = (DateTime.UtcNow - start).TotalMinutes;
-            latest.DurationMinutes = Math.Round((decimal)Math.Max(0, minutes), 2);
-            latest.Completed = true;
-            await _validation.ValidateSessionAsync(latest);
-            await _sessionRepo.UpdateAsync(latest);
-        }
+        await _finalizer.FinalizeActiveAsync(UserId, roomId);
+        _timerScheduler.Cancel(UserId, roomId);
 
         if (!string.IsNullOrEmpty(request.RoomId))
         {
@@ -325,16 +271,17 @@ private readonly IMilestoneService _milestoneService;
         var session = sessions.FirstOrDefault(s => s.Id == id);
         if (session == null) return NotFound();
 
-        var switchCount = await _tabSwitchRepo.GetSwitchCountAsync(id);
+        var roundTrips = await _tabSwitchRepo.GetRoundTripsAsync(id);
         var totalMinutes = session.DurationMinutes > 0 ? session.DurationMinutes : 1;
 
-        // Rough trust score: 100 = perfect, loses 5 points per switch, minimum 0
-        var trustScore = Math.Max(0, 100 - (switchCount * 5));
+        // Trust score: 100 = perfect. Loses 2 points per completed distraction
+        // (left + returned) with a floor of 30, and recovers as sessions accrue.
+        var trustScore = Math.Max(30, 100 - (roundTrips * 2));
 
         return Ok(new
         {
             sessionId = id.ToString(),
-            switchCount,
+            roundTrips,
             trustScore,
             isVerified = session.IsVerified,
             verifiedReason = session.VerifiedReason

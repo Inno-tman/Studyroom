@@ -78,37 +78,54 @@ public class WeeklySummaryWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Hourly sweep: each user gets their summary when it reaches Sunday at
+        // 20:00 in their own time zone (instead of one global Sunday 20:00 UTC).
         while (!stoppingToken.IsCancellationRequested)
         {
-            var now = DateTime.UtcNow;
-
-            // Run on Sunday at 20:00 UTC
-            var nextSunday = now.Date.AddDays(((int)DayOfWeek.Sunday - (int)now.DayOfWeek + 7) % 7)
-                             .AddHours(20);
-            if (nextSunday <= now)
-                nextSunday = nextSunday.AddDays(7);
-
-            var delay = nextSunday - now;
-            _logger.LogInformation("[weekly-summary] Next run at {NextRun} (in {Delay})", nextSunday, delay);
-            await Task.Delay(delay, stoppingToken);
-
             try
             {
                 using var scope = _services.CreateScope();
                 var summaryService = scope.ServiceProvider.GetRequiredService<IWeeklySummaryService>();
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                var userIds = await context.Users.Select(u => u.Id).ToListAsync(stoppingToken);
-                foreach (var userId in userIds)
+                var users = await context.Users
+                    .Select(u => new { u.Id, u.TimeZoneId })
+                    .ToListAsync(stoppingToken);
+
+                var nowUtc = DateTime.UtcNow;
+                foreach (var user in users)
                 {
-                    await summaryService.GenerateSummaryAsync(userId);
+                    var tz = ResolveTz(user.TimeZoneId);
+                    var localNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tz);
+                    if (localNow.DayOfWeek != DayOfWeek.Sunday || localNow.Hour != 20) continue;
+
+                    // Guard against duplicate summaries (e.g. after a restart
+                    // within the same delivery hour).
+                    var alreadySent = await context.Notifications.AnyAsync(n =>
+                        n.UserId == user.Id && n.Type == "weekly_summary" && n.CreatedAt >= nowUtc.AddHours(-24), stoppingToken);
+                    if (alreadySent) continue;
+
+                    await summaryService.GenerateSummaryAsync(user.Id);
                 }
-                _logger.LogInformation("[weekly-summary] Sent summaries to {Count} users", userIds.Count);
+                _logger.LogInformation("[weekly-summary] Sweep complete for {Count} users", users.Count);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[weekly-summary] Failed to send summaries");
             }
+
+            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         }
+    }
+
+    private static TimeZoneInfo ResolveTz(string? timeZoneId)
+    {
+        if (!string.IsNullOrWhiteSpace(timeZoneId))
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId); }
+            catch (TimeZoneNotFoundException) { }
+            catch (InvalidTimeZoneException) { }
+        }
+        return TimeZoneInfo.Utc;
     }
 }

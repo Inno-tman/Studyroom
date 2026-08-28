@@ -11,11 +11,13 @@ Rule groups:
 
 ## 1. Cross-Cutting
 
-- **Time is UTC.** All timestamps are stored in UTC; almost all logic (`streak`, `WeeklyGoals`, nudges at 20:00 UTC, weekly summaries on Sunday 20:00 UTC) operates on UTC.
+- **Time is UTC; delivery is timezone-aware.** All timestamps are stored in UTC and streaks/weekly goals anchor on UTC dates. Time-of-day delivery that depends on "when" (daily nudge, room-quiet alerts, schedule reminders, weekly summaries) resolves the relevant user's preferred IANA time zone (`User.TimeZoneId`, defaulting to UTC when unset/invalid) — e.g. the daily nudge fires at local **20:00**, not a single global 20:00.
 - **JWT authentication** is required for every endpoint except `POST /api/auth/register|login|google|refresh`; SignalR `/hubs/studyroom` accepts the token via `access_token` query string.
 - **Rate limiting:**
   - `auth` policy: 10 requests/min per client IP — applied to `AuthController` (anti brute-force). Rejection → HTTP 429 JSON error.
-  - `search` policy: 30 requests/min per user (or IP) — applied to `UsersController` and `YoutubeController`.
+  - `search` policy: 30 requests/min per user (or IP) — applied to `UsersController`.
+  - `youtube` policy: 10 requests/min per user — applied to `YoutubeController` only (media search gets its own smaller budget).
+  - `join` policy: 10 requests/min per user — applied to `POST /api/rooms/{id}/join` (blocks private-room join-code brute forcing).
 - **Security headers** emitted on all responses: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `X-Permitted-Cross-Domain-Policies`; HSTS on non-dev.
 - **DB bootstrap:** `EnsureCreatedAsync` (no EF migrations) followed by idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` DDL, so upgrades never destroy existing data.
 - **Seed data** (admin/alice/bob + rooms) is created only when there are no users.
@@ -49,20 +51,22 @@ Rule groups:
 - **Join:** for private rooms, an exact join code is required; joining rejects users who are already members; leaving rejects non-members (`400`).
 - **Private rooms** get a 6-character join code drawn only from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (omits ambiguous characters 0/O/1/I).
 - The **join code is exposed only to the creator and members** of that room.
+- **Join brute-force protection:** joining with a private-room code is rate-limited (`join` policy: 10 attempts/min per user); joining rejects users who are already members and non-members (`400`).
 - **Background upload:** owner-only; max 5 MB; accepted types `.jpg`, `.jpeg`, `.png`, `.webp` only.
 - Room name is required (≤100); description ≤500; subject ≤50.
 
 ## 4. Study Sessions & Focus Timer
 
-- **One open session per user at a time:** starting a new session reuses/resumes an existing in-progress session.
+- **One open focus session per user per room:** `start` reuses/resumes an in-progress session *for the same room* (updating `DurationMinutes` + `StartedAt` and re-scheduling the server timer) and returns its `sessionId`; starting in a different room creates a fresh session. Sessions never silently jump rooms.
+- **Idempotent completion (single award):** the shared `SessionFinalizerService` claims a session atomically (`Completed=true`, `DurationMinutes`, `IsVerified`, `AwardProcessed=true` set in one `ExecuteUpdateAsync` won by exactly one caller) — duplicate completes, a retry after a lost connection, and the server-side timeout sweep can never double-award; losing callers get "no active session" and no duplicate notification.
 - **Session validation (verification) — ordered checks** on completion; first triggered rule marks the session unverified with a `VerifiedReason`:
   1. `DurationMinutes > 240` → `excessive_duration`.
   2. `DurationMinutes < 1` → `too_short`.
-  3. ≥ 10 completed sessions today → `too_many_sessions`.
-  4. Tab-switch count > allowed, where `allowed = max(1, floor(durationMinutes / 10))` → `excessive_tab_switches`.
+  3. Verified minutes already accrued today (the user's local day) + this session's `DurationMinutes` > 600 → `too_many_sessions` (a minutes-aware daily cap, not a session count).
+  4. Tab-switch **round-trips** > allowed, where `allowed = max(1, floor(durationMinutes / 10))` → `excessive_tab_switches`.
   - Otherwise the session stays verified (verified by default on creation).
-- **Trust score** = `max(0, 100 − 5 × switchCount)`; each tab-switch costs 5 points.
-- **Tab-switch events** are recorded (`left` / `returned`) only while there is an active session, keyed to that session.
+- **Trust score** = `max(30, 100 − 2 × roundTrips)`; each completed distraction (a `left` followed by a `returned`) costs 2 points with a floor of 30.
+- **Tab-switch events** are recorded (`left` / `returned`) only while there is an active session, keyed to that session's `sessionId`; an ending `left` (app closed at completion) is benign and not penalized.
 - **XP award** (on verified completion only): `max(1, round(durationMinutes))` points, event type `focus`, label "Focus session completed". XP is never awarded for `points <= 0`.
 - **Milestone checks** run after every verified completion.
 - **Calendar sync** happens for verified completions only; event title = `Study: {roomName} ({minutes} min)`.
@@ -70,8 +74,8 @@ Rule groups:
 - **Collective room goal** = `max(50h, memberCount × 10h)` per week.
 - **Session notes:** editable only by the session owner; ≤ 2,000 chars.
 - **Idle-timeout recovery (SessionWatcher):** sessions older than 6 hours still incomplete are auto-finalized with actual elapsed time, marked `Completed = true`, `IsVerified = false`, `VerifiedReason = "idle_timeout"`, and the user is notified ("auto-finalized ... (you were away)").
-- **Server-side timer redundancy:** a server scheduler completes sessions even if the client never calls back (hourly-safe sweep every 1s); both the hub and REST controller drive the same finalize path.
-- `start-break` supports long breaks; `reset` cancels the timer and finalizes the active session; `pause` cancels the timer, marks the session completed, and validates it.
+- **Server-side timer redundancy:** a server scheduler completes sessions even if the client never calls back (hourly-safe sweep every 1s); both the hub and REST controller drive the same finalize path through the shared `SessionFinalizerService`.
+- `start-break` **terminates the room's current focus session** (round-trips it through the finalizer) and schedules the break timer; `reset`/`pause` finalize the active session and cancel the room's scheduled timer. Breaks support long-break durations.
 
 ## 5. Statistics & Analytics
 
@@ -142,6 +146,7 @@ Rule groups:
 - `Notification` fields: type (≤30), title (≤200), body (≤500), icon, actor info, link (≤200), `IsRead`, created time.
 - **Mark-read** is owner-restricted (`404` if not found or not owned); `read-all` applies to the caller's notifications only.
 - Notification types observed across services: `friend_request`, `friend_accept`, `room_invite`, `room_invite_accepted`, `comment`, `timer`, `nudge`, `reminder`, `social`, `weekly_summary`, `stale_message`.
+- **Direct creation of notifications** (`POST /api/notifications`) is **admin-only** (`Authorize(Roles = "Admin")`) — regular users never call this endpoint; a non-admin caller gets `403` and nothing is created.
 - **Web Push subscription** requires non-empty `Endpoint`, `P256dh`, and `Auth` (`400` otherwise); VAPID keys live server-side.
 - Dead push endpoints (410/404) are **deleted automatically** to avoid repeated failures; other send errors are best-effort (logged, not fatal).
 - Notifications fan out over SignalR (`user_{id}` group) and to web push.
@@ -204,9 +209,10 @@ Rule groups:
 - Providers: `google` and `microsoft` (outlook).
 - Connections store access + refresh tokens and an **auto-sync flag** (default true); tombstones → disconnect.
 - **Token refresh:** if a token expires within 5 minutes, it is refreshed via the provider OAuth token endpoint before use and persisted.
-- **Study events:** created only for verified completed sessions; Google events use `transparency: transparent`, Microsoft events `showAs: free` (so they don't mark the user busy).
+- **Daily aggregation:** verified study time for a day is collapsed into **one calendar event per day per provider**, tracked via the `CalendarStudyEvents` marker table (unique on `(UserId, Provider, CalendarId, DayUtc)`); a later session the same day **PATCHes (extends) the event's end time** instead of creating a duplicate.
+- **Event transparency:** study events use Google `transparency: transparent` / Microsoft `showAs: free` (never mark the user busy).
+- **Manual sync** (`POST /api/calendar/sync-now`) creates a standalone event from the request (title/description passthrough, no aggregation).
 - Per-provider failures are logged but non-fatal (one broken provider never blocks the other).
-- Manual `sync` endpoint pushes the last/recorded study event on demand.
 
 ## 21. Presence & Realtime
 
@@ -223,11 +229,11 @@ Rule groups:
   4. Weekly trend: daily average < 50% of goal → suggest lowering; ≥ goal → suggest raising.
   5. Room suggestions: join a room if none; explore more if ≤ 2 rooms.
   6. Onboarding: total minutes < 60 → suggest a 25-min Pomodoro.
-- **Daily nudge** (every hour; fires at exactly 20:00 UTC) only for users with **no completed session today**; content personalized by streak state (at-risk / keep momentum / first-ever).
-- **Room-quiet alert** at hours 0, 6, 12, 18 UTC: rooms with **zero completed sessions in the last 24h** → notify the host (type `social`).
+- **Daily nudge** (hourly sweep; fires when it's ~20:00 in the **user's own time zone**) only for users with **no verified completion today** (local day); content personalized by streak state (at-risk / keep momentum / first-ever).
+- **Room-quiet alert** at the host's **local 0, 6, 12, 18**: rooms with **zero verified sessions in the last 24h** → notify the host (type `social`).
 - **Accountability-pair suggestions** (Mondays 09:00 UTC): pairs of users who are **active (verified this week), share a room, and aren't friends**; pair keys de-duplicated so each pair is suggested once.
-- **Schedule reminders** (hourly): reads `PreferredStudyDays`/`PreferredStudyHours`; fires only when within a **5-minute window**, **30 minutes before** a preferred window start, **and** the user hasn't studied today (type `reminder`).
-- **Weekly summary** (every Sunday 20:00 UTC): last-7-days verified minutes (rendered `Xh Ym`), verified session count, current streak, most-active room name (type `weekly_summary`).
+- **Schedule reminders** (hourly): reads `PreferredStudyDays`/`PreferredStudyHours` in the **user's time zone**; fires only when within a **5-minute window**, **30 minutes before** a preferred window start, **and** the user has no **verified** session today (local day) (type `reminder`).
+- **Weekly summary** (each user's **local Sunday 20:00**, guarded against duplicate sends within 24h): last-7-days verified minutes (rendered `Xh Ym`), verified session count, current streak, most-active room name (type `weekly_summary`).
 
 ## 23. Realtime Hub (SignalR)
 

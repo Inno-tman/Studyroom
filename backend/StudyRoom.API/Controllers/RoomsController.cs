@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using StudyRoom.API.Data;
 using StudyRoom.API.DTOs.Rooms;
 using StudyRoom.API.Services;
@@ -90,6 +91,7 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPost("{id}/join")]
+    [EnableRateLimiting("join")]
     public async Task<IActionResult> Join(Guid id, [FromBody] JoinRoomDto? dto)
     {
         try

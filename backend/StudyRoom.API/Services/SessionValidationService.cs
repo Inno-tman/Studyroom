@@ -35,19 +35,22 @@ public class SessionValidationService : ISessionValidationService
             return;
         }
 
-        var todayCount = await _sessionRepo.GetCompletedTodayCountAsync(session.UserId);
-        if (todayCount >= 10)
+        // Minutes-aware daily cap: a day with 10+ hours of verified study is
+        // treated as over-use. Counting verified minutes (instead of raw session
+        // count) avoids false positives for short-Pomodoro power users.
+        var todayMinutes = await _sessionRepo.GetTodayStudyMinutesAsync(session.UserId);
+        if (todayMinutes + session.DurationMinutes > 600)
         {
             session.IsVerified = false;
             session.VerifiedReason = "too_many_sessions";
             return;
         }
 
-        // Phase 6 — tab-switch check: if user switched tabs more than 50% of
-        // the expected session length (1 switch per 5 min), flag as unverified.
-        var switchCount = await _tabSwitchRepo.GetSwitchCountAsync(session.Id);
+        // Round-trip check: only a "left" followed by a "returned" counts as a
+        // distraction. A final "left" while the timer completes is benign.
+        var roundTrips = await _tabSwitchRepo.GetRoundTripsAsync(session.Id);
         var maxAllowed = (int)Math.Max(1, Math.Floor((double)session.DurationMinutes / 10.0));
-        if (switchCount > maxAllowed)
+        if (roundTrips > maxAllowed)
         {
             session.IsVerified = false;
             session.VerifiedReason = "excessive_tab_switches";

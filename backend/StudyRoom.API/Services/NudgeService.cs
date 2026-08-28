@@ -31,19 +31,48 @@ public class NudgeService : INudgeService
         _logger = logger;
     }
 
+    private static TimeZoneInfo ResolveTz(string? timeZoneId)
+    {
+        if (!string.IsNullOrWhiteSpace(timeZoneId))
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId); }
+            catch (TimeZoneNotFoundException) { }
+            catch (InvalidTimeZoneException) { }
+        }
+        return TimeZoneInfo.Utc;
+    }
+
+    /// <summary>Start of the user's local calendar day, converted to UTC.</summary>
+    private static DateTime LocalDayStartUtc(string? timeZoneId, DateTime utcNow)
+    {
+        var tz = ResolveTz(timeZoneId);
+        var localNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, tz);
+        var localMidnight = localNow.Date;
+        if (tz == TimeZoneInfo.Utc || localMidnight.Kind == DateTimeKind.Utc)
+            return localMidnight;
+        return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localMidnight, DateTimeKind.Unspecified), tz);
+    }
+
     /// <summary>
-    /// Phase 5a — Smart Nudge: At 8 PM UTC, check if each user has studied today.
-    /// If not, send a personalized nudge with streak info.
+    /// Phase 5a — Smart Nudge: when it is ~8 PM in the user's own time zone, if
+    /// there is no VERIFIED session today, send a personalized nudge with streak
+    /// info. (Previously this fired at 8 PM UTC for everyone and counted any
+    /// completed session, so it nudged users who had already studied.)
     /// </summary>
     public async Task SendDailyNudgesAsync()
     {
-        var today = DateTime.UtcNow.Date;
+        var nowUtc = DateTime.UtcNow;
         var users = await _context.Users.ToListAsync();
 
         foreach (var user in users)
         {
+            var tz = ResolveTz(user.TimeZoneId);
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tz);
+            if (localNow.Hour != 20) continue;
+
+            var dayStartUtc = LocalDayStartUtc(user.TimeZoneId, nowUtc);
             var studiedToday = await _context.StudySessions
-                .AnyAsync(s => s.UserId == user.Id && s.Completed && s.CreatedAt >= today);
+                .AnyAsync(s => s.UserId == user.Id && s.Completed && s.IsVerified && s.CreatedAt >= dayStartUtc);
 
             if (studiedToday) continue;
 
@@ -77,19 +106,30 @@ public class NudgeService : INudgeService
     }
 
     /// <summary>
-    /// Phase 5b — Room Quiet Alert: If a room has had no verified sessions in 24h,
-    /// notify its host.
+    /// Phase 5b — Room Quiet Alert: at the room host's local quiet hours (every
+    /// 6h), if the room has had no verified sessions in 24h, notify the host.
     /// </summary>
     public async Task SendRoomQuietAlertsAsync()
     {
-        var cutoff = DateTime.UtcNow.AddHours(-24);
+        var nowUtc = DateTime.UtcNow;
+        var cutoff = nowUtc.AddHours(-24);
 
         var rooms = await _context.Rooms.ToListAsync();
+        var hostIds = rooms.Select(r => r.CreatedBy).Distinct().ToList();
+        var hosts = await _context.Users
+            .Where(u => hostIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
 
         foreach (var room in rooms)
         {
+            var hostTz = hosts.TryGetValue(room.CreatedBy, out var host)
+                ? ResolveTz(host.TimeZoneId)
+                : TimeZoneInfo.Utc;
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, hostTz);
+            if (localNow.Hour % 6 != 0) continue;
+
             var hadActivity = await _context.StudySessions
-                .AnyAsync(s => s.RoomId == room.Id && s.Completed && s.CreatedAt >= cutoff);
+                .AnyAsync(s => s.RoomId == room.Id && s.Completed && s.IsVerified && s.CreatedAt >= cutoff);
 
             if (hadActivity) continue;
 
@@ -178,10 +218,7 @@ public class NudgeService : INudgeService
     /// </summary>
     public async Task SendScheduleRemindersAsync()
     {
-        var now = DateTime.UtcNow;
-        var dayNames = new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-        var today = dayNames[(int)now.DayOfWeek];
-        var currentMinutes = now.Hour * 60 + now.Minute;
+        var nowUtc = DateTime.UtcNow;
 
         var users = await _context.Users
             .Where(u => u.PreferredStudyDays != null && u.PreferredStudyHours != null)
@@ -189,6 +226,12 @@ public class NudgeService : INudgeService
 
         foreach (var user in users)
         {
+            var tz = ResolveTz(user.TimeZoneId);
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tz);
+            var dayNames = new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+            var today = dayNames[(int)localNow.DayOfWeek];
+            var currentMinutes = localNow.Hour * 60 + localNow.Minute;
+
             var days = (user.PreferredStudyDays ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
             if (!days.Contains(today)) continue;
 
@@ -202,13 +245,14 @@ public class NudgeService : INudgeService
                 var startMinutes = (int)start.TotalMinutes;
                 var reminderMinutes = startMinutes - 30;
 
-                // Send reminder if we're within 5 minutes of the reminder time
+                // Send reminder if we're within 5 minutes of the reminder time.
                 if (currentMinutes >= reminderMinutes && currentMinutes <= reminderMinutes + 5)
                 {
-                    // Check if user already studied today
+                    // Check if user already studied today (verified sessions only).
+                    var dayStartUtc = LocalDayStartUtc(user.TimeZoneId, nowUtc);
                     var studiedToday = await _context.StudySessions.AnyAsync(s =>
                         s.UserId == user.Id && s.Completed && s.IsVerified &&
-                        s.CreatedAt.Date == now.Date);
+                        s.CreatedAt >= dayStartUtc);
 
                     if (!studiedToday)
                     {
@@ -239,7 +283,8 @@ public class NudgeWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Run nudge checks every hour; the service itself decides whether to send
+        // Run all nudge checks hourly; each service decides based on each
+        // user's local time whether to actually send.
         while (!stoppingToken.IsCancellationRequested)
         {
             var now = DateTime.UtcNow;
@@ -249,25 +294,19 @@ public class NudgeWorker : BackgroundService
                 using var scope = _services.CreateScope();
                 var nudgeService = scope.ServiceProvider.GetRequiredService<INudgeService>();
 
-                // Daily nudge at 8 PM UTC
-                if (now.Hour == 20)
-                {
-                    await nudgeService.SendDailyNudgesAsync();
-                }
+                // Daily nudge fires when it's ~8 PM in the user's time zone.
+                await nudgeService.SendDailyNudgesAsync();
 
-                // Room quiet alerts every 6 hours (0, 6, 12, 18)
-                if (now.Hour % 6 == 0)
-                {
-                    await nudgeService.SendRoomQuietAlertsAsync();
-                }
+                // Room quiet alerts fire at the host's local 0, 6, 12, 18.
+                await nudgeService.SendRoomQuietAlertsAsync();
 
-                // Accountability pairing on Mondays at 9 AM UTC
+                // Accountability pairing on Mondays at 9 AM UTC.
                 if (now.DayOfWeek == DayOfWeek.Monday && now.Hour == 9)
                 {
                     await nudgeService.SendWeeklyAccountabilityPairingAsync();
                 }
 
-                // Schedule reminders every hour
+                // Schedule reminders every hour, evaluated in the user's time zone.
                 await nudgeService.SendScheduleRemindersAsync();
             }
             catch (Exception ex)
