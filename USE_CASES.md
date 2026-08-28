@@ -890,6 +890,17 @@ Listed as sequence-level guarantees that power the realtime features above.
 - **Alternate flows:**
   * Alt 1 – Missing/invalid `TimeZoneId`: falls back to UTC (delivery may then occur at UTC wall clock).
 
+### UC-83 · Browse a top-level page (consistent hero header)
+- **Primary actor:** User
+- **Trigger:** User opens any main page (Timeline, People, Analytics, Flashcards, Games, Messages, Invitations, Notifications, Settings).
+- **Preconditions:** Authenticated.
+- **Success guarantee:** The page renders the shared `app-hero-card` (gradient: title + subtitle + optional action + stat badges) matching Dashboard and Study Rooms.
+- **Main flow:**
+  1. Router activates the page.
+  2. The shared hero renders the page title/subtitle; page-specific action buttons (e.g. Analytics CSV/JSON export, Notifications "Mark all as read") project into the action slot; dynamic stats (posts, friends, decks, games, unread counts…) appear as badges.
+- **Alternate flows:**
+  * Alt 1 – No dynamic data yet: badges show zero/empty counts while data loads.
+
 ---
 
 *Extracted from a full codebase scan of the StudyRoom solution. Cross-referenced with `USER_STORIES.md` and `BUSINESS_RULES.md`.*

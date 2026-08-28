@@ -2,25 +2,25 @@ import { Component, inject, OnInit } from '@angular/core';
 import { NgFor, NgIf, DecimalPipe, DatePipe } from '@angular/common';
 import { StatisticsService } from '../core/services/statistics.service';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [NgFor, NgIf, DecimalPipe, DatePipe, LoadingComponent],
+  imports: [NgFor, NgIf, DecimalPipe, DatePipe, LoadingComponent, HeroCardComponent],
   template: `
     <div class="analytics">
-      <div class="analytics-header">
-        <h1>Study Analytics</h1>
-        <div class="export-btns">
-          <button class="btn-export" (click)="exportData('csv')">
+      <app-hero-card title="Study Analytics" subtitle="Track your study time and review your habits." [badges]="heroBadges">
+        <ng-container heroActions>
+          <button class="hero-btn" (click)="exportData('csv')">
             <span class="material-icons">download</span> CSV
           </button>
-          <button class="btn-export" (click)="exportData('json')">
+          <button class="hero-btn" (click)="exportData('json')">
             <span class="material-icons">code</span> JSON
           </button>
-        </div>
-      </div>
+        </ng-container>
+      </app-hero-card>
       <app-loading [loading]="loading" />
 
       <div class="overview-grid" *ngIf="!loading && overview">
@@ -177,6 +177,16 @@ export class AnalyticsComponent implements OnInit {
   roomBreakdown: any[] = [];
   dailyTrend: any[] = [];
   hourlyDist: any[] = [];
+
+  get heroBadges() {
+    const badges = [];
+    if (this.overview) {
+      badges.push({ icon: 'schedule', text: `${this.formatDuration(this.overview.totalMinutes)} total` });
+      badges.push({ icon: 'play_circle', text: `${this.overview.sessionsCompleted ?? 0} sessions` });
+      badges.push({ icon: 'local_fire_department', text: `${this.overview.currentStreak ?? 0} day streak` });
+    }
+    return badges;
+  }
 
   private maxTrend = 1;
   private maxHour = 1;

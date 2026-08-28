@@ -4,16 +4,15 @@ import { Router } from '@angular/router';
 import { InvitationService } from '../core/services/invitation.service';
 import { RoomInvitation } from '../shared/models/social.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 @Component({
   selector: 'app-invitations',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, LoadingComponent],
+  imports: [NgFor, NgIf, DatePipe, LoadingComponent, HeroCardComponent],
   template: `
     <div class="invitations-page">
-      <div class="page-header">
-        <h1>Room Invitations</h1>
-      </div>
+      <app-hero-card title="Room Invitations" subtitle="Accept or decline invites to study rooms." [badges]="heroBadges"></app-hero-card>
 
       <app-loading [loading]="loading" />
 
@@ -79,6 +78,10 @@ export class InvitationsComponent {
   invitations: RoomInvitation[] = [];
   loading = true;
   processing = false;
+
+  get heroBadges() {
+    return [{ icon: 'mail', text: `${this.invitations.length} pending` }];
+  }
 
   async ngOnInit() {
     await this.load();

@@ -250,6 +250,7 @@ Rule groups:
 - **Study player** keeps the device screen awake while video plays and collapses to a floating pill.
 - **Command palette** (Ctrl/Cmd+K) opens pages and rooms directly; global assistant opens from the navbar robot button (closes on Esc / backdrop click).
 - Profile reminder banner shows whenever the profile-completeness heuristic fails.
+- **Consistent page headers:** every main page (Timeline, People, Analytics, Flashcards, Games, Messages, Invitations, Notifications, Settings, Study Rooms, Dashboard) renders the shared `app-hero-card` — a gradient card with title, subtitle, an action slot, and stat badges — so headers never drift in style.
 - Best-score persistence for games is browser-local (`localStorage`).
 - Frontend clamps mirror backend where user input is entered (e.g., daily goal), but authoritative validation is server-side.
 

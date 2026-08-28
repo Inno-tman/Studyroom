@@ -5,17 +5,19 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FriendService } from '../core/services/friend.service';
 import { StatisticsService, FriendLeaderboardRow } from '../core/services/statistics.service';
 import { Friend, UserSearchResult, FriendPresence } from '../shared/models/social.model';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 @Component({
   selector: 'app-people',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink],
+  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, HeroCardComponent],
   template: `
     <div class="people-page">
-      <div class="page-header">
-        <h1>People</h1>
-        <p class="page-subtitle">Discover classmates, send requests and build your network.</p>
-      </div>
+      <app-hero-card
+        title="People"
+        subtitle="Discover classmates, send requests and build your network."
+        [badges]="heroBadges"
+      ></app-hero-card>
 
       <div class="view-toggle">
         <button class="view-btn" [class.active]="mode === 'discover'" (click)="showDiscover()">
@@ -474,6 +476,13 @@ export class PeopleComponent implements OnInit, OnDestroy {
   loading = false;
   mode: 'discover' | 'friends' | 'leaderboard' = 'discover';
   leaderboard: FriendLeaderboardRow[] = [];
+
+  get heroBadges() {
+    const badges = [];
+    badges.push({ icon: 'group', text: `${this.friends.length} friends` });
+    if (this.requests.length > 0) badges.push({ icon: 'person_add', text: `${this.requests.length} requests` });
+    return badges;
+  }
   private presenceMap = new Map<string, FriendPresence>();
   private refreshTimer?: any;
 

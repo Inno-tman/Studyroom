@@ -10,16 +10,15 @@ import { NotificationService } from '../core/services/notification.service';
 import { CallService } from '../core/services/call.service';
 import { AiChatPanelComponent } from '../ai/ai-chat-panel/ai-chat-panel.component';
 import { Conversation, DirectMessage } from '../shared/models/social.model';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, AiChatPanelComponent],
+  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, AiChatPanelComponent, HeroCardComponent],
   template: `
     <div class="messages-page">
-      <div class="page-header">
-        <h1>Messages</h1>
-      </div>
+      <app-hero-card title="Messages" subtitle="Chat with friends and your AI assistant." [badges]="heroBadges"></app-hero-card>
 
       <div class="messages-layout">
         <div class="conversations" [class.mobile-hidden]="isMobile && (activeUser || activeAssistant)">
@@ -313,6 +312,13 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   newMessage = '';
   sending = false;
   isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
+  get heroBadges() {
+    const badges = [{ icon: 'chat', text: `${this.conversations.length} chats` }];
+    const unread = this.conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+    if (unread > 0) badges.push({ icon: 'mark_email_unread', text: `${unread} unread` });
+    return badges;
+  }
   private dmSub?: Subscription;
   private deletedSub?: Subscription;
   private shouldScroll = false;

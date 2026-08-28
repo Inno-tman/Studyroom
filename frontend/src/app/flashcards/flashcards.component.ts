@@ -4,17 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { FlashcardsService, FlashcardDeck, FlashcardDeckDetail } from '../core/services/flashcards.service';
 import { AIService, FlashcardGenResult } from '../core/services/ai.service';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 @Component({
   selector: 'app-flashcards',
   standalone: true,
-  imports: [NgFor, NgIf, NgClass, DatePipe, FormsModule, RouterLink],
+  imports: [NgFor, NgIf, NgClass, DatePipe, FormsModule, RouterLink, HeroCardComponent],
   template: `
     <div class="fc-page">
-      <div class="page-header">
-        <h1>Flashcards</h1>
-        <p class="page-subtitle">Build decks manually or let AI turn your notes into study cards.</p>
-      </div>
+      <app-hero-card title="Flashcards" subtitle="Build decks manually or let AI turn your notes into study cards." [badges]="heroBadges"></app-hero-card>
 
       <ng-container *ngIf="!activeDeck">
         <!-- Deck list -->
@@ -267,6 +265,10 @@ export class FlashcardsComponent implements OnInit, OnDestroy {
 
   loading = true;
   decks: FlashcardDeck[] = [];
+
+  get heroBadges() {
+    return [{ icon: 'style', text: `${this.decks.length} decks` }];
+  }
 
   createOpen = false;
   newDeckTitle = '';

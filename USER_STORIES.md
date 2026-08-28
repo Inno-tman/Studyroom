@@ -257,6 +257,7 @@ Story groups:
 - As a user, I want a **fixed navigation bar** (Dashboard, Rooms, Timeline, People, Notifications, Invitations, Messages, Games, Settings) with unread badges so that I can move around easily.
 - As a user, I want a **command palette (Ctrl/Cmd+K)** that jumps to any page or room so that I can navigate fast.
 - As a user, I want a **global AI assistant button** in the navbar so that help is always one click away.
+- As a user, I want a **consistent hero card** (title, subtitle, quick action, and stat badges) at the top of every main page so that the app feels unified.
 - As a user, I want **desktop notifications handled via a service worker** so that alerts work even in the background.
 - As a user, I want the interface to be **responsive** (mobile tab bars, single-pane messaging, floating docks) so that I can use StudyRoom on any device.
 

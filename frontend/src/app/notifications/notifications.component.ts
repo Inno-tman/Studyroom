@@ -3,22 +3,21 @@ import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NotificationService } from '../core/services/notification.service';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, RouterLink, LoadingComponent],
+  imports: [NgFor, NgIf, DatePipe, RouterLink, LoadingComponent, HeroCardComponent],
   template: `
     <div class="notifications-page">
-      <div class="page-header page-header-row">
-        <div class="page-header-left">
-          <h1 class="page-title">Notifications</h1>
-          <p class="page-subtitle">Friend requests, invites, comments and messages.</p>
-        </div>
-        <button class="btn-secondary btn-sm" *ngIf="service.items().length > 0" (click)="service.markAllRead()">
-          Mark all as read
-        </button>
-      </div>
+      <app-hero-card title="Notifications" subtitle="Friend requests, invites, comments and messages." [badges]="heroBadges">
+        <ng-container heroActions>
+          <button class="hero-btn" *ngIf="service.items().length > 0" (click)="service.markAllRead()">
+            <span class="material-icons">done_all</span> Mark all as read
+          </button>
+        </ng-container>
+      </app-hero-card>
 
       <app-loading [loading]="service.loading()" />
 
@@ -92,4 +91,11 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 })
 export class NotificationsComponent {
   service = inject(NotificationService);
+
+  get heroBadges() {
+    const unread = this.service.items().filter(n => !n.isRead).length;
+    const badges = [{ icon: 'notifications', text: `${this.service.items().length} total` }];
+    if (unread > 0) badges.push({ icon: 'mark_email_unread', text: `${unread} unread` });
+    return badges;
+  }
 }

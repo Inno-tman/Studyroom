@@ -8,17 +8,15 @@ import { PostService } from '../core/services/post.service';
 import { SignalRService } from '../core/services/signalr.service';
 import { Post, Comment } from '../shared/models/social.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 @Component({
   selector: 'app-timeline',
   standalone: true,
-  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, LoadingComponent],
+  imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, LoadingComponent, HeroCardComponent],
   template: `
     <div class="timeline">
-      <div class="page-header">
-        <h1 *ngIf="!userId">Timeline</h1>
-        <h1 *ngIf="userId">Posts</h1>
-      </div>
+      <app-hero-card [title]="userId ? 'Posts' : 'Timeline'" [subtitle]="userId ? (userName ? userName + '’s recent posts' : 'This user’s posts') : 'Share what you’re studying with your friends.'" [badges]="heroBadges"></app-hero-card>
 
       <div class="composer" *ngIf="!userId">
         <div class="composer-header">
@@ -322,6 +320,10 @@ export class TimelineComponent implements OnInit {
   posts: (Post & { showComments?: boolean; newComment?: string; replyToCommentId?: string })[] = [];
   newPostContent = '';
   loading = true;
+
+  get heroBadges() {
+    return [{ icon: 'article', text: `${this.posts.length} ${this.userId ? 'posts' : 'posts'}` }];
+  }
 
   sharePost?: Post;
   shareCaption = '';

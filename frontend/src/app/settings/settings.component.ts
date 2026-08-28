@@ -1,15 +1,14 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, HeroCardComponent],
   template: `
     <div class="settings-page">
-      <div class="page-header">
-        <h1>Settings</h1>
-      </div>
+      <app-hero-card title="Settings" subtitle="Manage your profile, notifications, appearance and study preferences."></app-hero-card>
 
       <div class="settings-layout">
         <nav class="settings-nav">

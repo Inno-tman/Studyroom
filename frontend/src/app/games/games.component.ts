@@ -3,6 +3,7 @@ import { NgIf, NgFor, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { timeout } from 'rxjs';
 import { AIService, GameContent, GameMathItem } from '../core/services/ai.service';
+import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
 type GameId = 'math' | 'scramble' | 'quiz' | 'memory' | 'truefalse' | 'flags' | 'elements' | null;
 
@@ -283,13 +284,10 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
 @Component({
   selector: 'app-games',
   standalone: true,
-  imports: [NgIf, NgFor, NgTemplateOutlet, FormsModule],
+  imports: [NgIf, NgFor, NgTemplateOutlet, FormsModule, HeroCardComponent],
   template: `
     <div class="games-page">
-      <div class="page-header">
-        <h1>Educational Games</h1>
-        <p class="page-subtitle">Sharpen your mind between study sessions. Scores are saved locally.</p>
-      </div>
+      <app-hero-card title="Educational Games" subtitle="Sharpen your mind between study sessions. Scores are saved locally." [badges]="heroBadges"></app-hero-card>
 
       <!-- Shared AI question config (used by the AI-capable games) -->
       <ng-template #aiConfig>
@@ -1115,6 +1113,10 @@ export class GamesComponent implements OnDestroy {
     { id: 'elements', icon: 'science', title: 'Element Symbols', desc: 'Match chemical elements to their symbols. Drawn from all 118 elements.', color: '#14b8a6' }
   ];
   letters = ['A', 'B', 'C', 'D'];
+
+  get heroBadges() {
+    return [{ icon: 'sports_esports', text: `${this.games.length} games` }];
+  }
 
   selected: GameId = null;
 
