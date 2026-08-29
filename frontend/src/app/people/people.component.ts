@@ -191,35 +191,35 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- My Friends -->
-      <div *ngIf="mode === 'friends'" class="card full">
-        <div class="card-head">
-          <div class="card-head-icon"><span class="material-icons">group</span></div>
-          <div>
-            <h2>My Friends</h2>
-            <p class="card-subtitle">People you're connected with.</p>
-          </div>
-          <span class="discover-count">{{ onlineFriendCount }} online</span>
-        </div>
-        <div *ngIf="friends.length === 0" class="empty">No friends yet. Add some people above!</div>
-        <div *ngFor="let friend of friends" class="person-row">
-          <div class="avatar-wrap">
-            <div class="avatar" [class.has-image]="friend.avatarUrl">
-              <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
-              <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
+        <!-- My Friends -->
+        <div *ngIf="mode === 'friends'" class="card">
+          <div class="card-head">
+            <div class="card-head-icon"><span class="material-icons">group</span></div>
+            <div>
+              <h2>My Friends</h2>
+              <p class="card-subtitle">People you're connected with.</p>
             </div>
-            <span *ngIf="presenceOf(friend.userId)" class="presence-dot" [class.online]="presenceOf(friend.userId)?.isOnline"></span>
+            <span class="discover-count">{{ onlineFriendCount }} online</span>
           </div>
-          <div class="person-info" [routerLink]="['/profile', friend.userId]">
-            <span class="person-name">{{ friend.displayName || friend.username }}</span>
-            <span class="person-sub">
-              {{ '@' + friend.username }}
-              <span *ngIf="!presenceOf(friend.userId)?.isOnline" class="person-seen"> · Last seen {{ lastSeenText(presenceOf(friend.userId)?.lastSeenAt) }}</span>
-            </span>
+          <div *ngIf="friends.length === 0" class="empty">No friends yet. Add some people above!</div>
+          <div *ngFor="let friend of friends" class="person-row">
+            <div class="avatar-wrap">
+              <div class="avatar" [class.has-image]="friend.avatarUrl">
+                <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
+                <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span *ngIf="presenceOf(friend.userId)" class="presence-dot" [class.online]="presenceOf(friend.userId)?.isOnline"></span>
+            </div>
+            <div class="person-info" [routerLink]="['/profile', friend.userId]">
+              <span class="person-name">{{ friend.displayName || friend.username }}</span>
+              <span class="person-sub">
+                {{ '@' + friend.username }}
+                <span *ngIf="!presenceOf(friend.userId)?.isOnline" class="person-seen"> · Last seen {{ lastSeenText(presenceOf(friend.userId)?.lastSeenAt) }}</span>
+              </span>
+            </div>
+            <button class="btn-secondary danger" (click)="unfriend(friend)">Remove</button>
           </div>
-          <button class="btn-secondary danger" (click)="unfriend(friend)">Remove</button>
         </div>
       </div>
 
@@ -397,7 +397,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
     .status-label { font-size: var(--font-13); color: var(--text-muted); font-weight: 500; }
     .status-label.friends { color: var(--success); }
 
-    .cards-row { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    .cards-row { display: grid; grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 24px; }
     .cards-row .card { margin-bottom: 0; }
 
     /* Mobile: pin the Discover / Friends / Leaderboard toggle to the bottom,
