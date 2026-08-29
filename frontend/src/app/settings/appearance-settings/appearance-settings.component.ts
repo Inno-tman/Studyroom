@@ -9,7 +9,7 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
   template: `
     <div class="card">
       <h2>Appearance</h2>
-      <p class="card-subtitle">Customize how StudyRoom looks.</p>
+      <p class="card-subtitle">Customize how ResVibe looks.</p>
 
       <div class="setting-row">
         <div class="setting-info">
@@ -97,7 +97,7 @@ import { ACCENT_COLORS, SettingsService } from '../../core/services/settings.ser
           <span class="material-icons setting-icon">font_download</span>
           <div>
             <div class="setting-name">Font Style</div>
-            <div class="setting-desc">Change the typeface used throughout StudyRoom.</div>
+            <div class="setting-desc">Change the typeface used throughout ResVibe.</div>
           </div>
         </div>
         <div class="segmented" role="group" aria-label="Font style">

@@ -18,7 +18,7 @@ declare global {
       <div class="auth-card">
         <div class="auth-header">
           <h1>Welcome back</h1>
-          <p>Sign in to StudyRoom</p>
+          <p>Sign in to ResVibe</p>
         </div>
 
         <div class="social-login">

@@ -16,7 +16,7 @@ import { LoadingComponent } from '../../shared/components/loading/loading.compon
       <div class="hero-card">
         <div class="hero-top">
           <div class="hero-greeting">
-            <h1>Study Rooms</h1>
+            <h1>Rooms</h1>
             <p>Find your crew, pick a subject, and study together.</p>
           </div>
           <a routerLink="/rooms/create" class="hero-create">

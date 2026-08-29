@@ -11,7 +11,7 @@ import { RoomService } from '../../core/services/room.service';
   template: `
     <div class="create-room">
       <div class="page-header">
-        <h1>Create Study Room</h1>
+        <h1>Create Room</h1>
         <a routerLink="/rooms" class="btn-outline">Back</a>
       </div>
 

@@ -15,7 +15,7 @@ type BoolPrefKey = {
   template: `
     <div class="card">
       <h2>Notifications</h2>
-      <p class="card-subtitle">Choose how and when StudyRoom should get your attention.</p>
+      <p class="card-subtitle">Choose how and when ResVibe should get your attention.</p>
 
       <div class="pref-row">
         <div class="pref-info">

@@ -186,7 +186,7 @@ export class CalendarSettingsComponent implements OnInit {
       title: 'Study Session',
       start: now.toISOString(),
       end: end.toISOString(),
-      description: 'Manual sync from StudyRoom'
+      description: 'Manual sync from ResVibe'
     }).subscribe({
       next: () => { this.syncing = false; alert('Synced!'); },
       error: () => { this.syncing = false; alert('Sync failed'); }

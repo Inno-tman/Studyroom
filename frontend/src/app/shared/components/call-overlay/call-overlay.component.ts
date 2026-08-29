@@ -69,7 +69,7 @@ import { CallService } from '../../../core/services/call.service';
             <ng-template #actInitial>{{ callService.call()?.peerName?.charAt(0)?.toUpperCase() }}</ng-template>
           </div>
           <div class="caller-name">{{ callService.call()?.peerName }}</div>
-          <div class="phone-subtitle">{{ callService.anyVideo ? 'StudyRoom video call' : 'StudyRoom audio call' }}</div>
+          <div class="phone-subtitle">{{ callService.anyVideo ? 'ResVibe video call' : 'ResVibe audio call' }}</div>
         </div>
 
         <div class="phone-controls">

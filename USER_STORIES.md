@@ -1,8 +1,8 @@
-# StudyRoom — User Stories
+# ResVibe — User Stories
 
 > **Maintenance convention:** every new feature updates **all three** specification artifacts: user stories (this file), business rules (`BUSINESS_RULES.md`), and use cases (`USE_CASES.md`). See the use-case template in `USE_CASES.md`.
 
-This document catalogs the product capabilities of StudyRoom (a collaborative online study platform) as user stories, generated from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend).
+This document catalogs the product capabilities of ResVibe (a collaborative online study platform) as user stories, generated from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend).
 
 Story groups:
 [1. Authentication](#1-authentication--account) · [2. Profile & Onboarding](#2-profile--onboarding) · [3. Dashboard](#3-dashboard) · [4. Study Rooms](#4-study-rooms) · [5. Room Chat](#5-room-chat) · [6. Focus Timer](#6-focus-timer) · [7. Shared Notes](#7-shared-notes) · [8. Room Tasks](#8-room-tasks) · [9. AI Assistant & Research](#9-ai-assistant--research) · [10. Flashcards](#10-flashcards) · [11. Educational Games](#11-educational-games) · [12. Meetings](#12-meetings) · [13. Peer Calls](#13-peer-calls) · [14. Video & Study Player](#14-video--study-player) · [15. Social Feed](#15-social-feed) · [16. Friends & People](#16-friends--people) · [17. Direct Messages](#17-direct-messages) · [18. Notifications](#18-notifications) · [19. Room Invitations](#19-room-invitations) · [20. Presence](#20-presence) · [21. Analytics](#21-analytics) · [22. Gamification](#22-gamification) · [23. Leaderboards](#23-leaderboards) · [24. Calendar](#24-calendar) · [25. Nudges & Summaries](#25-nudges--summaries) · [26. Settings](#26-settings) · [27. Global Shell](#27-global-shell)
@@ -11,7 +11,7 @@ Story groups:
 
 ## 1. Authentication & Account
 
-- As a new student, I want to **register with a username and password** so that I can create an account and start using StudyRoom.
+- As a new student, I want to **register with a username and password** so that I can create an account and start using ResVibe.
 - As a returning student, I want to **log in with my username or email and password** so that I can access my study rooms and data.
 - As a user, I want to **sign in with my Google account** so that I can skip registration and log in with one click.
 - As a user, I want my session to stay alive via a **refresh token** so that I am not logged out while studying.
@@ -259,7 +259,7 @@ Story groups:
 - As a user, I want a **global AI assistant button** in the navbar so that help is always one click away.
 - As a user, I want a **consistent hero card** (title, subtitle, quick action, and stat badges) at the top of every main page so that the app feels unified.
 - As a user, I want **desktop notifications handled via a service worker** so that alerts work even in the background.
-- As a user, I want the interface to be **responsive** (mobile tab bars, single-pane messaging, floating docks) so that I can use StudyRoom on any device.
+- As a user, I want the interface to be **responsive** (mobile tab bars, single-pane messaging, floating docks) so that I can use ResVibe on any device.
 
 ## 28. Unverified Study-Hours Review
 
@@ -271,4 +271,4 @@ Story groups:
 
 ---
 
-*Generated from a full codebase scan of the StudyRoom solution. Endpoint, service, and component details were verified against the backend API/controllers/services/hub and the Angular frontend pages/components/services.*
+*Generated from a full codebase scan of the ResVibe solution. Endpoint, service, and component details were verified against the backend API/controllers/services/hub and the Angular frontend pages/components/services.*

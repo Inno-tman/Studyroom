@@ -1,6 +1,6 @@
-# StudyRoom — Use Cases
+# ResVibe — Use Cases
 
-This document captures the use cases of StudyRoom, written from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend). It is maintained alongside two other artifacts:
+This document captures the use cases of ResVibe, written from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend). It is maintained alongside two other artifacts:
 - **User stories** → `USER_STORIES.md` (why: motivations and benefits)
 - **Business rules** → `BUSINESS_RULES.md` (what: invariants, limits, permissions, formulas)
 - **Use cases** → this file (how: end-to-end flows, actors, pre/post-conditions, alternate paths)
@@ -919,4 +919,4 @@ Listed as sequence-level guarantees that power the realtime features above.
 
 ---
 
-*Extracted from a full codebase scan of the StudyRoom solution. Cross-referenced with `USER_STORIES.md` and `BUSINESS_RULES.md`.*
+*Extracted from a full codebase scan of the ResVibe solution. Cross-referenced with `USER_STORIES.md` and `BUSINESS_RULES.md`.*

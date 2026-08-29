@@ -133,7 +133,7 @@ public class AIAcademicService : IAIAcademicService
         var brief = content.Length > 700 ? content.Substring(0, 700) + "…" : content;
 
         var system = $"""
-You are an expert flashcard creator for a study app called StudyRoom. You turn study material into clear, focused flashcards.
+You are an expert flashcard creator for a study app called ResVibe. You turn study material into clear, focused flashcards.
 Rules:
 - Create exactly {count} flashcards from the source notes.
 - Front: a concise question, term, or prompt (under 160 characters).
@@ -240,7 +240,7 @@ Generate {count} flashcards now.
         };
 
         var system = $"""
-You are an educational content generator for a study app called StudyRoom. You create short, accurate, age-appropriate quiz material.
+You are an educational content generator for a study app called ResVibe. You create short, accurate, age-appropriate quiz material.
 Rules:
 - Always provide original, well-varied content. Never repeat facts or wording across items.
 - Facts must be correct. Answer options for multiple choice must be plausible but clearly one is correct.
@@ -386,7 +386,7 @@ Expected JSON shape:
             : "";
 
         var systemPrompt = $"""
-You are an academic tutor AI in a collaborative study platform called StudyRoom. 
+You are an academic tutor AI in a collaborative study platform called ResVibe. 
 Your role is to help students understand concepts, solve problems, and learn effectively.
 
 {subjectContext}{notesContext}
@@ -435,7 +435,7 @@ Guidelines:
             : "\n(No specific papers found for this query. The AI will provide general academic guidance.)";
 
         var systemPrompt = $"""
-You are an academic research assistant AI in StudyRoom. Your role is to help users conduct academic research using proper research methodology.
+You are an academic research assistant AI in ResVibe. Your role is to help users conduct academic research using proper research methodology.
 
 Current Research Phase: {currentPhase}
 {allPhases.FirstOrDefault(p => p.Phase == currentPhase)?.Description ?? ""}
@@ -731,7 +731,7 @@ The full research process:
             return "A binary tree is a hierarchical data structure where each node has at most two children. Common operations include insertion, deletion, and traversal (in-order, pre-order, post-order).";
 
         if (q.Contains("hello") || q.Contains("hi ") || q == "hi")
-            return "Hello! I'm your StudyRoom academic assistant. What subject are you studying today? I can help with math, science, programming, and more.";
+            return "Hello! I'm your ResVibe academic assistant. What subject are you studying today? I can help with math, science, programming, and more.";
 
         return "Great question! To provide the most helpful response, could you narrow down the specific topic or concept you're studying? I can assist with mathematics, physics, chemistry, biology, computer science, literature, and more.";
     }

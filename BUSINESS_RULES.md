@@ -1,8 +1,8 @@
-# StudyRoom — Business Rules
+# ResVibe — Business Rules
 
 > **Maintenance convention:** every new feature updates **all three** specification artifacts: business rules (this file), user stories (`USER_STORIES.md`), and use cases (`USE_CASES.md`). See the use-case template in `USE_CASES.md`.
 
-This document catalogs the enforceable business rules of StudyRoom, extracted from a full scan of the codebase (ASP.NET Core API, SignalR hub, hosted services, PostgreSQL schema DDL, and the Angular frontend). Rules are grouped by feature area so they can be referenced alongside the user stories.
+This document catalogs the enforceable business rules of ResVibe, extracted from a full scan of the codebase (ASP.NET Core API, SignalR hub, hosted services, PostgreSQL schema DDL, and the Angular frontend). Rules are grouped by feature area so they can be referenced alongside the user stories.
 
 Rule groups:
 [1. Cross-Cutting](#1-cross-cutting) · [2. Authentication & Users](#2-authentication--users) · [3. Rooms](#3-rooms) · [4. Study Sessions & Focus Timer](#4-study-sessions--focus-timer) · [5. Statistics & Analytics](#5-statistics--analytics) · [6. Chat](#6-chat) · [7. Meetings & Calls](#7-meetings--calls) · [8. Notes](#8-notes) · [9. Posts & Social Feed](#9-posts--social-feed) · [10. Friends & Social Graph](#10-friends--social-graph) · [11. Direct Messages](#11-direct-messages) · [12. Notifications & Push](#12-notifications--push) · [13. Room Invitations](#13-room-invitations) · [14. Gamification (XP/Streaks/Milestones)](#14-gamification-xpstreaksmilestones) · [15. Leaderboards](#15-leaderboards) · [16. Room Tasks](#16-room-tasks) · [17. Flashcards](#17-flashcards) · [18. AI Assistant & Research](#18-ai-assistant--research) · [19. Games](#19-games) · [20. Calendar Sync](#20-calendar-sync) · [21. Presence & Realtime](#21-presence--realtime) · [22. Recommendations, Nudges & Summaries](#22-recommendations-nudges--summaries) · [23. Realtime Hub (SignalR)](#23-realtime-hub-signalr) · [24. Frontend UX Rules](#24-frontend-ux-rules)
@@ -257,4 +257,4 @@ Rule groups:
 
 ---
 
-*Extracted from a full codebase scan of the StudyRoom solution. Rules verified against controllers, services, hosted workers, the SignalR hub, schema DDL, and Angular components/services.*
+*Extracted from a full codebase scan of the ResVibe solution. Rules verified against controllers, services, hosted workers, the SignalR hub, schema DDL, and Angular components/services.*
