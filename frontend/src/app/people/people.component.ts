@@ -399,12 +399,27 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
     .status-label { font-size: var(--font-13); color: var(--text-muted); font-weight: 500; }
     .status-label.friends { color: var(--success); }
 
-    .cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .cards-row { display: grid; grid-template-columns: 1fr; gap: 24px; }
     .cards-row .card { margin-bottom: 0; }
 
-    @media (max-width: 900px) {
-      .cards-row { grid-template-columns: 1fr; }
-      .cards-row .card { margin-bottom: 24px; }
+    /* Mobile: pin the Discover / Friends / Leaderboard toggle to the bottom,
+       mirroring the room-detail mobile tab bar, and pad content so nothing
+       hides behind it. */
+    @media (max-width: 768px) {
+      .people-page { padding-bottom: calc(var(--mobile-tabbar-height, 66px) + 32px); }
+
+      .view-toggle {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1150;
+        display: flex; background: var(--surface);
+        border: none; border-top: 1px solid var(--border); border-radius: 0;
+        padding: 4px 0 calc(env(safe-area-inset-bottom) + 2px); margin: 0; gap: 0;
+      }
+      .view-btn {
+        flex: 1; flex-direction: column; gap: 2px; padding: 2px 0 6px;
+        border-radius: 8px; font-size: var(--font-10); justify-content: center;
+      }
+      .view-btn .material-icons { font-size: 20px; }
+      .view-btn.active { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
     }
 
     /* Leaderboard */
