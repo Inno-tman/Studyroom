@@ -60,8 +60,8 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               <span *ngIf="presenceOf(user.id)" class="presence-dot" [class.online]="presenceOf(user.id)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', profileId(user)]">
-              <span class="person-name">{{ user.displayName || user.username }}</span>
-              <span class="person-sub">{{ '@' + user.username }}{{ user.schoolName ? ' · ' + user.schoolName : '' }}</span>
+              <span class="person-name">{{ user.displayName || '@' + user.username }}</span>
+              <span class="person-sub" *ngIf="user.schoolName">{{ user.schoolName }}</span>
               <span *ngIf="user.mutualCount || user.sharedRoomCount" class="person-chips">
                 <span *ngIf="user.mutualCount" class="chip">
                   <span class="material-icons">group</span> {{ user.mutualCount }} mutual
@@ -113,8 +113,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               <span *ngIf="presenceOf(user.id)" class="presence-dot" [class.online]="presenceOf(user.id)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', user.id]">
-              <span class="person-name">{{ user.displayName || user.username }}</span>
-              <span class="person-sub">{{ '@' + user.username }}</span>
+              <span class="person-name">{{ user.displayName || '@' + user.username }}</span>
               <span *ngIf="user.mutualCount || user.sharedRoomCount" class="person-chips">
                 <span *ngIf="user.mutualCount" class="chip">
                   <span class="material-icons">group</span> {{ user.mutualCount }} mutual
@@ -155,8 +154,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               <span *ngIf="presenceOf(req.userId)" class="presence-dot" [class.online]="presenceOf(req.userId)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', req.userId]">
-              <span class="person-name">{{ req.displayName || req.username }}</span>
-              <span class="person-sub">{{ '@' + req.username }}</span>
+              <span class="person-name">{{ req.displayName || '@' + req.username }}</span>
             </div>
             <div class="row-actions">
               <button class="btn-accent" (click)="accept(req)">Accept</button>
@@ -183,8 +181,8 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               <span *ngIf="presenceOf(req.userId)" class="presence-dot" [class.online]="presenceOf(req.userId)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', req.userId]">
-              <span class="person-name">{{ req.displayName || req.username }}</span>
-              <span class="person-sub">{{ '@' + req.username }}{{ req.createdAt ? ' · sent ' + (req.createdAt | date:'mediumDate') : '' }}</span>
+              <span class="person-name">{{ req.displayName || '@' + req.username }}</span>
+              <span class="person-sub" *ngIf="req.createdAt">sent {{ req.createdAt | date:'mediumDate' }}</span>
             </div>
             <div class="row-actions">
               <button class="btn-secondary" (click)="cancelRequest(req)">Cancel</button>
@@ -212,11 +210,8 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               <span *ngIf="presenceOf(friend.userId)" class="presence-dot" [class.online]="presenceOf(friend.userId)?.isOnline"></span>
             </div>
             <div class="person-info" [routerLink]="['/profile', friend.userId]">
-              <span class="person-name">{{ friend.displayName || friend.username }}</span>
-              <span class="person-sub">
-                {{ '@' + friend.username }}
-                <span *ngIf="!presenceOf(friend.userId)?.isOnline" class="person-seen"> · Last seen {{ lastSeenText(presenceOf(friend.userId)?.lastSeenAt) }}</span>
-              </span>
+              <span class="person-name">{{ friend.displayName || '@' + friend.username }}</span>
+              <span *ngIf="!presenceOf(friend.userId)?.isOnline" class="person-sub">Last seen {{ lastSeenText(presenceOf(friend.userId)?.lastSeenAt) }}</span>
             </div>
             <button class="btn-secondary danger" (click)="unfriend(friend)">Remove</button>
           </div>
