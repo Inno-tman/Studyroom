@@ -266,7 +266,7 @@ Story groups:
 - As a user, I want my **flagged (unverified) focus sessions** listed on the Dashboard so that I can see what was not counted.
 - As a user, I want to **explain a flagged session with a comment and request review** so that my host can confirm the time counts.
 - As a user, I want to **see the status** of my review requests (awaiting review / approved / declined with the reviewer's note) so that I know where each request stands.
-- As a room host or co-host, I want a **review queue** in my room's Stats tab listing pending verification requests so that I can approve or decline them.
+- As a room host or co-host, I want a **review queue** in my room's Stats tab listing all flagged (eligible unverified) sessions — even before owners submit a request — so that I can approve or decline them, including my own.
 - As a room host or co-host, I want an approved session to **count retroactively** (XP, milestones, streak, calendar) so that the user gets full credit for confirmed time.
 
 ---

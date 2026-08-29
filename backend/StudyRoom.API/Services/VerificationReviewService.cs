@@ -89,9 +89,14 @@ public class VerificationReviewService : IVerificationReviewService
     {
         if (!await IsModeratorAsync(roomId, moderatorId)) throw new UnauthorizedAccessException("Only a host or co-host may review verification requests.");
 
+        // Every eligible unverified session in the room is available for review,
+        // whether or not the owner has submitted a request. Requests (with an
+        // owner comment) surface first, then the rest oldest-first.
         return await _context.StudySessions
-            .Where(s => s.RoomId == roomId && s.Completed && !s.IsVerified && s.VerificationState == "Pending")
-            .OrderBy(s => s.VerificationRequestedAt)
+            .Where(s => s.RoomId == roomId && s.Completed && !s.IsVerified
+                && EligibleReasons.Contains(s.VerifiedReason ?? ""))
+            .OrderByDescending(s => s.VerificationState == "Pending")
+            .ThenBy(s => s.VerificationRequestedAt ?? s.CreatedAt)
             .ToListAsync();
     }
 
@@ -105,10 +110,8 @@ public class VerificationReviewService : IVerificationReviewService
             throw new UnauthorizedAccessException("Only a host or co-host may review verification requests.");
 
         if (session.IsVerified) return session; // no-op
-        if (session.VerificationState != "Pending") return session; // already decided
-        if (!EligibleReasons.Contains(session.VerifiedReason ?? "")) return session;
-        if (session.UserId == moderatorId)
-            throw new InvalidOperationException("You cannot review your own verification request.");
+        if (session.VerificationState is "Approved" or "Declined") return session; // already decided
+        if (!EligibleReasons.Contains(session.VerifiedReason ?? "")) return session; // not reviewable
 
         session.VerificationState = approve ? "Approved" : "Declined";
         session.VerificationReviewerUserId = moderatorId;

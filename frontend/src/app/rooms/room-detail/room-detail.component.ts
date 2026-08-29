@@ -326,14 +326,18 @@ const TABS: RoomTab[] = [
 
             <!-- ── Verification review queue (host/co-host only) ── -->
             <div class="review-queue" *ngIf="isModerator && reviewQueue.length > 0">
-              <h3>Verification Requests</h3>
-              <p class="review-queue-hint">Members flagged unverified study time and are waiting for your confirmation.</p>
+              <h3>Verification Queue</h3>
+              <p class="review-queue-hint">Flagged study time in this room that needs your confirmation — owners may add a note first.</p>
               <div class="review-queue-list">
                 <div class="review-row" *ngFor="let r of reviewQueue">
                   <div class="review-info">
                     <span class="review-duration">{{ r.durationLabel }}</span>
                     <span class="review-reason">{{ reasonLabel(r.verifiedReason) }}</span>
+                    <span class="review-date" *ngIf="r.startedAt">{{ r.startedAt | date:'MMM d, h:mm a' }}</span>
                     <span class="review-comment" *ngIf="r.verificationComment">"{{ r.verificationComment }}"</span>
+                    <span class="review-requested" *ngIf="r.verificationRequestedAt">
+                      <span class="material-icons">schedule</span> Owner requested review
+                    </span>
                   </div>
                   <div class="review-actions">
                     <button class="btn-primary btn-sm" [disabled]="r.__busy" (click)="reviewSession(r, true)">Approve</button>
@@ -845,7 +849,16 @@ const TABS: RoomTab[] = [
     .review-info { display: flex; flex-direction: column; gap: 2px; min-width: 140px; }
     .review-duration { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
     .review-reason { font-size: var(--font-12); color: var(--text-muted); text-transform: capitalize; }
+    .review-date { font-size: var(--font-12); color: var(--text-muted); }
     .review-comment { font-size: var(--font-12); color: var(--text-secondary); font-style: italic; }
+    .review-requested {
+      display: inline-flex; align-items: center; gap: 4px; align-self: flex-start;
+      font-size: var(--font-11); font-weight: 600; color: #f59e0b;
+      background: color-mix(in srgb, #f59e0b 12%, transparent);
+      border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
+      border-radius: 12px; padding: 2px 8px;
+    }
+    .review-requested .material-icons { font-size: 13px; }
     .review-actions { display: flex; gap: 8px; }
 
     /* ── Chat ───────────────────────────────────────────────── */

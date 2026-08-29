@@ -138,7 +138,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
 
       <div class="cards-row">
         <!-- Friend Requests -->
-        <div *ngIf="mode === 'friends'" class="card">
+        <div *ngIf="mode === 'friends' && requests.length > 0" class="card">
           <div class="card-head">
             <div class="card-head-icon"><span class="material-icons">person_add</span></div>
             <div>
@@ -146,7 +146,6 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               <p class="card-subtitle">Pending requests you can accept or decline.</p>
             </div>
           </div>
-          <div *ngIf="requests.length === 0" class="empty">No pending requests.</div>
           <div *ngFor="let req of requests" class="person-row">
             <div class="avatar-wrap">
               <div class="avatar" [class.has-image]="req.avatarUrl">
@@ -167,7 +166,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
         </div>
 
         <!-- Sent Requests -->
-        <div *ngIf="mode === 'friends'" class="card">
+        <div *ngIf="mode === 'friends' && sentRequests.length > 0" class="card">
           <div class="card-head">
             <div class="card-head-icon muted"><span class="material-icons">outgoing_mail</span></div>
             <div>
@@ -175,7 +174,6 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               <p class="card-subtitle">Requests you've sent that are still pending.</p>
             </div>
           </div>
-          <div *ngIf="sentRequests.length === 0" class="empty">You have no outgoing requests.</div>
           <div *ngFor="let req of sentRequests" class="person-row">
             <div class="avatar-wrap">
               <div class="avatar" [class.has-image]="req.avatarUrl">
@@ -652,18 +650,21 @@ export class PeopleComponent implements OnInit, OnDestroy {
   }
 
   async decline(req: Friend): Promise<void> {
+    if (!confirm(`Decline the friend request from ${req.displayName || '@' + req.username}?`)) return;
     await this.friendService.deleteRequest(req.id).toPromise();
     await this.loadAll();
     await this.syncPresence();
   }
 
   async cancelRequest(req: Friend): Promise<void> {
+    if (!confirm(`Cancel your friend request to ${req.displayName || '@' + req.username}?`)) return;
     await this.friendService.deleteRequest(req.id).toPromise();
     await this.loadAll();
     await this.syncPresence();
   }
 
   async unfriend(friend: Friend): Promise<void> {
+    if (!confirm(`Remove ${friend.displayName || '@' + friend.username} from your friends?`)) return;
     await this.friendService.removeFriend(friend.userId).toPromise();
     await this.loadAll();
     await this.syncPresence();

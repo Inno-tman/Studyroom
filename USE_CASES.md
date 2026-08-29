@@ -901,21 +901,21 @@ Listed as sequence-level guarantees that power the realtime features above.
 - **Alternate flows:**
   * Alt 1 – No dynamic data yet: badges show zero/empty counts while data loads.
 
-### UC-84 · Request/approve study-hours verification
-- **Primary actor:** User (requester) / Room host or co-host (reviewer)
-- **Trigger:** A user's focus session was finalized unverified with an eligible reason, and the user asks the room's host to confirm it.
-- **Preconditions:** Session owns `VerifiedReason ∈ {excessive_duration, too_many_sessions, excessive_tab_switches}` (NOT `too_short`/`idle_timeout`), no pending request already exists, and the requester is not reviewing their own session.
-- **Success guarantee:** The request is `Pending`; on host/co-host approval the session is re-marked verified and retroactively and idempotently re-awarded (XP, milestone check, streak, calendar event); on decline it returns to aggregator-ineligible state with an optional reviewer note and may be requested again.
+### UC-84 · Review unverified study hours
+- **Primary actor:** Room host or co-host (reviewer) / User (owner, optional requester)
+- **Trigger:** A focus session in the room was finalized unverified with an eligible reason, making it available for the room's moderator to confirm.
+- **Preconditions:** Session owns `VerifiedReason ∈ {excessive_duration, too_many_sessions, excessive_tab_switches}` (NOT `too_short`/`idle_timeout`); `Completed = true`; not already verified; not already `Approved`/`Declined`.
+- **Success guarantee:** On host/co-host approval the session is re-marked verified and retroactively and idempotently re-awarded (XP, milestone check, streak, calendar event); on decline it stays aggregator-ineligible with an optional reviewer note and may be reviewed again.
 - **Main flow:**
-  1. Dashboard lists the owner's unverified sessions; the owner types a comment (≤ 2,000 chars) and submits → `POST /api/study-sessions/{id}/verify-request`.
-  2. `VerificationReviewService` validates eligibility and sets `VerificationState = Pending` + `VerificationRequestedAt`; one pending request at a time.
-  3. Host/co-host opens the room's Stats tab → the per-room `verification-queue/{roomId}` lists pending requests.
-  4. Reviewer approves/declines → `POST /api/study-sessions/{id}/verify-review`.
-  5. On approval: session set `IsVerified = true`, `VerifiedAt`, `VerificationReviewerUserId`; `AwardIfNotYetAsync` re-runs the award pipeline (XP `focus`, milestone check, `CreateStudyEventAsync`) behind the existing `AwardProcessed` guard; the pending request is removed.
-  6. On decline: `VerificationState = Declined` + optional reviewer note; no award; owner may submit a new request.
+  1. A session finishes and is flagged unverified with an eligible reason.
+  2. Host/co-host opens the room's Stats tab → `GET /api/study-sessions/verification-queue/{roomId}` returns **all** eligible unverified sessions in the room (whether or not the owner requested), requests first then oldest, including the moderator's own sessions.
+  3. Optionally, the owner adds context: Dashboard lists their unverified sessions and the owner submits `POST /api/study-sessions/{id}/verify-request` with a comment (≤ 2,000 chars) → `VerificationState = Pending` + `VerificationRequestedAt` (one pending at a time), shown as a "requested" badge alongside the session.
+  4. Reviewer approves/declines → `POST /api/study-sessions/{id}/verify-review` (moderator may review even their own session).
+  5. On approval: session set `IsVerified = true`, `VerifiedAt`, `VerificationReviewerUserId`; `AwardIfNotYetAsync` re-runs the award pipeline (XP `focus`, milestone check, `CreateStudyEventAsync`) behind the existing `AwardProcessed` guard; the owner is notified of the outcome.
+  6. On decline: `VerificationState = Declined` + optional reviewer note; no award; the owner is notified and the session may be reviewed again.
 - **Alternate flows:**
-  * Alt 1 – Not eligible / duplicate pending / self-review: the service rejects with an error (404/400); no state change.
-  * Alt 2 – Non-moderator tries to review: `UnauthorizedAccessException` → HTTP 403.
+  * Alt 1 – Ineligible or already decided (Approved/Declined/verified): the service returns the session unchanged; no re-review.
+  * Alt 2 – Non-moderator tries to load the queue or review: `UnauthorizedAccessException` → HTTP 403.
 
 ---
 
