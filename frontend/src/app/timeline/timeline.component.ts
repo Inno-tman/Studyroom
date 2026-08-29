@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -317,6 +317,8 @@ export class TimelineComponent implements OnInit {
   @Input() userId?: string;
   @Input() userName?: string;
 
+  @Output() noPosts = new EventEmitter<boolean>();
+
   posts: (Post & { showComments?: boolean; newComment?: string; replyToCommentId?: string })[] = [];
   newPostContent = '';
   loading = true;
@@ -340,6 +342,7 @@ export class TimelineComponent implements OnInit {
   async load(): Promise<void> {
     if (this.userId) {
       this.posts = (await this.postService.getUserPosts(this.userId).toPromise()) || [];
+      this.noPosts.emit(this.posts.length === 0);
     } else {
       this.posts = (await this.postService.getTimeline().toPromise()) || [];
     }

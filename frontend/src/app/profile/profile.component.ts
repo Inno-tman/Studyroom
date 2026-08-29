@@ -134,7 +134,7 @@ interface ProfileView {
         </div>
       </div>
 
-      <app-timeline *ngIf="profile" [userId]="profile.id" [userName]="profile?.displayName"></app-timeline>
+      <app-timeline *ngIf="profile && !profileNoPosts" (noPosts)="onNoPosts($event)" [userId]="profile.id" [userName]="profile?.displayName"></app-timeline>
     </div>
   `,
   styles: [`
@@ -234,6 +234,11 @@ export class ProfileComponent implements OnInit {
   };
   viewingOther = false;
   loading = true;
+  profileNoPosts = false;
+
+  onNoPosts(empty: boolean): void {
+    this.profileNoPosts = empty;
+  }
 
   get gamificationPercent(): number {
     if (!this.gamification || this.gamification.xpForNextLevel <= 0) return 0;
