@@ -30,6 +30,29 @@ public class StudySession
     /// </summary>
     public bool AwardProcessed { get; set; }
 
+    /// <summary>
+    /// Optional verification workflow: an unverified session can be explained by
+    /// its owner (VerificationComment) and requested for review; the room's
+    /// host/co-host approves (→ re-verified + retroactive award) or declines.
+    /// States: null (not reviewed) / "Pending" / "Approved" / "Declined".
+    /// Only excessive_duration, too_many_sessions and excessive_tab_switches
+    /// are eligible. AwardProcessed stays guarded so a re-award never double-counts.
+    /// </summary>
+    [MaxLength(2000)]
+    public string? VerificationComment { get; set; }
+
+    [MaxLength(20)]
+    public string? VerificationState { get; set; }
+
+    public DateTime? VerificationRequestedAt { get; set; }
+
+    public DateTime? VerifiedAt { get; set; }
+
+    public Guid? VerificationReviewerUserId { get; set; }
+
+    [MaxLength(500)]
+    public string? VerificationReviewNote { get; set; }
+
     [MaxLength(2000)]
     public string? SessionNotes { get; set; }
 

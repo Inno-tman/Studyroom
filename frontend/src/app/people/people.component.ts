@@ -104,27 +104,27 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
           </div>
           <span class="discover-count">{{ suggestions.length }} people</span>
         </div>
-        <div *ngFor="let user of suggestions" class="person-row">
-          <div class="avatar-wrap">
-            <div class="avatar" [class.has-image]="user.avatarUrl">
-              <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
-              <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+          <div *ngFor="let user of suggestions" class="person-row">
+            <div class="avatar-wrap">
+              <div class="avatar" [class.has-image]="user.avatarUrl">
+                <img *ngIf="user.avatarUrl; else sugInitial" [src]="user.avatarUrl" alt="" />
+                <ng-template #sugInitial>{{ (user.displayName || user.username).charAt(0).toUpperCase() }}</ng-template>
+              </div>
+              <span *ngIf="presenceOf(user.id)" class="presence-dot" [class.online]="presenceOf(user.id)?.isOnline"></span>
             </div>
-            <span *ngIf="presenceOf(user.id)" class="presence-dot" [class.online]="presenceOf(user.id)?.isOnline"></span>
-          </div>
-          <div class="person-info">
-            <span class="person-name">{{ user.displayName || user.username }}</span>
-            <span class="person-sub">{{ '@' + user.username }}</span>
-            <span *ngIf="user.mutualCount || user.sharedRoomCount" class="person-chips">
-              <span *ngIf="user.mutualCount" class="chip">
-                <span class="material-icons">group</span> {{ user.mutualCount }} mutual
+            <div class="person-info" [routerLink]="['/profile', user.id]">
+              <span class="person-name">{{ user.displayName || user.username }}</span>
+              <span class="person-sub">{{ '@' + user.username }}</span>
+              <span *ngIf="user.mutualCount || user.sharedRoomCount" class="person-chips">
+                <span *ngIf="user.mutualCount" class="chip">
+                  <span class="material-icons">group</span> {{ user.mutualCount }} mutual
+                </span>
+                <span *ngIf="user.sharedRoomCount" class="chip">
+                  <span class="material-icons">meeting_room</span> {{ user.sharedRoomCount }} shared
+                </span>
               </span>
-              <span *ngIf="user.sharedRoomCount" class="chip">
-                <span class="material-icons">meeting_room</span> {{ user.sharedRoomCount }} shared
-              </span>
-            </span>
-            <span *ngIf="user.reason" class="person-reason">{{ user.reason }}</span>
-          </div>
+              <span *ngIf="user.reason" class="person-reason">{{ user.reason }}</span>
+            </div>
           <button
             *ngIf="user.relationship === 'None'"
             class="btn-primary"
@@ -155,7 +155,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               </div>
               <span *ngIf="presenceOf(req.userId)" class="presence-dot" [class.online]="presenceOf(req.userId)?.isOnline"></span>
             </div>
-            <div class="person-info" [routerLink]="['/profile', profileId(req)]">
+            <div class="person-info" [routerLink]="['/profile', req.userId]">
               <span class="person-name">{{ req.displayName || req.username }}</span>
               <span class="person-sub">{{ '@' + req.username }}</span>
             </div>
@@ -184,7 +184,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
               </div>
               <span *ngIf="presenceOf(req.userId)" class="presence-dot" [class.online]="presenceOf(req.userId)?.isOnline"></span>
             </div>
-            <div class="person-info" [routerLink]="['/profile', profileId(req)]">
+            <div class="person-info" [routerLink]="['/profile', req.userId]">
               <span class="person-name">{{ req.displayName || req.username }}</span>
               <span class="person-sub">{{ '@' + req.username }}{{ req.createdAt ? ' · sent ' + (req.createdAt | date:'mediumDate') : '' }}</span>
             </div>
@@ -214,7 +214,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
             </div>
             <span *ngIf="presenceOf(friend.userId)" class="presence-dot" [class.online]="presenceOf(friend.userId)?.isOnline"></span>
           </div>
-          <div class="person-info" [routerLink]="['/profile', profileId(friend)]">
+          <div class="person-info" [routerLink]="['/profile', friend.userId]">
             <span class="person-name">{{ friend.displayName || friend.username }}</span>
             <span class="person-sub">
               {{ '@' + friend.username }}

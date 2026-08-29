@@ -1,10 +1,10 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NgFor, NgIf, DatePipe, NgClass, DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
-import { StatisticsService, Milestone, TodayProgress, Recommendation, GamificationProfile } from '../core/services/statistics.service';
-import { SignalRService } from '../core/services/signalr.service';
+import { StatisticsService, Milestone, TodayProgress, Recommendation, GamificationProfile, UnverifiedSession } from '../core/services/statistics.service';import { SignalRService } from '../core/services/signalr.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
@@ -12,7 +12,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, NgFor, NgIf, NgClass, DatePipe, DecimalPipe, LoadingComponent],
+  imports: [RouterLink, NgFor, NgIf, NgClass, DatePipe, DecimalPipe, FormsModule, LoadingComponent],
   template: `
     <div class="dashboard">
       <!-- ── Hero header card ─────────────────────────────────── -->
@@ -161,6 +161,47 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
                   <span class="rec-name">{{ r.title }}</span>
                   <span class="rec-desc">{{ r.description }}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Unverified sessions review ─────────────────────── -->
+        <div class="verification-section" *ngIf="unverifiedSessions.length > 0">
+          <div class="verification-header">
+            <span class="material-icons">verified_user</span>
+            <span class="verification-title">Review your study hours</span>
+            <span class="verification-count">{{ unverifiedSessions.length }}</span>
+          </div>
+          <p class="verification-hint">Some of your focus time was flagged as unverified. Explain what you were doing so your room host can confirm it counts.</p>
+          <div class="verification-list">
+            <div class="verification-row" *ngFor="let s of unverifiedSessions">
+              <div class="verification-info">
+                <span class="verification-duration">{{ s.durationLabel }}</span>
+                <span class="verification-reason">{{ reasonLabel(s.verifiedReason) }}</span>
+              </div>
+              <div class="verification-actions">
+                <ng-container *ngIf="!s.verificationState || s.verificationState === 'Declined'">
+                  <input
+                    class="verification-input"
+                    [placeholder]="s.verificationState === 'Declined' ? 'Try again — explain more…' : 'Explain what you studied…'"
+                    [(ngModel)]="s.__comment"
+                    (keyup.enter)="requestVerification(s)"
+                    maxlength="2000"
+                  />
+                  <button class="btn-outline btn-sm" [disabled]="!s.__comment?.trim() || s.__requesting" (click)="requestVerification(s)">
+                    Request review
+                  </button>
+                </ng-container>
+                <span *ngIf="s.verificationState === 'Pending'" class="verification-status pending">
+                  <span class="material-icons">schedule</span> Awaiting host review
+                </span>
+                <span *ngIf="s.verificationState === 'Approved'" class="verification-status approved">
+                  <span class="material-icons">check_circle</span> Approved
+                </span>
+                <span *ngIf="s.verificationState === 'Declined'" class="verification-status declined">
+                  <span class="material-icons">cancel</span> Declined<ng-container *ngIf="s.reviewNote"> — {{ s.reviewNote }}</ng-container>
+                </span>
               </div>
             </div>
           </div>
@@ -510,6 +551,41 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .rec-name { display: block; font-size: var(--font-13); font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
     .rec-desc { font-size: var(--font-12); color: var(--text-secondary); line-height: 1.45; }
 
+    /* Unverified sessions review */
+    .verification-section {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px; margin-top: 16px; margin-bottom: 16px;
+    }
+    .verification-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .verification-header .material-icons { font-size: var(--font-20); color: #f59e0b; }
+    .verification-title { font-size: var(--font-15); font-weight: 700; color: var(--text-primary); }
+    .verification-count {
+      margin-left: auto; background: #f59e0b; color: white; border-radius: 999px;
+      min-width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+      font-size: var(--font-12); font-weight: 700; padding: 0 7px;
+    }
+    .verification-hint { font-size: var(--font-12); color: var(--text-muted); margin-bottom: 12px; }
+    .verification-list { display: flex; flex-direction: column; gap: 8px; }
+    .verification-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      padding: 12px 14px; background: var(--background); border: 1px solid var(--border); border-radius: 10px;
+    }
+    .verification-info { display: flex; flex-direction: column; gap: 2px; min-width: 140px; }
+    .verification-duration { font-size: var(--font-15); font-weight: 700; color: var(--text-primary); }
+    .verification-reason { font-size: var(--font-12); color: var(--text-muted); text-transform: capitalize; }
+    .verification-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 260px; justify-content: flex-end; }
+    .verification-input {
+      flex: 1; min-width: 200px; padding: 8px 12px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);
+      font-size: var(--font-13); outline: none;
+    }
+    .verification-input::placeholder { color: var(--text-muted); }
+    .verification-status { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-13); font-weight: 600; }
+    .verification-status .material-icons { font-size: var(--font-18); }
+    .verification-status.pending { color: #f59e0b; }
+    .verification-status.approved { color: var(--success); }
+    .verification-status.declined { color: var(--error); }
+
     /* Recent sessions */
     .recent-sessions {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -618,6 +694,7 @@ export class DashboardComponent implements OnInit {
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
+  unverifiedSessions: (UnverifiedSession & { __comment?: string; __requesting?: boolean })[] = [];
   recentSessions: any[] = [];
   streakDays: { date: string; minutes: number; isToday: boolean }[] = [];
   activityFeed: any[] = [];
@@ -671,7 +748,7 @@ export class DashboardComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions, trendData, activity, gamification] = await Promise.all([
+      const [myRooms, allRooms, stats, todayProgress, milestones, recommendations, recentSessions, trendData, activity, gamification, unverified] = await Promise.all([
         this.roomService.getMyRooms().toPromise(),
         this.roomService.getAll().toPromise(),
         this.statsService.getStats().toPromise(),
@@ -681,10 +758,12 @@ export class DashboardComponent implements OnInit {
         this.statsService.getRecentSessions(10).toPromise(),
         this.statsService.getDailyTrend(30).toPromise(),
         this.statsService.getActivityFeed(15).toPromise(),
-        this.statsService.getGamification().toPromise()
+        this.statsService.getGamification().toPromise(),
+        this.statsService.getMyUnverifiedSessions().toPromise()
       ]);
       this.myRooms = myRooms || [];
       this.allRooms = allRooms || [];
+      this.unverifiedSessions = unverified || [];
       this.stats = stats || this.stats;
       this.todayProgress = todayProgress || null;
       this.milestones = milestones || [];
@@ -762,5 +841,33 @@ export class DashboardComponent implements OnInit {
     if (['lightbulb', 'auto_awesome', 'psychology'].includes(icon)) return 'accent';
     if (['emoji_events', 'star', 'military_tech'].includes(icon)) return 'purple';
     return 'blue';
+  }
+
+  reasonLabel(reason?: string): string {
+    switch (reason) {
+      case 'excessive_duration': return 'Long session (> 4h)';
+      case 'too_many_sessions': return 'Very large daily total';
+      case 'excessive_tab_switches': return 'Many tab switches';
+      case 'idle_timeout': return 'Auto-finalized while away';
+      case 'too_short': return 'Very short session';
+      default: return reason || 'Unverified';
+    }
+  }
+
+  async requestVerification(s: UnverifiedSession & { __comment?: string; __requesting?: boolean }) {
+    const comment = s.__comment?.trim();
+    if (!comment || s.__requesting) return;
+    (s as any).__requesting = true;
+    try {
+      const updated = await this.statsService.requestVerification(s.id, comment).toPromise();
+      if (updated) {
+        const idx = this.unverifiedSessions.findIndex(x => x.id === s.id);
+        if (idx >= 0) this.unverifiedSessions[idx] = { ...this.unverifiedSessions[idx], verificationState: updated.verificationState, verificationComment: updated.verificationComment };
+      }
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to submit review request.');
+    } finally {
+      (s as any).__requesting = false;
+    }
   }
 }

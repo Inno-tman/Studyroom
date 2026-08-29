@@ -228,6 +228,7 @@ builder.Services.AddScoped<INudgeService, NudgeService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<ICalendarService, CalendarService>();
+builder.Services.AddScoped<IVerificationReviewService, VerificationReviewService>();
 
 var app = builder.Build();
 
@@ -291,6 +292,12 @@ using (var scope = app.Services.CreateScope())
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "LastSeenAt" timestamp NULL;
         ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "TimeZoneId" text NULL;
         ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "AwardProcessed" boolean NOT NULL DEFAULT false;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerificationComment" text NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerificationState" text NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerificationRequestedAt" timestamp NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerifiedAt" timestamp NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerificationReviewerUserId" uuid NULL;
+        ALTER TABLE "StudySessions" ADD COLUMN IF NOT EXISTS "VerificationReviewNote" text NULL;
     """);
     await context.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "AiConversations" (

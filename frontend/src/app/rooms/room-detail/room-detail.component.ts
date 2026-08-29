@@ -10,7 +10,7 @@ import { MeetingService } from '../../core/services/meeting.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { ChatService } from '../../core/services/chat.service';
 import { NotesService } from '../../core/services/notes.service';
-import { StatisticsService, LeaderboardEntry, RoomCollectiveStats } from '../../core/services/statistics.service';
+import { StatisticsService, LeaderboardEntry, RoomCollectiveStats, UnverifiedSession } from '../../core/services/statistics.service';
 import { AuthService } from '../../core/services/auth.service';
 import { InvitationService } from '../../core/services/invitation.service';
 import { FriendService } from '../../core/services/friend.service';
@@ -320,6 +320,25 @@ const TABS: RoomTab[] = [
                 <div class="hour-col-sm" *ngFor="let h of roomHourly" [title]="h.hour + ':00 — ' + formatDuration(h.minutes)">
                   <div class="hour-fill-sm" [style.height.%]="getHourHeight(h.minutes)"></div>
                   <span class="hour-label-sm" *ngIf="h.hour % 3 === 0">{{ h.hour }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Verification review queue (host/co-host only) ── -->
+            <div class="review-queue" *ngIf="isModerator && reviewQueue.length > 0">
+              <h3>Verification Requests</h3>
+              <p class="review-queue-hint">Members flagged unverified study time and are waiting for your confirmation.</p>
+              <div class="review-queue-list">
+                <div class="review-row" *ngFor="let r of reviewQueue">
+                  <div class="review-info">
+                    <span class="review-duration">{{ r.durationLabel }}</span>
+                    <span class="review-reason">{{ reasonLabel(r.verifiedReason) }}</span>
+                    <span class="review-comment" *ngIf="r.verificationComment">"{{ r.verificationComment }}"</span>
+                  </div>
+                  <div class="review-actions">
+                    <button class="btn-primary btn-sm" [disabled]="r.__busy" (click)="reviewSession(r, true)">Approve</button>
+                    <button class="btn-outline-danger btn-sm" [disabled]="r.__busy" (click)="reviewSession(r, false)">Decline</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -814,6 +833,21 @@ const TABS: RoomTab[] = [
     .hour-col-sm:hover .hour-fill-sm { opacity: 1; }
     .hour-label-sm { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
 
+    /* ── Verification review queue ────────────────────────────── */
+    .review-queue { margin-top: 20px; }
+    .review-queue h3 { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .review-queue-hint { font-size: var(--font-12); color: var(--text-muted); margin-bottom: 10px; }
+    .review-queue-list { display: flex; flex-direction: column; gap: 8px; }
+    .review-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      padding: 10px 12px; background: var(--background); border: 1px solid var(--border); border-radius: 10px;
+    }
+    .review-info { display: flex; flex-direction: column; gap: 2px; min-width: 140px; }
+    .review-duration { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .review-reason { font-size: var(--font-12); color: var(--text-muted); text-transform: capitalize; }
+    .review-comment { font-size: var(--font-12); color: var(--text-secondary); font-style: italic; }
+    .review-actions { display: flex; gap: 8px; }
+
     /* ── Chat ───────────────────────────────────────────────── */
     .messages { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
 
@@ -1223,6 +1257,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   scheduleError = '';
   showRolesDialog = false;
   roleChangingId = '';
+  reviewQueue: (UnverifiedSession & { __busy?: boolean })[] = [];
 
   // ── YouTube broadcast (host-only start; synced playback) ──
   broadcastVideoId?: string;
@@ -1280,6 +1315,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     }
     if (id === 'stats' && this.roomId) {
       this.loadRoomStats();
+      this.loadReviewQueue();
     }
   }
 
@@ -1334,12 +1370,47 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     return !!myName && this.room.createdByUsername === myName;
   }
 
+  get isModerator(): boolean {
+    return this.myRole === 'host' || this.myRole === 'cohost';
+  }
+
   get manageableMembers(): UserDto[] {
     return this.members.filter(m => m.id !== this.currentUserId && m.role !== 'host');
   }
 
   get myRole(): string {
     return this.members.find(m => m.id === this.currentUserId)?.role || 'member';
+  }
+
+  reasonLabel(reason?: string): string {
+    switch (reason) {
+      case 'excessive_duration': return 'Long session (> 4h)';
+      case 'too_many_sessions': return 'Very large daily total';
+      case 'excessive_tab_switches': return 'Many tab switches';
+      case 'idle_timeout': return 'Auto-finalized while away';
+      case 'too_short': return 'Very short session';
+      default: return reason || 'Unverified';
+    }
+  }
+
+  async loadReviewQueue(): Promise<void> {
+    if (!this.roomId || !this.isModerator) return;
+    try {
+      this.reviewQueue = await this.statsService.getRoomVerificationQueue(this.roomId).toPromise() || [];
+    } catch { this.reviewQueue = []; }
+  }
+
+  async reviewSession(r: UnverifiedSession & { __busy?: boolean }, approve: boolean): Promise<void> {
+    if (r.__busy) return;
+    (r as any).__busy = true;
+    try {
+      await this.statsService.reviewVerification(r.id, approve).toPromise();
+      this.reviewQueue = this.reviewQueue.filter(x => x.id !== r.id);
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to submit the review.');
+    } finally {
+      (r as any).__busy = false;
+    }
   }
 
   async toggleCoHost(member: UserDto): Promise<void> {
@@ -1632,6 +1703,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
         await this.loadOtherMeetings();
         await this.loadLeaderboard();
         await this.setupSignalR();
+        await this.loadReviewQueue();
       }
     } catch { } finally {
       this.loading = false;

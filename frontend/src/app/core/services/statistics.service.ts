@@ -99,6 +99,21 @@ export interface FriendLeaderboardRow {
   streak: number;
 }
 
+export interface UnverifiedSession {
+  id: string;
+  roomId: string;
+  durationMinutes: number;
+  durationLabel: string;
+  isVerified: boolean;
+  verifiedReason?: string;
+  startedAt?: string;
+  createdAt: string;
+  verificationState?: string;
+  verificationComment?: string;
+  verificationRequestedAt?: string;
+  reviewNote?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StatisticsService {
   constructor(private http: HttpClient) {}
@@ -218,5 +233,22 @@ export class StatisticsService {
 
   getFriendLeaderboard(): Observable<FriendLeaderboardRow[]> {
     return this.http.get<FriendLeaderboardRow[]>(`${environment.apiUrl}/gamification/leaderboard`);
+  }
+
+  // ── Unverified-session review workflow ──────────────────────────────────
+  getMyUnverifiedSessions(): Observable<UnverifiedSession[]> {
+    return this.http.get<UnverifiedSession[]>(`${environment.apiUrl}/study-sessions/unverified`);
+  }
+
+  getRoomVerificationQueue(roomId: string): Observable<UnverifiedSession[]> {
+    return this.http.get<UnverifiedSession[]>(`${environment.apiUrl}/study-sessions/verification-queue/${roomId}`);
+  }
+
+  requestVerification(sessionId: string, comment: string): Observable<UnverifiedSession> {
+    return this.http.post<UnverifiedSession>(`${environment.apiUrl}/study-sessions/${sessionId}/verify-request`, { comment });
+  }
+
+  reviewVerification(sessionId: string, approve: boolean, note?: string): Observable<UnverifiedSession> {
+    return this.http.post<UnverifiedSession>(`${environment.apiUrl}/study-sessions/${sessionId}/verify-review`, { approve, note });
   }
 }

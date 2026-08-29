@@ -261,6 +261,14 @@ Story groups:
 - As a user, I want **desktop notifications handled via a service worker** so that alerts work even in the background.
 - As a user, I want the interface to be **responsive** (mobile tab bars, single-pane messaging, floating docks) so that I can use StudyRoom on any device.
 
+## 28. Unverified Study-Hours Review
+
+- As a user, I want my **flagged (unverified) focus sessions** listed on the Dashboard so that I can see what was not counted.
+- As a user, I want to **explain a flagged session with a comment and request review** so that my host can confirm the time counts.
+- As a user, I want to **see the status** of my review requests (awaiting review / approved / declined with the reviewer's note) so that I know where each request stands.
+- As a room host or co-host, I want a **review queue** in my room's Stats tab listing pending verification requests so that I can approve or decline them.
+- As a room host or co-host, I want an approved session to **count retroactively** (XP, milestones, streak, calendar) so that the user gets full credit for confirmed time.
+
 ---
 
 *Generated from a full codebase scan of the StudyRoom solution. Endpoint, service, and component details were verified against the backend API/controllers/services/hub and the Angular frontend pages/components/services.*

@@ -22,6 +22,7 @@ public class StudySessionsController : ControllerBase
     private readonly INotificationService _notificationService;
     private readonly ITimerScheduler _timerScheduler;
     private readonly ISessionFinalizerService _finalizer;
+    private readonly IVerificationReviewService _verificationReview;
 
     public StudySessionsController(
         IStudySessionRepository sessionRepo,
@@ -30,7 +31,8 @@ public class StudySessionsController : ControllerBase
         IHubContext<StudyRoomHub> hubContext,
         INotificationService notificationService,
         ITimerScheduler timerScheduler,
-        ISessionFinalizerService finalizer)
+        ISessionFinalizerService finalizer,
+        IVerificationReviewService verificationReview)
     {
         _sessionRepo = sessionRepo;
         _roomRepo = roomRepo;
@@ -38,6 +40,7 @@ public class StudySessionsController : ControllerBase
         _notificationService = notificationService;
         _timerScheduler = timerScheduler;
         _finalizer = finalizer;
+        _verificationReview = verificationReview;
     }
 
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -287,6 +290,98 @@ public class StudySessionsController : ControllerBase
             verifiedReason = session.VerifiedReason
         });
     }
+
+    // ── Unverified-session review workflow ──────────────────────────────
+    // A user can explain an unverified session and ask the room's host/co-host
+    // to re-verify it; an approved session is re-marked verified and awarded.
+
+    [HttpGet("unverified")]
+    public async Task<IActionResult> GetMyUnverifiedSessions()
+    {
+        var sessions = await _verificationReview.GetMySessionsAsync(UserId);
+        return Ok(sessions.Select(MapSessionDto));
+    }
+
+    [HttpGet("verification-queue/{roomId:guid}")]
+    public async Task<IActionResult> GetRoomVerificationQueue(Guid roomId)
+    {
+        try
+        {
+            var sessions = await _verificationReview.GetRoomReviewQueueAsync(roomId, UserId);
+            return Ok(sessions.Select(MapSessionDto));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost("{id}/verify-request")]
+    public async Task<IActionResult> RequestVerification(Guid id, [FromBody] VerifyRequest request)
+    {
+        try
+        {
+            var session = await _verificationReview.RequestReviewAsync(id, UserId, request.Comment ?? "");
+            if (session == null) return NotFound(new { error = "Session not found" });
+            return Ok(MapSessionDto(session));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/verify-review")]
+    public async Task<IActionResult> ReviewVerification(Guid id, [FromBody] VerifyReviewRequest request)
+    {
+        try
+        {
+            var session = await _verificationReview.ReviewAsync(id, UserId, request.Approve, request.Note);
+            if (session == null) return NotFound(new { error = "Session not found" });
+            return Ok(MapSessionDto(session));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static object MapSessionDto(StudySession s)
+    {
+        var minutes = Math.Round(s.DurationMinutes, 2);
+        var h = (int)Math.Floor(minutes / 60);
+        var m = (int)Math.Round(minutes % 60);
+        return new
+        {
+            id = s.Id,
+            roomId = s.RoomId,
+            durationMinutes = minutes,
+            durationLabel = h > 0 ? (m > 0 ? $"{h}h {m}m" : $"{h}h") : $"{m}m",
+            isVerified = s.IsVerified,
+            verifiedReason = s.VerifiedReason,
+            startedAt = s.StartedAt,
+            createdAt = s.CreatedAt,
+            verificationState = s.VerificationState,
+            verificationComment = s.VerificationComment,
+            verificationRequestedAt = s.VerificationRequestedAt,
+            reviewNote = s.VerificationReviewNote
+        };
+    }
+}
+
+public class VerifyRequest
+{
+    public string? Comment { get; set; }
+}
+
+public class VerifyReviewRequest
+{
+    public bool Approve { get; set; }
+    public string? Note { get; set; }
 }
 
 public class SessionRequest

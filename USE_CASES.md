@@ -901,6 +901,22 @@ Listed as sequence-level guarantees that power the realtime features above.
 - **Alternate flows:**
   * Alt 1 – No dynamic data yet: badges show zero/empty counts while data loads.
 
+### UC-84 · Request/approve study-hours verification
+- **Primary actor:** User (requester) / Room host or co-host (reviewer)
+- **Trigger:** A user's focus session was finalized unverified with an eligible reason, and the user asks the room's host to confirm it.
+- **Preconditions:** Session owns `VerifiedReason ∈ {excessive_duration, too_many_sessions, excessive_tab_switches}` (NOT `too_short`/`idle_timeout`), no pending request already exists, and the requester is not reviewing their own session.
+- **Success guarantee:** The request is `Pending`; on host/co-host approval the session is re-marked verified and retroactively and idempotently re-awarded (XP, milestone check, streak, calendar event); on decline it returns to aggregator-ineligible state with an optional reviewer note and may be requested again.
+- **Main flow:**
+  1. Dashboard lists the owner's unverified sessions; the owner types a comment (≤ 2,000 chars) and submits → `POST /api/study-sessions/{id}/verify-request`.
+  2. `VerificationReviewService` validates eligibility and sets `VerificationState = Pending` + `VerificationRequestedAt`; one pending request at a time.
+  3. Host/co-host opens the room's Stats tab → the per-room `verification-queue/{roomId}` lists pending requests.
+  4. Reviewer approves/declines → `POST /api/study-sessions/{id}/verify-review`.
+  5. On approval: session set `IsVerified = true`, `VerifiedAt`, `VerificationReviewerUserId`; `AwardIfNotYetAsync` re-runs the award pipeline (XP `focus`, milestone check, `CreateStudyEventAsync`) behind the existing `AwardProcessed` guard; the pending request is removed.
+  6. On decline: `VerificationState = Declined` + optional reviewer note; no award; owner may submit a new request.
+- **Alternate flows:**
+  * Alt 1 – Not eligible / duplicate pending / self-review: the service rejects with an error (404/400); no state change.
+  * Alt 2 – Non-moderator tries to review: `UnauthorizedAccessException` → HTTP 403.
+
 ---
 
 *Extracted from a full codebase scan of the StudyRoom solution. Cross-referenced with `USER_STORIES.md` and `BUSINESS_RULES.md`.*
