@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { StatisticsService, GamificationProfile } from '../core/services/statistics.service';
 import { UserService } from '../core/services/user.service';
+import { PostService } from '../core/services/post.service';
 import { TimelineComponent } from '../timeline/timeline.component';
 import { UserStats } from '../shared/models/stats.model';
 
@@ -134,7 +135,7 @@ interface ProfileView {
         </div>
       </div>
 
-      <app-timeline *ngIf="profile && !profileNoPosts" (noPosts)="onNoPosts($event)" [userId]="profile.id" [userName]="profile?.displayName"></app-timeline>
+      <app-timeline *ngIf="profile && profileHasPosts" [userId]="profile.id" [userName]="profile?.displayName"></app-timeline>
     </div>
   `,
   styles: [`
@@ -222,6 +223,7 @@ export class ProfileComponent implements OnInit {
   auth = inject(AuthService);
   private statsService = inject(StatisticsService);
   private userService = inject(UserService);
+  private postService = inject(PostService);
   private route = inject(ActivatedRoute);
 
   profile: ProfileView | null = null;
@@ -234,11 +236,7 @@ export class ProfileComponent implements OnInit {
   };
   viewingOther = false;
   loading = true;
-  profileNoPosts = false;
-
-  onNoPosts(empty: boolean): void {
-    this.profileNoPosts = empty;
-  }
+  profileHasPosts: boolean | null = null;
 
   get gamificationPercent(): number {
     if (!this.gamification || this.gamification.xpForNextLevel <= 0) return 0;
@@ -282,6 +280,7 @@ export class ProfileComponent implements OnInit {
     try {
       if (id && id !== me?.id) {
         this.viewingOther = true;
+        this.profileHasPosts = false;
         const user = await this.userService.getById(id).toPromise();
         if (!user) return;
         this.profile = {
@@ -297,7 +296,10 @@ export class ProfileComponent implements OnInit {
           role: user.role
         };
         this.stats = user.stats || this.stats;
+        const posts = (await this.postService.getUserPosts(user.id).toPromise()) || [];
+        this.profileHasPosts = posts.length > 0;
       } else {
+        this.profileHasPosts = true;
         if (me) {
           this.profile = {
             id: me.id,
