@@ -47,7 +47,7 @@ Understanding of standard notation:
 1. [Authentication & Account](#1-authentication--account)
 2. [Profile & Onboarding](#2-profile--onboarding)
 3. [Dashboard](#3-dashboard)
-4. [Study Rooms](#4-study-rooms)
+4. [Rooms](#4-rooms)
 5. [Room Chat](#5-room-chat)
 6. [Focus Timer](#6-focus-timer)
 7. [Shared Notes](#7-shared-notes)
@@ -57,7 +57,7 @@ Understanding of standard notation:
 11. [Educational Games](#11-educational-games)
 12. [Meetings & Video Rooms](#12-meetings--video-rooms)
 13. [Peer Calls](#13-peer-calls)
-14. [Video Broadcast & Study Player](#14-video-broadcast--study-player)
+14. [Video Broadcast & Room Player](#14-video-broadcast--room-player)
 15. [Social Feed & Posts](#15-social-feed--posts)
 16. [Friends & People](#16-friends--people)
 17. [Direct Messages](#17-direct-messages)
@@ -176,7 +176,9 @@ Understanding of standard notation:
 - **Alternate flows:**
   * Alt 1 – Incomplete profile: a "Complete Profile" banner is shown linking to settings.
 
-## 4. Study Rooms
+## 4. Rooms
+
+> A room is a general-purpose space for any shared activity (focus/study, quiet coworking, a social hangout, a gaming session, a watch party, a book club, or anything the members agree on). Study is just the default example — the same tools work for any room theme.
 
 ### UC-09 · Browse and search rooms
 - **Primary actor:** Student
@@ -289,7 +291,7 @@ Understanding of standard notation:
 
 ### UC-19 · Start a focus session
 - **Primary actor:** Room member
-- **Trigger:** User starts the timer in the Focus tab (or quick-study).
+- **Trigger:** User starts the timer in the Focus tab (or quick-start).
 - **Preconditions:** Member; the room has no in-progress session (an in-progress session for the room is resumed).
 - **Success guarantee:** Timer runs; room sees the user as focusing; server schedules completion; the `sessionId` is returned for tab-switch reporting.
 - **Main flow:**
@@ -297,7 +299,7 @@ Understanding of standard notation:
   2. System reuses the room's in-progress session (updating duration + start) **or** creates a fresh one; returns `sessionId`; schedules server-side completion; broadcasts `TimerStarted` + updates the "focusing" count.
   3. Frontend runs the countdown (breaks optional; auto-start-next toggle respected) and reports later tab switches against the `sessionId`.
 - **Alternate flows:**
-  * Alt 1 – Friends in the room: accepted friends present receive a "Someone you know is studying" notification.
+  * Alt 1 – Friends in the room: accepted friends present receive a "Someone you know is focusing" notification.
 
 ### UC-20 · Complete a focus session
 - **Primary actor:** Room member
@@ -439,11 +441,11 @@ Understanding of standard notation:
 - **Alternate flows:**
   * Alt 1 – Editing another user's deck: `404`.
 
-### UC-34 · Study a deck (flip cards)
+### UC-34 · Drill a deck (flip cards)
 - **Primary actor:** Student
-- **Trigger:** User clicks Study on a deck.
+- **Trigger:** User clicks Drill on a deck.
 - **Preconditions:** Deck has cards.
-- **Success guarantee:** 3D flip-card study view with navigation, position counter, and shuffle.
+- **Success guarantee:** 3D flip-card view with navigation, position counter, and shuffle.
 - **Main flow:**
   1. User taps a card to flip front/back.
   2. User navigates prev/next or shuffles the order.
@@ -557,7 +559,7 @@ Understanding of standard notation:
   * Alt 1 – One party disconnects: the hub closes the call and notifies the peer (+ push).
   * Alt 2 – Receiver was offline: cold-start recovery (see UC-43).
 
-## 14. Video Broadcast & Study Player
+## 14. Video Broadcast & Room Player
 
 ### UC-46 · Host a YouTube broadcast in a room
 - **Primary actor:** Room Host
@@ -572,9 +574,9 @@ Understanding of standard notation:
   * Alt 1 – Invalid link: rejected with an error.
   * Alt 2 – Non-host tries to control/stop: ignored.
 
-### UC-47 · Use the personal YouTube study player
+### UC-47 · Use the personal YouTube focus player
 - **Primary actor:** Student
-- **Trigger:** User opens the study player from the floating dock.
+- **Trigger:** User opens the room player from the floating dock.
 - **Success guarantee:** User searches/pastes a video, queues songs, shuffles, and listens while the screen stays awake; collapses to a mini-pill.
 
 ## 15. Social Feed & Posts
@@ -732,18 +734,18 @@ Understanding of standard notation:
 
 ## 20. Presence
 
-### UC-64 · See who's online and studying
+### UC-64 · See who's online and focusing
 - **Primary actor:** Student
 - **Trigger:** User opens the presence dock or views People/Messages.
 - **Preconditions:** Authenticated; connection active.
-- **Success guarantee:** The dock shows a live count of people studying now; expanding shows who's online and in which room; online dots/last-seen show everywhere.
+- **Success guarantee:** The dock shows a live count of people focusing now; expanding shows who's online and in which room; online dots/last-seen show everywhere.
 - **Main flow:**
   1. Hub tracks per-user connection counts (multi-tab safe).
   2. Dock / lists render online state; clicking an avatar opens their profile or jumps into their room.
 
 ## 21. Analytics & Statistics
 
-### UC-65 · View study analytics
+### UC-65 · View focus analytics
 - **Primary actor:** Student
 - **Trigger:** User opens `/analytics`.
 - **Preconditions:** Authenticated.
@@ -757,7 +759,7 @@ Understanding of standard notation:
 - **Trigger:** User saves a weekly target.
 - **Success guarantee:** Goal stored keyed to ISO week; actual minutes recomputed from the week's start.
 
-### UC-67 · Export study data
+### UC-67 · Export focus data
 - **Primary actor:** Student
 - **Trigger:** User clicks Export (CSV or JSON).
 - **Preconditions:** Authenticated.
@@ -811,11 +813,11 @@ Understanding of standard notation:
 - **Alternate flows:**
   * Alt 1 – Code exchange fails: error returned; no connection stored.
 
-### UC-73 · Auto-sync study events
+### UC-73 · Auto-sync focus events
 - **Primary actor:** Student
 - **Trigger:** A verified session completes (system-side), or user clicks Sync Now.
 - **Preconditions:** At least one auto-sync connection.
-- **Success guarantee:** One study event (transparent/free) exists per connected calendar **per day**; a later session the same day **extends** (PATCHes) the event's end time rather than duplicating; expired tokens refreshed first.
+- **Success guarantee:** One focus event (transparent/free) exists per connected calendar **per day**; a later session the same day **extends** (PATCHes) the event's end time rather than duplicating; expired tokens refreshed first.
 - **Main flow:**
   1. On completion the system loops active connections and refreshes tokens expiring within 5 min.
   2. For each provider it looks up the day's `CalendarStudyEvents` marker: if present, PATCH the event end time; if absent, create the event and store the marker.
@@ -843,9 +845,9 @@ Understanding of standard notation:
 - **Trigger:** User edits Appearance settings.
 - **Success guarantee:** Theme (light/system/dark), accent color (presets/custom), corner style, text size, font, compact mode, reduce motion, and high contrast apply across the app and persist.
 
-### UC-77 · Set study preferences
+### UC-77 · Set focus preferences
 - **Primary actor:** Student
-- **Trigger:** User edits Study settings.
+- **Trigger:** User edits Focus settings.
 - **Success guarantee:** Focus duration, break duration, daily goal (10–720 clamp), and auto-start-next are saved and used by the timer/dashboard.
 
 ### UC-78 · Manage account security
@@ -894,14 +896,14 @@ Listed as sequence-level guarantees that power the realtime features above.
 - **Primary actor:** User
 - **Trigger:** User opens any main page (Timeline, People, Analytics, Flashcards, Games, Messages, Invitations, Notifications, Settings).
 - **Preconditions:** Authenticated.
-- **Success guarantee:** The page renders the shared `app-hero-card` (gradient: title + subtitle + optional action + stat badges) matching Dashboard and Study Rooms.
+- **Success guarantee:** The page renders the shared `app-hero-card` (gradient: title + subtitle + optional action + stat badges) matching Dashboard and Rooms.
 - **Main flow:**
   1. Router activates the page.
   2. The shared hero renders the page title/subtitle; page-specific action buttons (e.g. Analytics CSV/JSON export, Notifications "Mark all as read") project into the action slot; dynamic stats (posts, friends, decks, games, unread counts…) appear as badges.
 - **Alternate flows:**
   * Alt 1 – No dynamic data yet: badges show zero/empty counts while data loads.
 
-### UC-84 · Review unverified study hours
+### UC-84 · Review unverified session hours
 - **Primary actor:** Room host or co-host (reviewer) / User (owner, optional requester)
 - **Trigger:** A focus session in the room was finalized unverified with an eligible reason, making it available for the room's moderator to confirm.
 - **Preconditions:** Session owns `VerifiedReason ∈ {excessive_duration, too_many_sessions, excessive_tab_switches}` (NOT `too_short`/`idle_timeout`); `Completed = true`; not already verified; not already `Approved`/`Declined`.

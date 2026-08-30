@@ -2,10 +2,10 @@
 
 > **Maintenance convention:** every new feature updates **all three** specification artifacts: business rules (this file), user stories (`USER_STORIES.md`), and use cases (`USE_CASES.md`). See the use-case template in `USE_CASES.md`.
 
-This document catalogs the enforceable business rules of ResVibe, extracted from a full scan of the codebase (ASP.NET Core API, SignalR hub, hosted services, PostgreSQL schema DDL, and the Angular frontend). Rules are grouped by feature area so they can be referenced alongside the user stories.
+This document catalogs the enforceable business rules of ResVibe, a live, multi-purpose community platform where people open **rooms** for any shared activity (focus/study, coworking, social, gaming, watch parties, and more) and gather in real time. Rules are extracted from a full scan of the codebase (ASP.NET Core API, SignalR hub, hosted services, PostgreSQL schema DDL, and the Angular frontend) and grouped by feature area so they can be referenced alongside the user stories.
 
 Rule groups:
-[1. Cross-Cutting](#1-cross-cutting) · [2. Authentication & Users](#2-authentication--users) · [3. Rooms](#3-rooms) · [4. Study Sessions & Focus Timer](#4-study-sessions--focus-timer) · [5. Statistics & Analytics](#5-statistics--analytics) · [6. Chat](#6-chat) · [7. Meetings & Calls](#7-meetings--calls) · [8. Notes](#8-notes) · [9. Posts & Social Feed](#9-posts--social-feed) · [10. Friends & Social Graph](#10-friends--social-graph) · [11. Direct Messages](#11-direct-messages) · [12. Notifications & Push](#12-notifications--push) · [13. Room Invitations](#13-room-invitations) · [14. Gamification (XP/Streaks/Milestones)](#14-gamification-xpstreaksmilestones) · [15. Leaderboards](#15-leaderboards) · [16. Room Tasks](#16-room-tasks) · [17. Flashcards](#17-flashcards) · [18. AI Assistant & Research](#18-ai-assistant--research) · [19. Games](#19-games) · [20. Calendar Sync](#20-calendar-sync) · [21. Presence & Realtime](#21-presence--realtime) · [22. Recommendations, Nudges & Summaries](#22-recommendations-nudges--summaries) · [23. Realtime Hub (SignalR)](#23-realtime-hub-signalr) · [24. Frontend UX Rules](#24-frontend-ux-rules)
+[1. Cross-Cutting](#1-cross-cutting) · [2. Authentication & Users](#2-authentication--users) · [3. Rooms](#3-rooms) · [4. Room Sessions & Focus Timer](#4-room-sessions--focus-timer) · [5. Statistics & Analytics](#5-statistics--analytics) · [6. Chat](#6-chat) · [7. Meetings & Calls](#7-meetings--calls) · [8. Notes](#8-notes) · [9. Posts & Social Feed](#9-posts--social-feed) · [10. Friends & Social Graph](#10-friends--social-graph) · [11. Direct Messages](#11-direct-messages) · [12. Notifications & Push](#12-notifications--push) · [13. Room Invitations](#13-room-invitations) · [14. Gamification (XP/Streaks/Milestones)](#14-gamification-xpstreaksmilestones) · [15. Leaderboards](#15-leaderboards) · [16. Room Tasks](#16-room-tasks) · [17. Flashcards](#17-flashcards) · [18. AI Assistant & Research](#18-ai-assistant--research) · [19. Games](#19-games) · [20. Calendar Sync](#20-calendar-sync) · [21. Presence & Realtime](#21-presence--realtime) · [22. Recommendations, Nudges & Summaries](#22-recommendations-nudges--summaries) · [23. Realtime Hub (SignalR)](#23-realtime-hub-signalr) · [24. Frontend UX Rules](#24-frontend-ux-rules)
 
 ---
 
@@ -43,11 +43,15 @@ Rule groups:
 
 ## 3. Rooms
 
+> A **room** is a general-purpose space anyone can open for any shared activity — focused studying, quiet coworking, a social hangout, a gaming session, a watch party, a book club, or anything the members agree on. "Subject" describes the room's theme/purpose (study is only the default example), and the room's tooling (timer, notes, tasks, calls, chat) works the same way for any activity.
+
 - Roles: `host`, `cohost`, `member`. Creator automatically becomes `host`.
 - **Update:** only the owner or a co-host may update a room — otherwise `403`.
 - **Delete:** only the owner may delete a room — otherwise `403`.
 - **Role assignment:** only the host may change a member's role (to `member` or `cohost`), and a host cannot change their own role.
 - **Moderator** = owner or co-host (used for moderation checks).
+- **Room purpose/visibility:** a room may be public (discoverable/browsable) or private (join-code gated); the same moderation, member, and session rules apply regardless of purpose.
+- **Topic breadth:** rooms are not limited to academic subjects — the `subject` field accepts any short theme label (≤50); filtering/search by subject applies uniformly to all room types.
 - **Join:** for private rooms, an exact join code is required; joining rejects users who are already members; leaving rejects non-members (`400`).
 - **Private rooms** get a 6-character join code drawn only from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (omits ambiguous characters 0/O/1/I).
 - The **join code is exposed only to the creator and members** of that room.
@@ -55,26 +59,28 @@ Rule groups:
 - **Background upload:** owner-only; max 5 MB; accepted types `.jpg`, `.jpeg`, `.png`, `.webp` only.
 - Room name is required (≤100); description ≤500; subject ≤50.
 
-## 4. Study Sessions & Focus Timer
+## 4. Room Sessions & Focus Timer
+
+> A **session** (a.k.a. "lock-in" / "focus time") is time a user spends actively in a room with the timer running. Study is the default example, but a session can back any focused room activity — quiet coworking, writing, reading, coding, or any shared deep-work the room is for. The verification, trust, and award logic below is **activity-agnostic** and applies to whatever the room is hosting.
 
 - **One open focus session per user per room:** `start` reuses/resumes an in-progress session *for the same room* (updating `DurationMinutes` + `StartedAt` and re-scheduling the server timer) and returns its `sessionId`; starting in a different room creates a fresh session. Sessions never silently jump rooms.
 - **Idempotent completion (single award):** the shared `SessionFinalizerService` claims a session atomically (`Completed=true`, `DurationMinutes`, `IsVerified`, `AwardProcessed=true` set in one `ExecuteUpdateAsync` won by exactly one caller) — duplicate completes, a retry after a lost connection, and the server-side timeout sweep can never double-award; losing callers get "no active session" and no duplicate notification.
 - **Session validation (verification) — ordered checks** on completion; first triggered rule marks the session unverified with a `VerifiedReason`:
-  1. `DurationMinutes > 240` → `excessive_duration`.
-  2. `DurationMinutes < 1` → `too_short`.
-  3. Verified minutes already accrued today (the user's local day) + this session's `DurationMinutes` > 600 → `too_many_sessions` (a minutes-aware daily cap, not a session count).
-  4. Tab-switch **round-trips** > allowed, where `allowed = max(1, floor(durationMinutes / 10))` → `excessive_tab_switches`.
-  - Otherwise the session stays verified (verified by default on creation).
+   1. `DurationMinutes > 240` → `excessive_duration`.
+   2. `DurationMinutes < 1` → `too_short`.
+   3. Verified minutes already accrued today (the user's local day) + this session's `DurationMinutes` > 600 → `too_many_sessions` (a minutes-aware daily cap, not a session count).
+   4. Tab-switch **round-trips** > allowed, where `allowed = max(1, floor(durationMinutes / 10))` → `excessive_tab_switches`.
+   - Otherwise the session stays verified (verified by default on creation).
 - **Trust score** = `max(30, 100 − 2 × roundTrips)`; each completed distraction (a `left` followed by a `returned`) costs 2 points with a floor of 30.
 - **Tab-switch events** are recorded (`left` / `returned`) only while there is an active session, keyed to that session's `sessionId`; an ending `left` (app closed at completion) is benign and not penalized.
 - **XP award** (on verified completion only): `max(1, round(durationMinutes))` points, event type `focus`, label "Focus session completed". XP is never awarded for `points <= 0`.
 - **Milestone checks** run after every verified completion.
-- **Calendar sync** happens for verified completions only; event title = `Study: {roomName} ({minutes} min)`.
+- **Calendar sync** happens for verified completions only; event title = `ResVibe: {roomName} ({minutes} min)`.
 - A `Focus session complete` notification is created on completion.
 - **Collective room goal** = `max(50h, memberCount × 10h)` per week.
 - **Session notes:** editable only by the session owner; ≤ 2,000 chars.
 - **Idle-timeout recovery (SessionWatcher):** sessions older than 6 hours still incomplete are auto-finalized with actual elapsed time, marked `Completed = true`, `IsVerified = false`, `VerifiedReason = "idle_timeout"`, and the user is notified ("auto-finalized ... (you were away)").
-- **Verification review (unverified study hours):** only `excessive_duration`, `too_many_sessions`, and `excessive_tab_switches` are eligible for review — `too_short` and `idle_timeout` are **not**. Every eligible unverified session in a room appears in the host/co-host moderator's **verification queue automatically, before the owner submits a request**; the owner may additionally submit a request with a comment (≤ 2,000 chars, one pending at a time) to add context. The room's **host or co-host** (moderator; NOT a global admin) approves or declines from the queue; a moderator may also review their own flagged sessions. Approval re-marks the session verified (`IsVerified = true`, `VerifiedAt`, reviewer id) and **retroactively re-awards** it idempotently (XP for the session, milestone check, streak, calendar event) — the existing `AwardProcessed` guard prevents any double-award. Decline stores an optional reviewer note (`VerificationReviewNote`); a declined session can be requested/approved again.
+- **Verification review (unverified session hours):** only `excessive_duration`, `too_many_sessions`, and `excessive_tab_switches` are eligible for review — `too_short` and `idle_timeout` are **not**. Every eligible unverified session in a room appears in the host/co-host moderator's **verification queue automatically, before the owner submits a request**; the owner may additionally submit a request with a comment (≤ 2,000 chars, one pending at a time) to add context. The room's **host or co-host** (moderator; NOT a global admin) approves or declines from the queue; a moderator may also review their own flagged sessions. Approval re-marks the session verified (`IsVerified = true`, `VerifiedAt`, reviewer id) and **retroactively re-awards** it idempotently (XP for the session, milestone check, streak, calendar event) — the existing `AwardProcessed` guard prevents any double-award. Decline stores an optional reviewer note (`VerificationReviewNote`); a declined session can be requested/approved again.
 - **Server-side timer redundancy:** a server scheduler completes sessions even if the client never calls back (hourly-safe sweep every 1s); both the hub and REST controller drive the same finalize path through the shared `SessionFinalizerService`.
 - `start-break` **terminates the room's current focus session** (round-trips it through the finalizer) and schedules the break timer; `reset`/`pause` finalize the active session and cancel the room's scheduled timer. Breaks support long-break durations.
 
@@ -161,18 +167,18 @@ Rule groups:
 
 ## 14. Gamification (XP/Streaks/Milestones)
 
-- **XP sources:** verified focus minutes (1 XP/min, min 1). XP rows are only written when `points > 0`.
+- **XP sources:** verified focus/session minutes (1 XP/min, min 1). XP rows are only written when `points > 0`.
 - **Level curve:** Level 1 needs **100 XP**; each subsequent level needs `100 + (level − 1) × 50` more (100, 150, 200, 250, …).
-- **Streak computation:** distinct dates of completed **and verified** sessions, descending; anchor `expected = today`; a day counts if `date == expected` or `date == expected − 1`; otherwise the streak breaks. This today-or-yesterday anchor means a streak **stays alive through the current day** until a full day passes unstudied.
+- **Streak computation:** distinct dates of completed **and verified** sessions (any focused room activity), descending; anchor `expected = today`; a day counts if `date == expected` or `date == expected − 1`; otherwise the streak breaks. This today-or-yesterday anchor means a streak **stays alive through the current day** until a full day passes unfocused.
 - **Milestones/badges** (awarded at most once each per `MilestoneType`):
-  - Streak: 7, 14, 30, 60, 100 days.
-  - Sessions: 10, 50, 100, 500 verified sessions.
-  - Total hours: 10h, 50h, 100h, 500h, 1000h of verified study.
+   - Streak: 7, 14, 30, 60, 100 days.
+   - Sessions: 10, 50, 100, 500 verified sessions.
+   - Total hours: 10h, 50h, 100h, 500h, 1000h of verified focus time.
 - **Leaderboard metric:** weekly XP (accepted friends + the caller), with total XP as the tiebreaker; includes level, this-week verified minutes, and streak.
 
 ## 15. Leaderboards
 
-- **Room leaderboard:** ranks members by verified minutes, sessions, and current streak (last 7 days).
+- **Room leaderboard:** ranks members by verified focus minutes, sessions, and current streak (last 7 days).
 - **Friend leaderboard:** `take` clamped to **[1, 100]**; always includes the caller; ranked by weekly XP then total XP; explicit ranks 1..N.
 
 ## 16. Room Tasks
@@ -192,6 +198,7 @@ Rule groups:
 
 ## 18. AI Assistant & Research
 
+- The assistant is a general **focus/study companion** available for any room activity — it answers subject questions, drafts material, and runs guided academic research, and can be pointed at a room's shared notes as context regardless of the room's theme.
 - **Model resilience:** configured/preferred Gemini model tried first, then a fallback chain (`gemini-2.5-flash` → `gemini-2.5-pro` → `gemini-3-flash-preview` → `gemini-3.6-flash` → `gemini-1.5-flash`); a 404 retries the next candidate; 429 handled; 25–35 s timeouts produce graceful fallback answers.
 - **Context policy:** the assistant uses the user's subject and current room-note context in its system prompt; keeps the last **10** conversation messages; consecutive same-role messages are merged (Gemini requires alternating roles).
 - **Research mode:** fixed six-phase pipeline (Introduction → Problem Statement → Literature Review → Methodology → Expected Outcomes → Timeline & Milestones); real paper references from Semantic Scholar injected into the prompt; each answer advances the current phase to the next.
@@ -251,7 +258,7 @@ Rule groups:
 - **Study player** keeps the device screen awake while video plays and collapses to a floating pill.
 - **Command palette** (Ctrl/Cmd+K) opens pages and rooms directly; global assistant opens from the navbar robot button (closes on Esc / backdrop click).
 - Profile reminder banner shows whenever the profile-completeness heuristic fails.
-- **Consistent page headers:** every main page (Timeline, People, Analytics, Flashcards, Games, Messages, Invitations, Notifications, Settings, Study Rooms, Dashboard) renders the shared `app-hero-card` — a gradient card with title, subtitle, an action slot, and stat badges — so headers never drift in style.
+- **Consistent page headers:** every main page (Timeline, People, Analytics, Flashcards, Games, Messages, Invitations, Notifications, Settings, Rooms, Dashboard) renders the shared `app-hero-card` — a gradient card with title, subtitle, an action slot, and stat badges — so headers never drift in style.
 - Best-score persistence for games is browser-local (`localStorage`).
 - Frontend clamps mirror backend where user input is entered (e.g., daily goal), but authoritative validation is server-side.
 
