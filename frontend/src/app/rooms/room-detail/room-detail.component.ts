@@ -427,19 +427,11 @@ const TABS: RoomTab[] = [
 
       <ng-template #meetingsBody>
         <div class="meet-actions">
-          <button class="meet-action meet-call" type="button" (click)="toggleCall()" [attr.aria-label]="inCall ? 'In call' : 'Start call'">
-            <span class="material-icons">{{ inCall ? 'videocam_off' : 'videocam' }}</span>
+          <button class="meet-action meet-primary" type="button" (click)="showLiveChooser = true" aria-label="Start a live session">
+            <span class="material-icons">rocket_launch</span>
             <span class="meet-action-text">
-              <span class="meet-action-title">{{ inCall ? 'In Call' : 'Start Call' }}</span>
-              <span class="meet-action-sub">{{ inCall ? 'Returning to the call…' : 'Hop on a live video call with the room' }}</span>
-            </span>
-            <span class="material-icons meet-action-chev">chevron_right</span>
-          </button>
-          <button *ngIf="isHost" class="meet-action meet-broadcast" type="button" (click)="openVideoDialog()" aria-label="Broadcast video">
-            <span class="material-icons">smart_display</span>
-            <span class="meet-action-text">
-              <span class="meet-action-title">Broadcast</span>
-              <span class="meet-action-sub">Play a synced YouTube video for the room</span>
+              <span class="meet-action-title">Start live session</span>
+              <span class="meet-action-sub">Call, broadcast, or schedule a meeting</span>
             </span>
             <span class="material-icons meet-action-chev">chevron_right</span>
           </button>
@@ -574,6 +566,42 @@ const TABS: RoomTab[] = [
       </div>
 
       <div class="snack" *ngIf="snack">{{ snack }}</div>
+
+      <!-- ── Live session chooser ────────────────────────────── -->
+      <div class="live-chooser-backdrop" *ngIf="showLiveChooser" (click)="showLiveChooser = false">
+        <div class="live-chooser" (click)="$event.stopPropagation()">
+          <div class="live-chooser-header">
+            <h3>Start a live session</h3>
+            <button class="dialog-close" (click)="showLiveChooser = false" aria-label="Close"><span class="material-icons">close</span></button>
+          </div>
+          <div class="live-chooser-body">
+            <button class="live-option" type="button" (click)="startCallChoice()">
+              <span class="live-option-icon lo-call"><span class="material-icons">videocam</span></span>
+              <span class="live-option-text">
+                <span class="live-option-title">Start a call</span>
+                <span class="live-option-sub">Video call with the room right now</span>
+              </span>
+              <span class="material-icons live-option-chev">chevron_right</span>
+            </button>
+            <button *ngIf="isHost" class="live-option" type="button" (click)="broadcastChoice()">
+              <span class="live-option-icon lo-broadcast"><span class="material-icons">smart_display</span></span>
+              <span class="live-option-text">
+                <span class="live-option-title">Broadcast a video</span>
+                <span class="live-option-sub">Play a synced YouTube video for the room</span>
+              </span>
+              <span class="material-icons live-option-chev">chevron_right</span>
+            </button>
+            <button class="live-option" type="button" (click)="scheduleChoice()">
+              <span class="live-option-icon lo-schedule"><span class="material-icons">event</span></span>
+              <span class="live-option-text">
+                <span class="live-option-title">Schedule a meeting</span>
+                <span class="live-option-sub">Plan a meeting for later</span>
+              </span>
+              <span class="material-icons live-option-chev">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- ── Share video dialog ──────────────────────────────── -->
       <div class="dialog-backdrop" *ngIf="showVideoDialog" (click)="showVideoDialog = false">
@@ -907,10 +935,11 @@ const TABS: RoomTab[] = [
       transition: all 0.15s; -webkit-tap-highlight-color: transparent;
     }
     .meet-action:hover { border-color: var(--primary); transform: translateY(-1px); }
-    .meet-call { background: linear-gradient(135deg, var(--accent), #0e7490); border-color: transparent; color: #fff; }
-    .meet-call:hover { border-color: transparent; opacity: 0.95; }
-    .meet-broadcast { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); border-color: transparent; color: #fff; }
-    .meet-broadcast:hover { border-color: transparent; opacity: 0.95; }
+    .meet-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      border-color: transparent; color: #fff;
+    }
+    .meet-primary:hover { border-color: transparent; opacity: 0.95; }
     .meet-action > .material-icons:first-child { font-size: var(--font-24); }
     .meet-action-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
     .meet-action-title { font-size: var(--font-14); font-weight: 700; }
@@ -1051,6 +1080,42 @@ const TABS: RoomTab[] = [
       display: flex; flex-direction: column;
     }
 
+    /* ── Live session chooser ──────────────────────────────── */
+    .live-chooser-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1300;
+    }
+    .live-chooser {
+      width: 420px; max-width: 92vw; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .live-chooser-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; border-bottom: 1px solid var(--border);
+    }
+    .live-chooser-header h3 { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); margin: 0; }
+    .live-chooser-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .live-option {
+      display: flex; align-items: center; gap: 12px; width: 100%;
+      padding: 12px; border: 1px solid var(--border); border-radius: 12px;
+      background: var(--background); color: var(--text-primary); cursor: pointer; text-align: left;
+      transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .live-option:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .live-option-icon {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; color: #fff;
+    }
+    .live-option-icon .material-icons { font-size: var(--font-22); }
+    .live-option-icon.lo-call { background: var(--success); }
+    .live-option-icon.lo-broadcast { background: var(--primary); }
+    .live-option-icon.lo-schedule { background: var(--accent); }
+    .live-option-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .live-option-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
+    .live-option-sub { font-size: var(--font-12); color: var(--text-muted); }
+    .live-option-chev { font-size: var(--font-20); color: var(--text-muted); }
+
     /* ── YouTube broadcast bar ─────────────────────────────── */
     .broadcast-bar {
       background: var(--surface); border: 1px solid var(--border);
@@ -1189,6 +1254,10 @@ const TABS: RoomTab[] = [
       .invite-dialog, .schedule-dialog { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 88vh; max-height: 88dvh; padding-bottom: env(safe-area-inset-bottom); }
       .invite-dialog-backdrop, .schedule-dialog-backdrop { align-items: flex-end; }
 
+      /* Live session chooser — bottom sheet on mobile */
+      .live-chooser { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+      .live-chooser-backdrop { align-items: flex-end; }
+
       /* Video/broadcast dialog — always a centered modal on mobile */
       .dialog-backdrop { align-items: center; padding: 20px; }
       .dialog {
@@ -1287,6 +1356,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   isMobile = false;
   activeTab = 'chat';
   tabs: RoomTab[] = TABS;
+  showLiveChooser = false;
   unreadCount = 0;
   now = Date.now();
   private nowTicker?: any;
@@ -1775,6 +1845,21 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     d.setMinutes(d.getMinutes() - d.getMinutes() % 5);
     this.scheduleAt = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     this.showScheduleDialog = true;
+  }
+
+  startCallChoice() {
+    this.showLiveChooser = false;
+    this.toggleCall();
+  }
+
+  broadcastChoice() {
+    this.showLiveChooser = false;
+    this.openVideoDialog();
+  }
+
+  scheduleChoice() {
+    this.showLiveChooser = false;
+    this.openScheduleDialog();
   }
 
   async scheduleMeeting() {
