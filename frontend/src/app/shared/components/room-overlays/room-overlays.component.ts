@@ -3,7 +3,7 @@ import { NgIf, NgFor } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { RoomTabBarService } from '../../core/services/room-tab-bar.service';
+import { RoomTabBarService } from '../../../core/services/room-tab-bar.service';
 
 @Component({
   selector: 'app-room-overlays',
@@ -233,7 +233,7 @@ export class RoomOverlaysComponent implements OnDestroy {
   room: any = null;
 
   constructor() {
-    this.sub = this.service.activeRoom$.subscribe(r => {
+    this.sub = this.service.activeRoom$.subscribe((r: any) => {
       this.room = r;
     });
   }

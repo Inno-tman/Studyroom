@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 export interface RoomTab {
   id: string;
@@ -32,9 +32,9 @@ export class RoomTabBarService {
   private select = new Subject<string>();
   private activeRoom = new BehaviorSubject<any>(null);
 
-  state$ = this.state.asObservable();
-  select$ = this.select.asObservable();
-  activeRoom$ = this.activeRoom.asObservable();
+  state$: Observable<RoomTabBarState | null> = this.state.asObservable();
+  select$: Observable<string> = this.select.asObservable();
+  activeRoom$: Observable<any> = this.activeRoom.asObservable();
 
   setState(state: RoomTabBarState | null): void {
     this.state.next(state);
