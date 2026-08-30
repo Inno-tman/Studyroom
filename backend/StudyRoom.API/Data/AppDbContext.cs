@@ -36,6 +36,8 @@ public class AppDbContext : DbContext
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<Meeting> Meetings => Set<Meeting>();
     public DbSet<MeetingAttendee> MeetingAttendees => Set<MeetingAttendee>();
+    public DbSet<ScheduledBroadcast> ScheduledBroadcasts => Set<ScheduledBroadcast>();
+    public DbSet<ScheduledBroadcastAttendee> ScheduledBroadcastAttendees => Set<ScheduledBroadcastAttendee>();
     public DbSet<UserMilestone> UserMilestones => Set<UserMilestone>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
     public DbSet<FlashcardDeck> FlashcardDecks => Set<FlashcardDeck>();
@@ -198,6 +200,21 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(a => new { a.MeetingId, a.UserId });
             entity.HasOne(a => a.Meeting).WithMany().HasForeignKey(a => a.MeetingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ScheduledBroadcast>(entity =>
+        {
+            entity.HasIndex(b => b.RoomId);
+            entity.HasIndex(b => b.ScheduledAt);
+            entity.HasOne(b => b.Room).WithMany().HasForeignKey(b => b.RoomId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(b => b.Creator).WithMany().HasForeignKey(b => b.CreatedBy).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ScheduledBroadcastAttendee>(entity =>
+        {
+            entity.HasKey(a => new { a.BroadcastId, a.UserId });
+            entity.HasOne(a => a.Broadcast).WithMany().HasForeignKey(a => a.BroadcastId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
