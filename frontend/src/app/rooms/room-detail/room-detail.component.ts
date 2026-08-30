@@ -1166,11 +1166,11 @@ const TABS: RoomTab[] = [
 
       /* Floating call button */
       .call-fab {
-        position: fixed; right: 16px; bottom: var(--fab-bottom); z-index: 1100;
-        display: flex; align-items: center; gap: 6px;
-        padding: 14px 18px; background: var(--success); color: white;
+        position: fixed; right: 16px; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 1200;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        min-height: 48px; padding: 14px 18px; background: var(--success); color: white;
         border: none; border-radius: 28px; box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
-        font-size: var(--font-13); font-weight: 700; cursor: pointer;
+        font-size: var(--font-13); font-weight: 700; cursor: pointer; white-space: nowrap;
       }
       .call-fab:active { transform: scale(0.96); }
       .call-fab .material-icons { font-size: var(--font-20); }
