@@ -94,6 +94,20 @@ const TABS: RoomTab[] = [
       </div>
 
       <div class="room-content" *ngIf="isMember">
+        <!-- ── Mobile quick actions ─────────────────────────── -->
+        <div class="mobile-quick" *ngIf="isMobile">
+          <button class="quick-studio" type="button" (click)="showLiveChooser = true" aria-label="Start a live session">
+            <span class="material-icons">rocket_launch</span>
+            <span class="quick-studio-text">
+              <span class="quick-studio-title">Start live session</span>
+              <span class="quick-studio-sub">Call, broadcast, or schedule a meeting</span>
+            </span>
+            <span class="material-icons quick-studio-chev">chevron_right</span>
+          </button>
+          <button class="quick-icon" type="button" (click)="copyRoomLink()" title="Copy invite link">
+            <span class="material-icons">link</span>
+          </button>
+        </div>
         <!-- ── Members ───────────────────────────────────────── -->
         <div class="members-bar">
           <span class="members-title" *ngIf="!isMobile">Members ({{ members.length }})</span>
@@ -479,153 +493,16 @@ const TABS: RoomTab[] = [
         </div>
         <div class="meetings-empty" *ngIf="upcomingMeetings.length === 0">
           <span class="material-icons">event_available</span>
-          <p>No upcoming meetings yet.</p>
-          <button class="btn-primary" (click)="openScheduleDialog()">Schedule a meeting</button>
+          <p class="meetings-empty-title">No upcoming meetings</p>
+          <p class="meetings-empty-sub">Jump into a live session now, or schedule one for later.</p>
+          <div class="meetings-empty-actions">
+            <button class="btn-primary" (click)="showLiveChooser = true"><span class="material-icons">rocket_launch</span> Start live session</button>
+            <button class="btn-outline" (click)="openScheduleDialog()"><span class="material-icons">event</span> Schedule</button>
+          </div>
         </div>
       </ng-template>
 
-      <!-- ── Invite dialog ───────────────────────────────────── -->
-      <div class="invite-dialog-backdrop" *ngIf="showInviteDialog" (click)="showInviteDialog = false">
-        <div class="invite-dialog" (click)="$event.stopPropagation()">
-          <div class="invite-dialog-header">
-            <h3>Invite friends to {{ room?.name }}</h3>
-            <button class="dialog-close" (click)="showInviteDialog = false"><span class="material-icons">close</span></button>
-          </div>
-          <div class="invite-dialog-body">
-            <p class="invite-hint" *ngIf="invitableFriends.length === 0">No friends to invite — everyone you know is already here!</p>
-            <div *ngFor="let friend of invitableFriends" class="invite-row">
-              <div class="member-avatar" [class.has-image]="friend.avatarUrl" routerLink="/profile/{{friend.userId}}" style="cursor:pointer">
-                <img *ngIf="friend.avatarUrl; else friendInitial" [src]="friend.avatarUrl" alt="" />
-                <ng-template #friendInitial>{{ (friend.displayName || friend.username).charAt(0).toUpperCase() }}</ng-template>
-              </div>
-              <span class="invite-name">{{ friend.displayName || friend.username }}</span>
-              <button
-                class="btn-invite"
-                (click)="inviteFriend(friend)"
-                [disabled]="friend.userId === invitingId"
-              >{{ friend.userId === invitingId ? 'Inviting...' : 'Invite' }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Schedule dialog ─────────────────────────────────── -->
-      <div class="schedule-dialog-backdrop" *ngIf="showScheduleDialog" (click)="showScheduleDialog = false">
-        <form class="schedule-dialog" (click)="$event.stopPropagation()" (ngSubmit)="scheduleMeeting()">
-          <div class="dialog-header">
-            <h3>Schedule a meeting</h3>
-            <button class="dialog-close" type="button" (click)="showScheduleDialog = false"><span class="material-icons">close</span></button>
-          </div>
-          <div class="dialog-body">
-            <label class="field">Title <input type="text" [(ngModel)]="scheduleTitle" name="scheduleTitle" placeholder="e.g. Final review" /></label>
-            <label class="field">Description <input type="text" [(ngModel)]="scheduleDescription" name="scheduleDescription" placeholder="Optional" /></label>
-            <label class="field">When <input type="datetime-local" [(ngModel)]="scheduleAt" name="scheduleAt" /></label>
-            <label class="field">Duration
-              <select [(ngModel)]="scheduleDuration" name="scheduleDuration">
-                <option [ngValue]="15">15 minutes</option>
-                <option [ngValue]="30">30 minutes</option>
-                <option [ngValue]="45">45 minutes</option>
-                <option [ngValue]="60">60 minutes</option>
-                <option [ngValue]="90">90 minutes</option>
-                <option [ngValue]="120">120 minutes</option>
-              </select>
-            </label>
-            <p class="form-error" *ngIf="scheduleError">{{ scheduleError }}</p>
-            <button class="btn-primary dialog-submit" type="submit" [disabled]="scheduling">
-              {{ scheduling ? 'Scheduling...' : 'Schedule Meeting' }}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- ── Roles dialog ────────────────────────────────────── -->
-      <div class="invite-dialog-backdrop" *ngIf="showRolesDialog" (click)="showRolesDialog = false">
-        <div class="invite-dialog" (click)="$event.stopPropagation()">
-          <div class="invite-dialog-header">
-            <h3>Manage roles</h3>
-            <button class="dialog-close" (click)="showRolesDialog = false"><span class="material-icons">close</span></button>
-          </div>
-          <div class="invite-dialog-body">
-            <p class="invite-hint">Co-hosts can delete any meeting in this room.</p>
-            <div *ngFor="let member of manageableMembers" class="invite-row">
-              <div class="member-avatar" [class.has-image]="member.avatarUrl">
-                <img *ngIf="member.avatarUrl; else roleMemberInitial" [src]="member.avatarUrl" alt="" />
-                <ng-template #roleMemberInitial>{{ member.username.charAt(0).toUpperCase() }}</ng-template>
-              </div>
-              <span class="invite-name">{{ member.username }}</span>
-              <span class="role-tag" *ngIf="member.role === 'cohost'" [class.changing]="roleChangingId === member.id">co-host</span>
-              <button
-                class="btn-invite"
-                [class.btn-invite-ghost]="member.role === 'cohost'"
-                (click)="toggleCoHost(member)"
-                [disabled]="roleChangingId === member.id"
-              >{{ roleChangingId === member.id ? '...' : (member.role === 'cohost' ? 'Demote' : 'Make co-host') }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="snack" *ngIf="snack">{{ snack }}</div>
-
-      <!-- ── Live session chooser ────────────────────────────── -->
-      <div class="live-chooser-backdrop" *ngIf="showLiveChooser" (click)="showLiveChooser = false">
-        <div class="live-chooser" (click)="$event.stopPropagation()">
-          <div class="live-chooser-header">
-            <h3>Start a live session</h3>
-            <button class="dialog-close" (click)="showLiveChooser = false" aria-label="Close"><span class="material-icons">close</span></button>
-          </div>
-          <div class="live-chooser-body">
-            <button class="live-option" type="button" (click)="startCallChoice()">
-              <span class="live-option-icon lo-call"><span class="material-icons">videocam</span></span>
-              <span class="live-option-text">
-                <span class="live-option-title">Start a call</span>
-                <span class="live-option-sub">Video call with the room right now</span>
-              </span>
-              <span class="material-icons live-option-chev">chevron_right</span>
-            </button>
-            <button *ngIf="isHost" class="live-option" type="button" (click)="broadcastChoice()">
-              <span class="live-option-icon lo-broadcast"><span class="material-icons">smart_display</span></span>
-              <span class="live-option-text">
-                <span class="live-option-title">Broadcast a video</span>
-                <span class="live-option-sub">Play a synced YouTube video for the room</span>
-              </span>
-              <span class="material-icons live-option-chev">chevron_right</span>
-            </button>
-            <button class="live-option" type="button" (click)="scheduleChoice()">
-              <span class="live-option-icon lo-schedule"><span class="material-icons">event</span></span>
-              <span class="live-option-text">
-                <span class="live-option-title">Schedule a meeting</span>
-                <span class="live-option-sub">Plan a meeting for later</span>
-              </span>
-              <span class="material-icons live-option-chev">chevron_right</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Share video dialog ──────────────────────────────── -->
-      <div class="dialog-backdrop" *ngIf="showVideoDialog" (click)="showVideoDialog = false">
-        <div class="dialog" (click)="$event.stopPropagation()">
-          <div class="dialog-header">
-            <h3>Broadcast a YouTube video</h3>
-            <button class="dialog-close" (click)="showVideoDialog = false"><span class="material-icons">close</span></button>
-          </div>
-           <div class="dialog-body">
-             <label class="field">YouTube link
-               <input
-                 type="text"
-                 [(ngModel)]="videoInput"
-                 placeholder="https://youtube.com/watch?v=..."
-                 (keyup.enter)="startBroadcast()"
-               />
-             </label>
-             <p class="dialog-hint">Paste any YouTube watch, share, or shorten link — it plays in sync for everyone in the room.</p>
-             <button class="btn-primary dialog-submit" (click)="startBroadcast()" [disabled]="!videoInput.trim()">
-               Start Broadcast
-             </button>
-           </div>
-        </div>
-      </div>
     </div>
   `,
   styles: [`
@@ -1008,9 +885,13 @@ const TABS: RoomTab[] = [
     .schedule-mini:hover { background: rgba(56, 189, 248, 0.1); }
     .schedule-mini .material-icons { font-size: var(--font-16); }
 
-    .meetings-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px 16px; text-align: center; color: var(--text-muted); }
-    .meetings-empty .material-icons { font-size: 40px; color: var(--text-muted); }
-    .meetings-empty p { font-size: var(--font-13); }
+    .meetings-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; text-align: center; color: var(--text-muted); }
+    .meetings-empty .material-icons { font-size: 40px; color: var(--text-muted); margin-bottom: 4px; }
+    .meetings-empty-title { font-size: var(--font-15); font-weight: 600; color: var(--text-primary); }
+    .meetings-empty-sub { font-size: var(--font-13); color: var(--text-secondary); }
+    .meetings-empty-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+    .meetings-empty-actions .btn-primary, .meetings-empty-actions .btn-outline { display: inline-flex; align-items: center; gap: 6px; }
+    .meetings-empty-actions .material-icons { font-size: var(--font-18); margin: 0; }
 
     /* ── Dialogs ────────────────────────────────────────────── */
     .invite-dialog-backdrop, .schedule-dialog-backdrop {
@@ -1241,6 +1122,30 @@ const TABS: RoomTab[] = [
       .bc-btn { width: 40px; height: 40px; }
 
       .next-meeting { margin: 0 12px 12px; border-radius: 14px; }
+
+      /* Mobile quick actions */
+      .mobile-quick { display: flex; gap: 8px; margin: 0 12px 12px; }
+      .quick-studio {
+        flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+        padding: 12px 14px; border: none; border-radius: 14px; cursor: pointer;
+        background: linear-gradient(135deg, var(--primary), #0ea5e9); color: white;
+        box-shadow: 0 4px 16px rgba(56, 189, 248, 0.28);
+        text-align: left; transition: transform 0.12s, box-shadow 0.12s;
+      }
+      .quick-studio:active { transform: scale(0.99); box-shadow: 0 2px 8px rgba(56, 189, 248, 0.24); }
+      .quick-studio > .material-icons:first-child { font-size: var(--font-22); flex-shrink: 0; }
+      .quick-studio-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+      .quick-studio-title { font-size: var(--font-14); font-weight: 700; }
+      .quick-studio-sub { font-size: var(--font-12); opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .quick-studio-chev { font-size: var(--font-20); opacity: 0.9; flex-shrink: 0; }
+      .quick-icon {
+        width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        background: var(--surface); border: 1px solid var(--border); color: var(--text-primary);
+        border-radius: 14px; cursor: pointer;
+      }
+      .quick-icon .material-icons { font-size: var(--font-20); }
+      .quick-icon:active { background: var(--background); }
+
 
       .tab-body { min-height: 0; height: calc(100vh - 190px); height: calc(100dvh - 190px); margin: 0 12px 84px; border-radius: 14px; }
       .tab-body-bottom-pad { margin-bottom: 84px; }
@@ -1767,6 +1672,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     if (!this.roomId) return;
 
     this.tabBarSub = this.tabBar.select$.subscribe(id => this.selectTab(id));
+    this.tabBar.setActiveRoom(this);
 
     this.nowTicker = setInterval(() => {
       this.now = Date.now();
@@ -2056,6 +1962,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     if (this.nowTicker) clearInterval(this.nowTicker);
     this.inCall = false;
     this.tabBar.setState(null);
+    this.tabBar.setActiveRoom(null);
     try { this.ytPlayer?.destroy?.(); } catch { }
     if (this.isMember) {
       this.signalR.leaveRoom(this.roomId);

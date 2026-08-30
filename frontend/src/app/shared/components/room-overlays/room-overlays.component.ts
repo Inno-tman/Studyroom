@@ -219,6 +219,20 @@ import { RoomTabBarService } from '../../../core/services/room-tab-bar.service';
     .live-option-sub { font-size: var(--font-12); color: var(--text-muted); }
     .live-option-chev { font-size: var(--font-20); color: var(--text-muted); }
 
+    .invite-dialog-backdrop, .schedule-dialog-backdrop, .live-chooser-backdrop, .dialog-backdrop {
+      animation: backdropIn 0.18s ease;
+    }
+    .invite-dialog, .schedule-dialog, .live-chooser, .dialog {
+      animation: dialogIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes dialogIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    @media (max-width: 900px) {
+      .live-option { padding: 14px 12px; }
+      .live-option-icon { width: 44px; height: 44px; }
+    }
+
     @media (max-width: 900px) {
       .invite-dialog, .schedule-dialog, .live-chooser { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 88vh; max-height: 88dvh; padding-bottom: env(safe-area-inset-bottom); }
       .invite-dialog-backdrop, .schedule-dialog-backdrop, .live-chooser-backdrop { align-items: flex-end; }
