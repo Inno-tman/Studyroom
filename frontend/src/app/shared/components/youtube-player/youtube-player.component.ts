@@ -10,7 +10,7 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
   imports: [CommonModule, FormsModule],
   template: `
     <div class="yt-player" [class.collapsed]="minimized">
-      <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Study player">
+      <button class="yt-pill" *ngIf="minimized" (click)="minimized = false" title="Focus player">
         <span class="material-icons">{{ player.playing() ? 'pause' : (player.videoId() ? 'play_arrow' : 'queue_music') }}</span>
         <span class="yt-pill-badge" *ngIf="player.queue().length > 0">{{ player.queue().length }}</span>
       </button>
@@ -47,7 +47,7 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
 
       <div class="yt-search" *ngIf="showSearch">
         <div class="yt-queue-head">
-          <span>Find study music</span>
+          <span>Find focus music</span>
           <button class="yt-queue-ctl" (click)="showSearch = false" title="Close">
             <span class="material-icons">close</span>
           </button>
@@ -100,7 +100,7 @@ import { YoutubeService, YoutubeSearchResult } from '../../../core/services/yout
         </div>
         <div class="yt-mini-video yt-mini-empty" *ngIf="!player.videoId()">
           <span class="material-icons yt-mini-empty-icon">music_note</span>
-          <span class="yt-mini-empty-text">Search YouTube for study music</span>
+          <span class="yt-mini-empty-text">Search YouTube for focus music</span>
           <button class="yt-mini-empty-btn" (click)="openSearch()">Find music</button>
         </div>
         <div class="yt-mini-info">

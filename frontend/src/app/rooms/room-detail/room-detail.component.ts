@@ -551,12 +551,12 @@ const TABS: RoomTab[] = [
       </div>
 
       <!-- ── Mobile FAB + tab bar ────────────────────────────── -->
-      <div class="call-fab" *ngIf="isMobile && isMember && !inCall" (click)="toggleCall()">
+      <div class="call-fab" *ngIf="isMobile && isMember && !inCall" (click)="toggleCall()" role="button" tabindex="0" title="Start Call" aria-label="Start call" (keydown.enter)="toggleCall()">
         <span class="material-icons">videocam</span>
         <span class="fab-label">Call</span>
       </div>
 
-      <div class="call-fab broadcast-fab" *ngIf="isMobile && isMember && isHost && !inCall" (click)="openVideoDialog()">
+      <div class="call-fab broadcast-fab" *ngIf="isMobile && isMember && isHost && !inCall" (click)="openVideoDialog()" role="button" tabindex="0" title="Broadcast video" aria-label="Broadcast video" (keydown.enter)="openVideoDialog()">
         <span class="material-icons">smart_display</span>
         <span class="fab-label">Broadcast</span>
       </div>
@@ -1164,18 +1164,25 @@ const TABS: RoomTab[] = [
       .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .meetings-panel, .meetings-empty { margin-bottom: 0; border-radius: 14px; }
 
-      /* Floating call button */
+      /* Floating action buttons (circular, with caption) */
       .call-fab {
         position: fixed; right: 16px; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 1200;
-        display: flex; align-items: center; justify-content: center; gap: 6px;
-        min-height: 48px; padding: 14px 18px; background: var(--success); color: white;
-        border: none; border-radius: 28px; box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
-        font-size: var(--font-13); font-weight: 700; cursor: pointer; white-space: nowrap;
+        width: 56px; height: 56px; border-radius: 50%; flex: 0 0 auto;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--success); color: white; border: none;
+        box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+        cursor: pointer; -webkit-tap-highlight-color: transparent;
       }
-      .call-fab:active { transform: scale(0.96); }
-      .call-fab .material-icons { font-size: var(--font-20); }
-
+      .call-fab:active { transform: scale(0.94); }
+      .call-fab .material-icons { font-size: var(--font-24); }
+      .call-fab .fab-label {
+        position: absolute; right: 68px; top: 50%; transform: translateY(-50%);
+        white-space: nowrap; background: var(--surface); color: var(--text-primary);
+        padding: 5px 12px; border-radius: 16px; font-size: var(--font-12); font-weight: 700;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); pointer-events: none;
+      }
       .broadcast-fab { right: auto; left: 16px; background: var(--primary); box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4); }
+      .broadcast-fab .fab-label { right: auto; left: 68px; }
 
       /* Bottom tab bar */
       .mobile-tabbar {
