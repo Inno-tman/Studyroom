@@ -56,7 +56,7 @@ interface ProfileView {
       </div>
 
       <div class="stats-section">
-        <h2>Study Statistics</h2>
+        <h2>Focus Statistics</h2>
         <div class="stats-grid">
           <div class="stat-card">
             <span class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</span>
@@ -101,7 +101,7 @@ interface ProfileView {
       <div class="profile-heatmap" *ngIf="heatmapDays.length > 0">
         <div class="hm-header">
           <span class="material-icons">calendar_month</span>
-          <span class="hm-title">30-Day Study Activity</span>
+          <span class="hm-title">30-Day Focus Activity</span>
           <span class="hm-count">{{ heatmapActiveDays }} active days</span>
         </div>
         <div class="hm-grid">

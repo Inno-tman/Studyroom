@@ -234,7 +234,7 @@ export class AnalyticsComponent implements OnInit {
     }).then(res => res.blob()).then(blob => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `study-sessions.${format}`;
+      a.download = `focus-sessions.${format}`;
       a.click();
       URL.revokeObjectURL(a.href);
     });

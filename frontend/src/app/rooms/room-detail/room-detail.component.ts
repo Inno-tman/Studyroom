@@ -169,16 +169,20 @@ const TABS: RoomTab[] = [
           <div class="broadcast-header">
             <span class="material-icons broadcast-icon">smart_display</span>
             <span class="broadcast-title">Now watching</span>
+            <span class="live-badge">LIVE</span>
             <span class="broadcast-by" *ngIf="broadcastStartedBy">· {{ broadcastStartedBy }}</span>
-            <button class="bc-btn" (click)="toggleMute()" [title]="broadcastMuted ? 'Unmute' : 'Mute'">
-              <span class="material-icons">{{ broadcastMuted ? 'volume_off' : 'volume_up' }}</span>
-            </button>
-            <span class="broadcast-spacer"></span>
-            <button *ngIf="isHost" class="bc-btn" (click)="hostPlay()" title="Play"><span class="material-icons">play_arrow</span></button>
-            <button *ngIf="isHost" class="bc-btn" (click)="hostPause()" title="Pause"><span class="material-icons">pause</span></button>
-            <button *ngIf="isHost" class="bc-btn" (click)="hostSeek(-10)" title="Back 10s"><span class="material-icons">replay_10</span></button>
-            <button *ngIf="isHost" class="bc-btn" (click)="hostSeek(10)" title="Forward 10s"><span class="material-icons">forward_10</span></button>
-            <button *ngIf="isHost" class="bc-btn bc-stop" (click)="stopBroadcast()" title="Stop broadcast"><span class="material-icons">stop</span></button>
+            <div class="bc-controls">
+              <button class="bc-btn" (click)="toggleMute()" [title]="broadcastMuted ? 'Unmute' : 'Mute'">
+                <span class="material-icons">{{ broadcastMuted ? 'volume_off' : 'volume_up' }}</span>
+              </button>
+              <ng-container *ngIf="isHost">
+                <button class="bc-btn" (click)="hostPlay()" title="Play"><span class="material-icons">play_arrow</span></button>
+                <button class="bc-btn" (click)="hostPause()" title="Pause"><span class="material-icons">pause</span></button>
+                <button class="bc-btn" (click)="hostSeek(-10)" title="Back 10s"><span class="material-icons">replay_10</span></button>
+                <button class="bc-btn" (click)="hostSeek(10)" title="Forward 10s"><span class="material-icons">forward_10</span></button>
+                <button class="bc-btn bc-stop" (click)="stopBroadcast()" title="Stop broadcast"><span class="material-icons">stop</span></button>
+              </ng-container>
+            </div>
           </div>
           <div class="broadcast-stage">
             <div [id]="ytElementId" class="yt-player"></div>
@@ -282,7 +286,7 @@ const TABS: RoomTab[] = [
               <div class="rs-card">
                 <span class="material-icons rs-icon">schedule</span>
                 <span class="rs-value">{{ formatDuration(roomStats.totalMinutes) }}</span>
-                <span class="rs-label">Total Study Time</span>
+                <span class="rs-label">Total Focus Time</span>
               </div>
               <div class="rs-card">
                 <span class="material-icons rs-icon">check_circle</span>
@@ -315,7 +319,7 @@ const TABS: RoomTab[] = [
             </div>
 
             <div class="room-hourly" *ngIf="roomHourly.length > 0">
-              <h3>Study by Hour (This Room)</h3>
+              <h3>Focus by Hour (This Room)</h3>
               <div class="hourly-chart-sm">
                 <div class="hour-col-sm" *ngFor="let h of roomHourly" [title]="h.hour + ':00 — ' + formatDuration(h.minutes)">
                   <div class="hour-fill-sm" [style.height.%]="getHourHeight(h.minutes)"></div>
@@ -327,7 +331,7 @@ const TABS: RoomTab[] = [
             <!-- ── Verification review queue (host/co-host only) ── -->
             <div class="review-queue" *ngIf="isModerator && reviewQueue.length > 0">
               <h3>Verification Queue</h3>
-              <p class="review-queue-hint">Flagged study time in this room that needs your confirmation — owners may add a note first.</p>
+              <p class="review-queue-hint">Flagged focus time in this room that needs your confirmation — owners may add a note first.</p>
               <div class="review-queue-list">
                 <div class="review-row" *ngFor="let r of reviewQueue">
                   <div class="review-info">
@@ -550,15 +554,14 @@ const TABS: RoomTab[] = [
         </div>
       </div>
 
-      <!-- ── Mobile FAB + tab bar ────────────────────────────── -->
-      <div class="call-fab" *ngIf="isMobile && isMember && !inCall" (click)="toggleCall()" role="button" tabindex="0" title="Start Call" aria-label="Start call" (keydown.enter)="toggleCall()">
-        <span class="material-icons">videocam</span>
-        <span class="fab-label">Call</span>
-      </div>
-
-      <div class="call-fab broadcast-fab" *ngIf="isMobile && isMember && isHost && !inCall" (click)="openVideoDialog()" role="button" tabindex="0" title="Broadcast video" aria-label="Broadcast video" (keydown.enter)="openVideoDialog()">
-        <span class="material-icons">smart_display</span>
-        <span class="fab-label">Broadcast</span>
+      <!-- ── Mobile action dock + tab bar ───────────────────── -->
+      <div class="mobile-actions" *ngIf="isMobile && isMember && !inCall">
+        <button class="ma-btn ma-call" type="button" (click)="toggleCall()" title="Start Call" aria-label="Start call">
+          <span class="material-icons">videocam</span> Call
+        </button>
+        <button class="ma-btn ma-broadcast" type="button" *ngIf="isHost" (click)="openVideoDialog()" title="Broadcast video" aria-label="Broadcast video">
+          <span class="material-icons">smart_display</span> Broadcast
+        </button>
       </div>
 
       <nav class="mobile-tabbar" *ngIf="isMobile && isMember">
@@ -584,19 +587,20 @@ const TABS: RoomTab[] = [
             <h3>Broadcast a YouTube video</h3>
             <button class="dialog-close" (click)="showVideoDialog = false"><span class="material-icons">close</span></button>
           </div>
-          <div class="dialog-body">
-            <label class="field">YouTube link
-              <input
-                type="text"
-                [(ngModel)]="videoInput"
-                placeholder="https://youtube.com/watch?v=..."
-                (keyup.enter)="startBroadcast()"
-              />
-            </label>
-            <button class="btn-primary dialog-submit" (click)="startBroadcast()" [disabled]="!videoInput.trim()">
-              Start Broadcast
-            </button>
-          </div>
+           <div class="dialog-body">
+             <label class="field">YouTube link
+               <input
+                 type="text"
+                 [(ngModel)]="videoInput"
+                 placeholder="https://youtube.com/watch?v=..."
+                 (keyup.enter)="startBroadcast()"
+               />
+             </label>
+             <p class="dialog-hint">Paste any YouTube watch, share, or shorten link — it plays in sync for everyone in the room.</p>
+             <button class="btn-primary dialog-submit" (click)="startBroadcast()" [disabled]="!videoInput.trim()">
+               Start Broadcast
+             </button>
+           </div>
         </div>
       </div>
     </div>
@@ -1039,15 +1043,20 @@ const TABS: RoomTab[] = [
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 12px; margin-bottom: 16px; overflow: hidden;
     }
-    .broadcast-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    .broadcast-header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
     .broadcast-icon { color: var(--accent); font-size: var(--font-20); }
     .broadcast-title { font-size: var(--font-13); font-weight: 700; color: var(--text-primary); }
     .broadcast-by { font-size: var(--font-12); color: var(--text-muted); }
-    .broadcast-spacer { flex: 1; }
+    .live-badge {
+      display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px;
+      background: var(--error); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+    }
+    .bc-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
     .bc-btn {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 34px; height: 34px; border-radius: 8px; background: var(--background);
+      width: 38px; height: 38px; border-radius: 8px; background: var(--background);
       border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
     .bc-btn:hover { color: var(--text-primary); border-color: var(--primary); }
     .bc-stop { color: var(--error); border-color: var(--error); }
@@ -1148,10 +1157,10 @@ const TABS: RoomTab[] = [
       .invite-chip { padding: 8px 12px; }
 
       /* Keep broadcast controls (incl. unmute) reachable on small screens */
-      .broadcast-header { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
-      .broadcast-header .broadcast-title { white-space: nowrap; }
-      .broadcast-spacer { display: none; }
-      .bc-btn { flex: 0 0 auto; width: 38px; height: 38px; }
+      .broadcast-header { padding: 8px 10px; gap: 6px; }
+      .broadcast-title { white-space: nowrap; }
+      .bc-controls { width: 100%; margin-left: 0; justify-content: flex-start; }
+      .bc-btn { width: 40px; height: 40px; }
 
       .next-meeting { margin: 0 12px 12px; border-radius: 14px; }
 
@@ -1164,25 +1173,26 @@ const TABS: RoomTab[] = [
       .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .meetings-panel, .meetings-empty { margin-bottom: 0; border-radius: 14px; }
 
-      /* Floating action buttons (circular, with caption) */
-      .call-fab {
-        position: fixed; right: 16px; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 1200;
-        width: 56px; height: 56px; border-radius: 50%; flex: 0 0 auto;
-        display: flex; align-items: center; justify-content: center;
-        background: var(--success); color: white; border: none;
-        box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
-        cursor: pointer; -webkit-tap-highlight-color: transparent;
+      /* Floating action dock (mobile) */
+      .mobile-actions {
+        position: fixed; left: 50%; transform: translateX(-50%);
+        bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 1200;
+        display: flex; gap: 10px; align-items: center;
+        max-width: calc(100vw - 24px);
       }
-      .call-fab:active { transform: scale(0.94); }
-      .call-fab .material-icons { font-size: var(--font-24); }
-      .call-fab .fab-label {
-        position: absolute; right: 68px; top: 50%; transform: translateY(-50%);
-        white-space: nowrap; background: var(--surface); color: var(--text-primary);
-        padding: 5px 12px; border-radius: 16px; font-size: var(--font-12); font-weight: 700;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); pointer-events: none;
+      .ma-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        padding: 12px 18px; border: none; border-radius: 26px;
+        font-size: var(--font-13); font-weight: 700; color: #fff; cursor: pointer;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); white-space: nowrap;
+        -webkit-tap-highlight-color: transparent;
       }
-      .broadcast-fab { right: auto; left: 16px; background: var(--primary); box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4); }
-      .broadcast-fab .fab-label { right: auto; left: 68px; }
+      .ma-btn:active { transform: scale(0.96); }
+      .ma-btn .material-icons { font-size: var(--font-20); }
+      .ma-call { background: var(--success); }
+      .ma-call:hover { background: #16a34a; }
+      .ma-broadcast { background: var(--primary); }
+      .ma-broadcast:hover { background: var(--primary-hover); }
 
       /* Bottom tab bar */
       .mobile-tabbar {

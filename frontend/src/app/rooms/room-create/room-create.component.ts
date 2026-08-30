@@ -19,7 +19,7 @@ import { RoomService } from '../../core/services/room.service';
         <form (ngSubmit)="onSubmit()">
           <div class="form-group">
             <label for="name">Room Name *</label>
-            <input id="name" type="text" [(ngModel)]="name" name="name" required placeholder="e.g., Calculus Study Group" />
+            <input id="name" type="text" [(ngModel)]="name" name="name" required placeholder="e.g., Calculus Focus Group" />
           </div>
 
           <div class="form-group">

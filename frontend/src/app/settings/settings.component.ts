@@ -8,7 +8,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
   imports: [RouterOutlet, RouterLink, RouterLinkActive, HeroCardComponent],
   template: `
     <div class="settings-page">
-      <app-hero-card title="Settings" subtitle="Manage your profile, notifications, appearance and study preferences."></app-hero-card>
+      <app-hero-card title="Settings" subtitle="Manage your profile, notifications, appearance and focus preferences."></app-hero-card>
 
       <div class="settings-layout">
         <nav class="settings-nav">
@@ -30,7 +30,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
           </a>
           <a routerLink="study" routerLinkActive="active" class="settings-item">
             <span class="material-icons">school</span>
-            <span>Study</span>
+            <span>Focus</span>
           </a>
           <a routerLink="calendar" routerLinkActive="active" class="settings-item">
             <span class="material-icons">calendar_month</span>
