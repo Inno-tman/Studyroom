@@ -24,6 +24,7 @@ export interface RoomTabBarState {
   activeTab: string;
   unreadCount: number;
   upcomingMeetingsCount: number;
+  upcomingBroadcastsCount: number;
 }
 
 @Injectable({ providedIn: 'root' })

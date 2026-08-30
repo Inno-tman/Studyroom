@@ -7,6 +7,7 @@ import { Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { RoomService } from '../../core/services/room.service';
 import { MeetingService } from '../../core/services/meeting.service';
+import { ScheduledBroadcastService } from '../../core/services/scheduled-broadcast.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { ChatService } from '../../core/services/chat.service';
 import { NotesService } from '../../core/services/notes.service';
@@ -18,6 +19,7 @@ import { YouTubeBroadcastService } from '../../core/services/youtube-broadcast.s
 import { RoomTabBarService } from '../../core/services/room-tab-bar.service';
 import { Room } from '../../shared/models/room.model';
 import { Meeting } from '../../shared/models/meeting.model';
+import { ScheduledBroadcast } from '../../shared/models/scheduled-broadcast.model';
 import { Message } from '../../shared/models/message.model';
 import { UserDto } from '../../shared/models/room.model';
 import { Friend } from '../../shared/models/social.model';
@@ -232,7 +234,7 @@ const TABS: RoomTab[] = [
             <span class="material-icons">{{ tab.icon }}</span>
             {{ tab.label }}
             <span *ngIf="tab.id === 'chat' && unreadCount > 0" class="tab-badge">{{ unreadCount }}</span>
-            <span *ngIf="tab.id === 'meet' && upcomingMeetings.length > 0" class="tab-badge">{{ upcomingMeetings.length }}</span>
+            <span *ngIf="tab.id === 'meet' && (upcomingMeetings.length + upcomingBroadcasts.length) > 0" class="tab-badge">{{ upcomingMeetings.length + upcomingBroadcasts.length }}</span>
           </button>
         </div>
 
@@ -436,17 +438,19 @@ const TABS: RoomTab[] = [
       </ng-template>
 
       <ng-template #meetingsBody>
-        <div class="meetings-panel" *ngIf="upcomingMeetings.length > 0">
+        <div class="meetings-panel" *ngIf="upcomingMeetings.length > 0 || upcomingBroadcasts.length > 0">
           <div class="panel-header">
-            <h2><span class="material-icons">event</span> Upcoming Meetings</h2>
-            <button class="schedule-mini" (click)="copyMeetingLink()" title="Copy meeting link">
-              <span class="material-icons">link</span> Copy link
+            <h2><span class="material-icons">event</span> Schedule</h2>
+            <button class="schedule-mini" (click)="openScheduleDialog()" title="Schedule a meeting">
+              <span class="material-icons">event</span> Meeting
             </button>
-            <button class="schedule-mini" (click)="openScheduleDialog()">
-              <span class="material-icons">add</span> Schedule
+            <button class="schedule-mini" (click)="openBroadcastDialog()" title="Schedule a broadcast">
+              <span class="material-icons">smart_display</span> Broadcast
             </button>
           </div>
-          <div class="meeting-list">
+
+          <div class="meeting-group-title"><span class="material-icons">videocam</span> Upcoming Meetings</div>
+          <div class="meeting-list" *ngIf="upcomingMeetings.length > 0">
             <div *ngFor="let meeting of upcomingMeetings" class="meeting-item">
               <div class="meeting-avatar">
                 <span class="material-icons">videocam</span>
@@ -476,14 +480,47 @@ const TABS: RoomTab[] = [
               ><span class="material-icons">delete</span></button>
             </div>
           </div>
+
+          <div class="meeting-group-title"><span class="material-icons">smart_display</span> Scheduled Broadcasts</div>
+          <div class="meeting-list" *ngIf="upcomingBroadcasts.length > 0">
+            <div *ngFor="let broadcast of upcomingBroadcasts" class="meeting-item">
+              <div class="meeting-avatar bc-avatar">
+                <span class="material-icons">smart_display</span>
+              </div>
+              <div class="meeting-info">
+                <span class="meeting-title">{{ broadcast.title }}</span>
+                <span class="meeting-meta">
+                  <span class="material-icons">schedule</span>
+                  {{ broadcast.scheduledAt | date:'EEE, MMM d, h:mm a' }}
+                  &middot; {{ broadcast.durationMinutes }} min
+                  &middot; by {{ broadcast.createdByUsername }}
+                </span>
+                <span *ngIf="broadcast.description" class="meeting-desc">{{ broadcast.description }}</span>
+                <span *ngIf="broadcast.youtubeUrl" class="meeting-desc bc-url">{{ broadcast.youtubeUrl }}</span>
+              </div>
+              <button
+                class="meeting-accept"
+                [class.accepted]="broadcast.acceptedByMe"
+                (click)="acceptBroadcast(broadcast)"
+                title="Accept / decline broadcast"
+              ><span class="material-icons">{{ broadcast.acceptedByMe ? 'check_circle' : 'check_circle_outline' }}</span>
+                {{ broadcast.acceptedCount || 0 }}</button>
+              <button
+                *ngIf="canDeleteBroadcast(broadcast)"
+                class="meeting-delete"
+                (click)="deleteBroadcast(broadcast)"
+                title="Delete scheduled broadcast"
+              ><span class="material-icons">delete</span></button>
+            </div>
+          </div>
         </div>
-        <div class="meetings-empty" *ngIf="upcomingMeetings.length === 0">
+        <div class="meetings-empty" *ngIf="upcomingMeetings.length === 0 && upcomingBroadcasts.length === 0">
           <span class="material-icons">event_available</span>
-          <p class="meetings-empty-title">No upcoming meetings</p>
-          <p class="meetings-empty-sub">Schedule a meeting or broadcast a video for this room.</p>
+          <p class="meetings-empty-title">Nothing scheduled yet</p>
+          <p class="meetings-empty-sub">Schedule a meeting or a video broadcast for this room.</p>
           <div class="meetings-empty-actions">
             <button class="btn-primary" (click)="openScheduleDialog()"><span class="material-icons">event</span> Schedule a meeting</button>
-            <button *ngIf="isHost" class="btn-outline" (click)="openVideoDialog()"><span class="material-icons">smart_display</span> Broadcast a video</button>
+            <button *ngIf="isHost" class="btn-outline" (click)="openBroadcastDialog()"><span class="material-icons">smart_display</span> Schedule a broadcast</button>
           </div>
         </div>
       </ng-template>
@@ -844,6 +881,17 @@ const TABS: RoomTab[] = [
     .meeting-accept:hover { color: var(--primary); }
     .meeting-accept.accepted { color: var(--success); }
 
+    .meeting-group-title {
+      display: flex; align-items: center; gap: 6px;
+      padding: 12px 16px 4px; font-size: var(--font-12); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary);
+    }
+    .meeting-group-title:not(:first-child) { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 14px; }
+    .meeting-group-title .material-icons { font-size: var(--font-16); color: var(--accent); }
+    .meeting-avatar.bc-avatar { background: rgba(244, 114, 182, 0.12); color: #ec4899; }
+    .meeting-desc.bc-url { color: var(--primary); word-break: break-all; }
+
+
     /* ── Smart schedule helper ─────────────────────────────── */
     .smart-schedule {
       background: var(--surface);
@@ -1191,6 +1239,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   }
   private roomService = inject(RoomService);
   private meetingService = inject(MeetingService);
+private broadcastService = inject(ScheduledBroadcastService);
   private signalR = inject(SignalRService);
   private chatService = inject(ChatService);
   private notesService = inject(NotesService);
@@ -1234,6 +1283,15 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   scheduleDuration = 60;
   scheduling = false;
   scheduleError = '';
+  broadcasts: ScheduledBroadcast[] = [];
+  showBroadcastDialog = false;
+  broadcastTitle = '';
+  broadcastDescription = '';
+  broadcastAt = '';
+  broadcastDuration = 60;
+  broadcastYouTubeUrl = '';
+  schedulingBroadcast = false;
+  broadcastError = '';
   showRolesDialog = false;
   roleChangingId = '';
   reviewQueue: (UnverifiedSession & { __busy?: boolean })[] = [];
@@ -1308,7 +1366,8 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       tabs: this.tabs,
       activeTab: this.activeTab,
       unreadCount: this.unreadCount,
-      upcomingMeetingsCount: this.upcomingMeetings.length
+        upcomingMeetingsCount: this.upcomingMeetings.length,
+        upcomingBroadcastsCount: this.upcomingBroadcasts.length
     });
   }
 
@@ -1350,6 +1409,17 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     return this.meetings
       .filter(m => new Date(m.scheduledAt).getTime() >= now)
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  }
+
+  get upcomingBroadcasts(): ScheduledBroadcast[] {
+    const now = Date.now();
+    return this.broadcasts
+      .filter(b => new Date(b.scheduledAt).getTime() >= now)
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  }
+
+  get nextBroadcast(): ScheduledBroadcast | undefined {
+    return this.upcomingBroadcasts[0];
   }
 
   get currentUserId(): string | undefined {
@@ -1697,6 +1767,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
         await this.loadChat();
         await this.loadNotes();
         await this.loadMeetings();
+        await this.loadBroadcasts();
         await this.loadOtherMeetings();
         await this.loadLeaderboard();
         await this.setupSignalR();
@@ -1710,6 +1781,13 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   async loadMeetings() {
     try {
       this.meetings = await this.meetingService.getForRoom(this.roomId).toPromise() || [];
+      this.pushTabBarState();
+    } catch { }
+  }
+
+  async loadBroadcasts() {
+    try {
+      this.broadcasts = await this.broadcastService.getForRoom(this.roomId).toPromise() || [];
       this.pushTabBarState();
     } catch { }
   }
@@ -1809,6 +1887,78 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     const myName = me?.username || me?.email || '';
     if (meeting.createdByUsername === myName) return true;
     return this.myRole === 'host' || this.myRole === 'cohost';
+  }
+
+  async acceptBroadcast(broadcast: ScheduledBroadcast) {
+    try {
+      const updated = await this.broadcastService
+        .setAttendance(broadcast, broadcast.acceptedByMe ? 'Declined' : 'Accepted')
+        .toPromise();
+      Object.assign(broadcast, updated);
+    } catch { }
+  }
+
+  openBroadcastDialog() {
+    this.broadcastTitle = '';
+    this.broadcastDescription = '';
+    this.broadcastDuration = 60;
+    this.broadcastYouTubeUrl = '';
+    this.broadcastError = '';
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    d.setMinutes(d.getMinutes() - d.getMinutes() % 5);
+    this.broadcastAt = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    this.showBroadcastDialog = true;
+  }
+
+  async scheduleBroadcast() {
+    if (!this.broadcastTitle?.trim() || !this.broadcastAt) {
+      this.broadcastError = 'Please enter a title and time.';
+      return;
+    }
+    const when = new Date(this.broadcastAt);
+    if (isNaN(when.getTime())) {
+      this.broadcastError = 'Please pick a valid date and time.';
+      return;
+    }
+    this.schedulingBroadcast = true;
+    this.broadcastError = '';
+    try {
+      await this.broadcastService.create(this.roomId, {
+        title: this.broadcastTitle.trim(),
+        description: this.broadcastDescription.trim() || undefined,
+        scheduledAt: when.toISOString(),
+        durationMinutes: this.broadcastDuration,
+        youtubeUrl: this.broadcastYouTubeUrl.trim() || undefined
+      }).toPromise();
+      this.showBroadcastDialog = false;
+      await this.loadBroadcasts();
+    } catch (err: any) {
+      this.broadcastError = err.error?.error || 'Failed to schedule broadcast. Please try again.';
+    } finally {
+      this.schedulingBroadcast = false;
+    }
+  }
+
+  async deleteBroadcast(broadcast: ScheduledBroadcast) {
+    if (!confirm(`Delete scheduled broadcast "${broadcast.title}"?`)) return;
+    try {
+      await this.broadcastService.delete(this.roomId, broadcast.id).toPromise();
+      this.broadcasts = this.broadcasts.filter(b => b.id !== broadcast.id);
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to delete scheduled broadcast.');
+    }
+  }
+
+  canDeleteBroadcast(broadcast: ScheduledBroadcast): boolean {
+    const me = this.auth.currentUser();
+    const myName = me?.username || me?.email || '';
+    if (broadcast.createdByUsername === myName) return true;
+    return this.myRole === 'host' || this.myRole === 'cohost';
+  }
+
+  scheduleBroadcastChoice() {
+    this.showLiveChooser = false;
+    this.openBroadcastDialog();
   }
 
   async loadChat() {

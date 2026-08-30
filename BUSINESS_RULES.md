@@ -109,6 +109,13 @@ Rule groups:
 - **Attendance:** status must be exactly `Accepted` or `Declined`; keyed by composite `(MeetingId, UserId)`; counts (`AcceptedCount`, `AcceptedByMe`) derived from attendee rows.
 - **LiveKit token issuance:** requires room membership **or** a valid guest join code — otherwise `403`. Tokens are short-lived (expiry 1h, `nbf` −10s), permit publish/subscribe/data with camera, microphone, screen-share sources; the creator is flagged as host in metadata.
 - **"Other rooms" meetings** surface only upcoming meetings in the caller's other rooms (excludes the room currently being viewed).
+- **Scheduled broadcasts** are planned YouTube broadcast slots, symmetric with meetings:
+  - **Create:** creator must be a room member; `DurationMinutes <= 0` defaults to **60**; **Title is required** (rejected with `400` otherwise).
+  - **List:** room members only — `403` for non-members.
+  - **Update:** organizer only — `403` otherwise.
+  - **Delete:** organizer, room creator, or any room host/co-host.
+  - **Attendance/RSVP:** status must be exactly `Accepted` or `Declined`; keyed by composite `(BroadcastId, UserId)`; `AcceptedCount`/`AcceptedByMe` derived from attendee rows.
+  - **YouTube URL (optional):** an optional link is stored for the planned broadcast; the host still starts the actual live broadcast themselves at the scheduled time (scheduling does not auto-start playback).
 
 ## 8. Notes
 

@@ -135,6 +135,11 @@ Story groups:
 - As a room member, I want to **RSVP (accept/decline) a meeting** so that organizers can plan attendance.
 - As a user, I want **meetings from my other rooms** surfaced as a heads-up so that I don't double-book my time.
 - As a room member, I want to **join a video meeting room** so that I can meet face-to-face with the group.
+- As a room member, I want to **schedule a video broadcast** (title, description, time, duration, and an optional YouTube link) just like a meeting so that I can plan a watch/lecture session in advance.
+- As a room member, I want to **view the room's scheduled broadcast list** (alongside meetings) so that I know what's coming up.
+- As a broadcast organizer, I want to **update or delete a scheduled broadcast** so that plans can change.
+- As a room host/co-host, I want to **delete any scheduled broadcast** so that I can moderate the room schedule.
+- As a room member, I want to **RSVP (accept/decline) a scheduled broadcast** so that organizers can plan attendance.
 
 ## 13. Peer Calls
 

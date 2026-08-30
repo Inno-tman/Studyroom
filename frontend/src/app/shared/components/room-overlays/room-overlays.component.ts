@@ -64,6 +64,39 @@ import { RoomTabBarService } from '../../../core/services/room-tab-bar.service';
         </form>
       </div>
 
+      <!-- Schedule broadcast dialog -->
+      <div class="schedule-dialog-backdrop" *ngIf="room.showBroadcastDialog" (click)="room.showBroadcastDialog = false">
+        <form class="schedule-dialog" (click)="$event.stopPropagation()" (ngSubmit)="room.scheduleBroadcast()">
+          <div class="dialog-header">
+            <h3>Schedule a broadcast</h3>
+            <button class="dialog-close" type="button" (click)="room.showBroadcastDialog = false"><span class="material-icons">close</span></button>
+          </div>
+          <div class="dialog-body">
+            <label class="field">Title <input type="text" [(ngModel)]="room.broadcastTitle" name="room-broadcastTitle" placeholder="e.g. Anatomy review live" /></label>
+            <label class="field">Description <input type="text" [(ngModel)]="room.broadcastDescription" name="room-broadcastDescription" placeholder="Optional" /></label>
+            <label class="field">When <input type="datetime-local" [(ngModel)]="room.broadcastAt" name="room-broadcastAt" /></label>
+            <label class="field">Duration
+              <select [(ngModel)]="room.broadcastDuration" name="room-broadcastDuration">
+                <option [ngValue]="15">15 minutes</option>
+                <option [ngValue]="30">30 minutes</option>
+                <option [ngValue]="45">45 minutes</option>
+                <option [ngValue]="60">60 minutes</option>
+                <option [ngValue]="90">90 minutes</option>
+                <option [ngValue]="120">120 minutes</option>
+              </select>
+            </label>
+            <label class="field">YouTube link (optional)
+              <input type="text" [(ngModel)]="room.broadcastYouTubeUrl" name="room-broadcastYouTubeUrl" placeholder="https://youtube.com/watch?v=..." />
+            </label>
+            <p class="dialog-hint">Optionally include the video you plan to play. You'll still start the broadcast yourself at the scheduled time.</p>
+            <p class="form-error" *ngIf="room.broadcastError">{{ room.broadcastError }}</p>
+            <button class="btn-primary dialog-submit" type="submit" [disabled]="room.schedulingBroadcast">
+              {{ room.schedulingBroadcast ? 'Scheduling...' : 'Schedule Broadcast' }}
+            </button>
+          </div>
+        </form>
+      </div>
+
       <!-- Roles dialog -->
       <div class="invite-dialog-backdrop" *ngIf="room.showRolesDialog" (click)="room.showRolesDialog = false">
         <div class="invite-dialog" (click)="$event.stopPropagation()">
@@ -120,6 +153,14 @@ import { RoomTabBarService } from '../../../core/services/room-tab-bar.service';
               <span class="live-option-text">
                 <span class="live-option-title">Schedule a meeting</span>
                 <span class="live-option-sub">Plan a meeting for later</span>
+              </span>
+              <span class="material-icons live-option-chev">chevron_right</span>
+            </button>
+            <button class="live-option" type="button" (click)="room.scheduleBroadcastChoice()">
+              <span class="live-option-icon lo-schedule-bc"><span class="material-icons">smart_display</span></span>
+              <span class="live-option-text">
+                <span class="live-option-title">Schedule a broadcast</span>
+                <span class="live-option-sub">Plan a video broadcast for later</span>
               </span>
               <span class="material-icons live-option-chev">chevron_right</span>
             </button>
@@ -214,6 +255,7 @@ import { RoomTabBarService } from '../../../core/services/room-tab-bar.service';
     .live-option-icon.lo-call { background: var(--success); }
     .live-option-icon.lo-broadcast { background: var(--primary); }
     .live-option-icon.lo-schedule { background: var(--accent); }
+    .live-option-icon.lo-schedule-bc { background: #ec4899; }
     .live-option-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
     .live-option-title { font-size: var(--font-14); font-weight: 700; color: var(--text-primary); }
     .live-option-sub { font-size: var(--font-12); color: var(--text-muted); }

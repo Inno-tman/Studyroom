@@ -579,6 +579,28 @@ Understanding of standard notation:
 - **Trigger:** User opens the room player from the floating dock.
 - **Success guarantee:** User searches/pastes a video, queues songs, shuffles, and listens while the screen stays awake; collapses to a mini-pill.
 
+### UC-85 · Schedule a video broadcast
+- **Primary actor:** Room member
+- **Trigger:** User clicks "Schedule a broadcast" in the Meet tab (or the live-session chooser).
+- **Preconditions:** Member.
+- **Success guarantee:** A scheduled broadcast (title, time, duration, optional YouTube link) is stored, symmetric with meetings, organizer = creator.
+- **Main flow:**
+  1. User enters title (required), description, time, duration, and an optional YouTube link.
+  2. System defaults duration to 60 if ≤0 and stores the scheduled broadcast.
+- **Alternate flows:**
+  - Alt 1 – Non-member: `403`.
+  - Alt 2 – Missing title: `400`.
+
+### UC-86 · RSVP to / manage a scheduled broadcast
+- **Primary actor:** Broadcast Organizer (update/delete), Room Host/Co-host (delete), Room member (RSVP)
+- **Trigger:** User accepts/declines, edits, or deletes a scheduled broadcast.
+- **Preconditions:** Member.
+- **Success guarantee:** RSVP upserted with updated counts; broadcast updated/removed.
+- **Alternate flows:**
+  - Alt 1 – Invalid RSVP status: rejected (only `Accepted`/`Declined` allowed).
+  - Alt 2 – Organizer update by non-organizer: `403`.
+  - Alt 3 – Delete by non-organizer and not host/co-host: `403`.
+
 ## 15. Social Feed & Posts
 
 ### UC-48 · Create a post

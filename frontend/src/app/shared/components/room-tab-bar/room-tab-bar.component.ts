@@ -18,7 +18,7 @@ import { RoomTabBarService, RoomTabBarState } from '../../../core/services/room-
         <span class="material-icons">{{ tab.icon }}</span>
         <span class="tab-label">{{ tab.label }}</span>
         <span *ngIf="tab.id === 'chat' && (state.unreadCount ?? 0) > 0" class="tab-item-badge">{{ state.unreadCount }}</span>
-        <span *ngIf="tab.id === 'meet' && (state.upcomingMeetingsCount ?? 0) > 0" class="tab-item-badge">{{ state.upcomingMeetingsCount }}</span>
+        <span *ngIf="tab.id === 'meet' && ((state.upcomingMeetingsCount ?? 0) + (state.upcomingBroadcastsCount ?? 0)) > 0" class="tab-item-badge">{{ (state.upcomingMeetingsCount ?? 0) + (state.upcomingBroadcastsCount ?? 0) }}</span>
       </button>
     </nav>
   `,

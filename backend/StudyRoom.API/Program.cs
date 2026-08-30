@@ -158,6 +158,7 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IRoomInvitationRepository, RoomInvitationRepository>();
 builder.Services.AddScoped<IDirectMessageRepository, DirectMessageRepository>();
 builder.Services.AddScoped<IMeetingRepository, MeetingRepository>();
+builder.Services.AddScoped<IScheduledBroadcastRepository, ScheduledBroadcastRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
@@ -171,6 +172,7 @@ builder.Services.AddScoped<IStreakCalculator, StreakCalculator>();
 builder.Services.AddScoped<ISessionFinalizerService, SessionFinalizerService>();
 builder.Services.AddScoped<IAiConversationRepository, AiConversationRepository>();
 builder.Services.AddScoped<IMeetingService, MeetingService>();
+builder.Services.AddScoped<IScheduledBroadcastService, ScheduledBroadcastService>();
 
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddHttpClient<IAIAcademicService, AIAcademicService>();
@@ -497,6 +499,34 @@ using (var scope = app.Services.CreateScope())
             CONSTRAINT "FK_MeetingAttendees_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS "IX_MeetingAttendees_UserId" ON "MeetingAttendees" ("UserId");
+
+        CREATE TABLE IF NOT EXISTS "ScheduledBroadcasts" (
+            "Id" uuid NOT NULL,
+            "RoomId" uuid NOT NULL,
+            "CreatedBy" uuid NOT NULL,
+            "Title" text NOT NULL,
+            "Description" text NULL,
+            "ScheduledAt" timestamp with time zone NOT NULL,
+            "DurationMinutes" integer NOT NULL,
+            "YouTubeUrl" text NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_ScheduledBroadcasts" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_ScheduledBroadcasts_Users_CreatedBy" FOREIGN KEY ("CreatedBy") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_ScheduledBroadcasts_Rooms_RoomId" FOREIGN KEY ("RoomId") REFERENCES "Rooms" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_ScheduledBroadcasts_RoomId" ON "ScheduledBroadcasts" ("RoomId");
+        CREATE INDEX IF NOT EXISTS "IX_ScheduledBroadcasts_ScheduledAt" ON "ScheduledBroadcasts" ("ScheduledAt");
+
+        CREATE TABLE IF NOT EXISTS "ScheduledBroadcastAttendees" (
+            "BroadcastId" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Status" text NOT NULL DEFAULT 'Accepted',
+            "RespondedAt" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_ScheduledBroadcastAttendees" PRIMARY KEY ("BroadcastId", "UserId"),
+            CONSTRAINT "FK_ScheduledBroadcastAttendees_ScheduledBroadcasts_BroadcastId" FOREIGN KEY ("BroadcastId") REFERENCES "ScheduledBroadcasts" ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_ScheduledBroadcastAttendees_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_ScheduledBroadcastAttendees_UserId" ON "ScheduledBroadcastAttendees" ("UserId");
 
         CREATE TABLE IF NOT EXISTS "UserMilestones" (
             "Id" uuid NOT NULL,
