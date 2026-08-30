@@ -11,7 +11,7 @@ import { environment } from '../../environments/environment';
   imports: [NgFor, NgIf, DecimalPipe, DatePipe, LoadingComponent, HeroCardComponent],
   template: `
     <div class="analytics">
-      <app-hero-card title="Study Analytics" subtitle="Track your study time and review your habits." [badges]="heroBadges">
+      <app-hero-card title="Focus Analytics" subtitle="Track your focus time and review your habits." [badges]="heroBadges">
         <ng-container heroActions>
           <button class="hero-btn" (click)="exportData('csv')">
             <span class="material-icons">download</span> CSV
@@ -27,7 +27,7 @@ import { environment } from '../../environments/environment';
         <div class="ov-card">
           <span class="material-icons ov-icon">schedule</span>
           <span class="ov-value">{{ formatDuration(overview.totalMinutes) }}</span>
-          <span class="ov-label">Total Study Time</span>
+          <span class="ov-label">Total Focus Time</span>
         </div>
         <div class="ov-card">
           <span class="material-icons ov-icon">check_circle</span>
@@ -96,7 +96,7 @@ import { environment } from '../../environments/environment';
 
       <!-- Hourly distribution -->
       <div class="section" *ngIf="hourlyDist.length > 0">
-        <h2>Study by Hour of Day</h2>
+        <h2>Focus by Hour of Day</h2>
         <div class="hourly-chart">
           <div class="hour-col" *ngFor="let h of hourlyDist" [title]="h.hour + ':00 — ' + formatDuration(h.minutes)">
             <div class="hour-fill" [style.height.%]="getHourHeight(h.minutes)"></div>

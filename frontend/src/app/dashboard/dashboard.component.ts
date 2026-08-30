@@ -26,7 +26,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <span class="material-icons">add_box</span> Create Room
           </a>
           <button class="hero-quick" (click)="quickStudy()" *ngIf="myRooms.length > 0" title="Jump into a random room">
-            <span class="material-icons">bolt</span> Quick Study
+            <span class="material-icons">bolt</span> Quick Focus
           </button>
         </div>
         <div class="hero-badges">
@@ -36,7 +36,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           </span>
           <span class="hero-badge">
             <span class="material-icons">schedule</span>
-            {{ formatDuration(stats.totalStudyMinutes) }} studied
+            {{ formatDuration(stats.totalStudyMinutes) }} focused
           </span>
           <span class="hero-badge">
             <span class="material-icons">group</span>
@@ -81,7 +81,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         <div class="stats-strip">
           <div class="stats-strip-item">
             <span class="stat-value">{{ formatDuration(stats.totalStudyMinutes) }}</span>
-            <span class="stat-label">Study Time</span>
+            <span class="stat-label">Focus Time</span>
           </div>
           <div class="stats-strip-item">
             <span class="stat-value">
@@ -132,7 +132,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
             <span class="material-icons tool-icon">style</span>
             <div class="tool-info">
               <span class="tool-name">Flashcards</span>
-              <span class="tool-desc">Study decks + AI-generated cards</span>
+              <span class="tool-desc">Flashcard decks + AI-generated cards</span>
             </div>
             <span class="material-icons tool-arrow">chevron_right</span>
           </a>
@@ -170,7 +170,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         <div class="verification-section" *ngIf="unverifiedSessions.length > 0">
           <div class="verification-header">
             <span class="material-icons">verified_user</span>
-            <span class="verification-title">Review your study hours</span>
+            <span class="verification-title">Review your focus hours</span>
             <span class="verification-count">{{ unverifiedSessions.length }}</span>
           </div>
           <p class="verification-hint">Some of your focus time was flagged as unverified. Explain what you were doing so your room host can confirm it counts.</p>
@@ -273,7 +273,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
         <div class="streak-calendar" *ngIf="streakDays.length > 0">
           <div class="streak-header">
             <span class="material-icons">calendar_month</span>
-            <span class="streak-title">Study Streak</span>
+            <span class="streak-title">Focus Streak</span>
             <span class="streak-count">{{ activeDaysCount }} / 30 active days</span>
           </div>
           <div class="streak-grid">

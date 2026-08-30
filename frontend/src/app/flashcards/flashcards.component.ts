@@ -12,7 +12,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
   imports: [NgFor, NgIf, NgClass, DatePipe, FormsModule, RouterLink, HeroCardComponent],
   template: `
     <div class="fc-page">
-      <app-hero-card title="Flashcards" subtitle="Build decks manually or let AI turn your notes into study cards." [badges]="heroBadges"></app-hero-card>
+      <app-hero-card title="Flashcards" subtitle="Build decks manually or let AI turn your notes into flash cards." [badges]="heroBadges"></app-hero-card>
 
       <ng-container *ngIf="!activeDeck">
         <!-- Deck list -->
@@ -32,7 +32,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
             <div class="fc-deck-meta">{{ deck.cardCount }} cards · updated {{ deck.updatedAt | date:'mediumDate' }}</div>
             <div class="fc-deck-actions">
               <button class="btn-primary sm" (click)="openDeck(deck.id)">
-                <span class="material-icons">play_arrow</span> Study
+                <span class="material-icons">play_arrow</span> Drill
               </button>
               <button class="btn-secondary sm" (click)="editDeck(deck)">
                 <span class="material-icons">edit</span>

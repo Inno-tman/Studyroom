@@ -8,8 +8,8 @@ import { SettingsService } from '../../core/services/settings.service';
   imports: [FormsModule],
   template: `
     <div class="card">
-      <h2>Study Preferences</h2>
-      <p class="card-subtitle">Tune your pomodoro timer and study goals.</p>
+      <h2>Focus Preferences</h2>
+      <p class="card-subtitle">Tune your pomodoro timer and focus goals.</p>
 
       <div class="pref-row">
         <div class="pref-info">
@@ -43,8 +43,8 @@ import { SettingsService } from '../../core/services/settings.service';
         <div class="pref-info">
           <span class="material-icons pref-icon">flag</span>
           <div>
-            <div class="pref-name">Daily Study Goal</div>
-            <div class="pref-desc">How much you want to study each day.</div>
+            <div class="pref-name">Daily Focus Goal</div>
+            <div class="pref-desc">How much you want to focus each day.</div>
           </div>
         </div>
         <div class="number-input">

@@ -16,7 +16,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
   imports: [NgFor, NgIf, DatePipe, FormsModule, RouterLink, LoadingComponent, HeroCardComponent],
   template: `
     <div class="timeline">
-      <app-hero-card [title]="userId ? 'Posts' : 'Timeline'" [subtitle]="userId ? (userName ? userName + '’s recent posts' : 'This user’s posts') : 'Share what you’re studying with your friends.'" [badges]="heroBadges"></app-hero-card>
+      <app-hero-card [title]="userId ? 'Posts' : 'Timeline'" [subtitle]="userId ? (userName ? userName + '’s recent posts' : 'This user’s posts') : 'Share what you’re up to with your friends.'" [badges]="heroBadges"></app-hero-card>
 
       <div class="composer" *ngIf="!userId">
         <div class="composer-header">

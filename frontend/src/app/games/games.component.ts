@@ -287,7 +287,7 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
   imports: [NgIf, NgFor, NgTemplateOutlet, FormsModule, HeroCardComponent],
   template: `
     <div class="games-page">
-      <app-hero-card title="Educational Games" subtitle="Sharpen your mind between study sessions. Scores are saved locally." [badges]="heroBadges"></app-hero-card>
+      <app-hero-card title="Educational Games" subtitle="Sharpen your mind between focus sessions. Scores are saved locally." [badges]="heroBadges"></app-hero-card>
 
       <!-- Shared AI question config (used by the AI-capable games) -->
       <ng-template #aiConfig>
@@ -344,7 +344,7 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
         <div class="card tip-card">
           <div class="tip-icon"><span class="material-icons">lightbulb</span></div>
           <div>
-            <h3>Study tip</h3>
+            <h3>Focus tip</h3>
             <p>Short, active recall games work great as a warm-up or a reward during a Pomodoro break.</p>
           </div>
         </div>
@@ -1107,7 +1107,7 @@ export class GamesComponent implements OnDestroy {
     { id: 'math', icon: 'calculate', title: 'Quick Math', desc: 'AI story problems, or a classic 60-second arithmetic sprint.', color: '#6366f1' },
     { id: 'scramble', icon: 'abc', title: 'Word Scramble', desc: 'Unscramble words fast — fresh AI word sets each play.', color: '#10b981' },
     { id: 'quiz', icon: 'quiz', title: 'Trivia Quiz', desc: '10 general-knowledge questions — fresh AI sets each play.', color: '#f59e0b' },
-    { id: 'memory', icon: 'extension', title: 'Memory Match', desc: 'Flip cards and match study terms to definitions. 6 pairs, AI-fresh rounds.', color: '#8b5cf6' },
+    { id: 'memory', icon: 'extension', title: 'Memory Match', desc: 'Flip cards and match terms to definitions. 6 pairs, AI-fresh rounds.', color: '#8b5cf6' },
     { id: 'truefalse', icon: 'thumbs_up_down', title: 'True/False Sprint', desc: 'Blast through 30 seconds of rapid fact checks — AI-fresh statements.', color: '#ef4444' },
     { id: 'flags', icon: 'public', title: 'Flag Finder', desc: 'Identify countries from their flags. Drawn from 50 flags.', color: '#3b82f6' },
     { id: 'elements', icon: 'science', title: 'Element Symbols', desc: 'Match chemical elements to their symbols. Drawn from all 118 elements.', color: '#14b8a6' }

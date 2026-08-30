@@ -18,7 +18,7 @@ interface CalendarConnection {
   template: `
     <div class="calendar-settings">
       <h2>Calendar Integration</h2>
-      <p class="desc">Sync your study sessions to Google Calendar or Outlook automatically.</p>
+      <p class="desc">Sync your focus sessions to Google Calendar or Outlook automatically.</p>
 
       <div class="connections" *ngIf="connections.length > 0">
         <div class="conn-card" *ngFor="let c of connections">
@@ -183,7 +183,7 @@ export class CalendarSettingsComponent implements OnInit {
     const now = new Date();
     const end = new Date(now.getTime() + 25 * 60000);
     this.http.post(`${environment.apiUrl}/calendar/sync`, {
-      title: 'Study Session',
+      title: 'Focus Session',
       start: now.toISOString(),
       end: end.toISOString(),
       description: 'Manual sync from ResVibe'
