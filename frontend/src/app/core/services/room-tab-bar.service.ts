@@ -30,12 +30,18 @@ export interface RoomTabBarState {
 export class RoomTabBarService {
   private state = new BehaviorSubject<RoomTabBarState | null>(null);
   private select = new Subject<string>();
+  private activeRoom = new BehaviorSubject<any>(null);
 
   state$ = this.state.asObservable();
   select$ = this.select.asObservable();
+  activeRoom$ = this.activeRoom.asObservable();
 
   setState(state: RoomTabBarState | null): void {
     this.state.next(state);
+  }
+
+  setActiveRoom(room: any): void {
+    this.activeRoom.next(room);
   }
 
   selectTab(id: string): void {

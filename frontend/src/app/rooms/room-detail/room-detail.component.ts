@@ -1014,7 +1014,7 @@ const TABS: RoomTab[] = [
 
     /* ── Dialogs ────────────────────────────────────────────── */
     .invite-dialog-backdrop, .schedule-dialog-backdrop {
-      position: fixed; inset: 0;
+      position: fixed !important; inset: 0 !important;
       background: rgba(0, 0, 0, 0.5);
       display: flex; align-items: center; justify-content: center; z-index: 1300;
     }
@@ -1071,7 +1071,7 @@ const TABS: RoomTab[] = [
 
     /* ── Generic dialog (video share) ──────────────────────── */
     .dialog-backdrop {
-      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      position: fixed !important; inset: 0 !important; background: rgba(0, 0, 0, 0.5);
       display: flex; align-items: center; justify-content: center; z-index: 1300;
     }
     .dialog {
@@ -1082,7 +1082,7 @@ const TABS: RoomTab[] = [
 
     /* ── Live session chooser ──────────────────────────────── */
     .live-chooser-backdrop {
-      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5);
+      position: fixed !important; inset: 0 !important; background: rgba(0, 0, 0, 0.5);
       display: flex; align-items: center; justify-content: center; z-index: 1300;
     }
     .live-chooser {
