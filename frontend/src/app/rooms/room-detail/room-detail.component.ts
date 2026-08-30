@@ -1014,7 +1014,7 @@ const TABS: RoomTab[] = [
 
     /* ── Dialogs ────────────────────────────────────────────── */
     .invite-dialog-backdrop, .schedule-dialog-backdrop {
-      position: fixed; inset: 0; height: 100vh; height: 100dvh;
+      position: fixed; inset: 0;
       background: rgba(0, 0, 0, 0.5);
       display: flex; align-items: center; justify-content: center; z-index: 1300;
     }
