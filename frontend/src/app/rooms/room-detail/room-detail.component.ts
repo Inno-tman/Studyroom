@@ -1169,7 +1169,7 @@ const TABS: RoomTab[] = [
 
     /* ── Mobile ─────────────────────────────────────────────── */
     @media (max-width: 900px) {
-      .room-detail { max-width: 100%; }
+      .room-detail { max-width: 100%; overflow: visible; }
 
       .room-header { border-radius: 0; border-left: 0; border-right: 0; border-top: 0; padding: 16px; margin-bottom: 0; }
       .back-label { display: none; }
@@ -1203,13 +1203,14 @@ const TABS: RoomTab[] = [
       /* Bottom tab bar */
       .mobile-tabbar {
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 1150;
-        display: flex; background: var(--surface);
+        display: flex; align-items: stretch; background: var(--surface);
         border-top: 1px solid var(--border);
-        padding-bottom: calc(env(safe-area-inset-bottom) - 14px);
+        padding-bottom: env(safe-area-inset-bottom);
+        min-height: 54px;
       }
       .tab-item {
-        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
-        padding: 2px 0 0; background: none; border: none; cursor: pointer;
+        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+        padding: 6px 0 7px; background: none; border: none; cursor: pointer;
         color: var(--text-muted); transition: color 0.15s; position: relative;
       }
       .tab-item .material-icons { font-size: 18px; margin-bottom: 1px; }
