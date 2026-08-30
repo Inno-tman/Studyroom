@@ -12,7 +12,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
   imports: [NgFor, NgIf, DatePipe, LoadingComponent, HeroCardComponent],
   template: `
     <div class="invitations-page">
-      <app-hero-card title="Room Invitations" subtitle="Accept or decline invites to study rooms." [badges]="heroBadges"></app-hero-card>
+      <app-hero-card title="Room Invitations" subtitle="Accept or decline invites to rooms." [badges]="heroBadges"></app-hero-card>
 
       <app-loading [loading]="loading" />
 

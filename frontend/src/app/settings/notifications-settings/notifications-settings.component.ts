@@ -235,13 +235,13 @@ export class NotificationsSettingsComponent {
 
   eventPrefs: { key: BoolPrefKey; label: string; desc: string; icon: string }[] = [
     { key: 'directMessages', label: 'Direct Messages', desc: 'Notify when you receive a direct message.', icon: 'chat' },
-    { key: 'roomActivity', label: 'Room Activity', desc: 'Be notified when someone joins or posts in your study rooms.', icon: 'meeting_room' },
+    { key: 'roomActivity', label: 'Room Activity', desc: 'Be notified when someone joins or posts in your rooms.', icon: 'meeting_room' },
     { key: 'friendRequests', label: 'Friend Requests', desc: 'Notify when someone sends you a friend request.', icon: 'person_add' },
     { key: 'roomInvites', label: 'Room Invites', desc: 'Notify when a friend invites you to a room.', icon: 'mark_email_unread' },
     { key: 'postComments', label: 'Post Comments', desc: 'Notify when someone comments on or replies to your posts.', icon: 'comment' },
     { key: 'pomodoroComplete', label: 'Pomodoro Complete', desc: 'Alert when a focus session finishes.', icon: 'timer' },
-    { key: 'studyReminders', label: 'Study Reminders', desc: 'Get reminders for your study sessions.', icon: 'alarm' },
-    { key: 'weeklySummary', label: 'Weekly Summary', desc: 'Receive a weekly digest of your study statistics.', icon: 'insights' }
+    { key: 'studyReminders', label: 'Focus Reminders', desc: 'Get reminders for your focus sessions.', icon: 'alarm' },
+    { key: 'weeklySummary', label: 'Weekly Summary', desc: 'Receive a weekly digest of your focus statistics.', icon: 'insights' }
   ];
 
   isEnabled(key: BoolPrefKey): boolean {
