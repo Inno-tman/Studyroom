@@ -425,6 +425,24 @@ const TABS: RoomTab[] = [
       </ng-template>
 
       <ng-template #meetingsBody>
+        <div class="meet-actions">
+          <button class="meet-action meet-call" type="button" (click)="toggleCall()" [attr.aria-label]="inCall ? 'In call' : 'Start call'">
+            <span class="material-icons">{{ inCall ? 'videocam_off' : 'videocam' }}</span>
+            <span class="meet-action-text">
+              <span class="meet-action-title">{{ inCall ? 'In Call' : 'Start Call' }}</span>
+              <span class="meet-action-sub">{{ inCall ? 'Returning to the call…' : 'Hop on a live video call with the room' }}</span>
+            </span>
+            <span class="material-icons meet-action-chev">chevron_right</span>
+          </button>
+          <button *ngIf="isHost" class="meet-action meet-broadcast" type="button" (click)="openVideoDialog()" aria-label="Broadcast video">
+            <span class="material-icons">smart_display</span>
+            <span class="meet-action-text">
+              <span class="meet-action-title">Broadcast</span>
+              <span class="meet-action-sub">Play a synced YouTube video for the room</span>
+            </span>
+            <span class="material-icons meet-action-chev">chevron_right</span>
+          </button>
+        </div>
         <div class="meetings-panel" *ngIf="upcomingMeetings.length > 0">
           <div class="panel-header">
             <h2><span class="material-icons">event</span> Upcoming Meetings</h2>
@@ -554,16 +572,7 @@ const TABS: RoomTab[] = [
         </div>
       </div>
 
-      <!-- ── Mobile action dock + tab bar ───────────────────── -->
-      <div class="mobile-actions" *ngIf="isMobile && isMember && !inCall">
-        <button class="ma-btn ma-call" type="button" (click)="toggleCall()" title="Start Call" aria-label="Start call">
-          <span class="material-icons">videocam</span> Call
-        </button>
-        <button class="ma-btn ma-broadcast" type="button" *ngIf="isHost" (click)="openVideoDialog()" title="Broadcast video" aria-label="Broadcast video">
-          <span class="material-icons">smart_display</span> Broadcast
-        </button>
-      </div>
-
+      <!-- ── Tab bar (mobile) ───────────────────────────────── -->
       <nav class="mobile-tabbar" *ngIf="isMobile && isMember">
         <button
           *ngFor="let tab of tabs"
@@ -904,6 +913,24 @@ const TABS: RoomTab[] = [
     .send-btn .material-icons { font-size: var(--font-18); }
 
     /* ── Meetings ───────────────────────────────────────────── */
+    .meet-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .meet-action {
+      display: flex; align-items: center; gap: 12px; width: 100%;
+      padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text-primary); cursor: pointer; text-align: left;
+      transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .meet-action:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .meet-call { background: linear-gradient(135deg, var(--accent), #0e7490); border-color: transparent; color: #fff; }
+    .meet-call:hover { border-color: transparent; opacity: 0.95; }
+    .meet-broadcast { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); border-color: transparent; color: #fff; }
+    .meet-broadcast:hover { border-color: transparent; opacity: 0.95; }
+    .meet-action > .material-icons:first-child { font-size: var(--font-24); }
+    .meet-action-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .meet-action-title { font-size: var(--font-14); font-weight: 700; }
+    .meet-action-sub { font-size: var(--font-12); opacity: 0.85; }
+    .meet-action-chev { font-size: var(--font-20); opacity: 0.8; }
+
     .meetings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
     .upcoming-count { font-size: var(--font-12); color: var(--text-secondary); }
     .meeting-list { padding: 8px 0; }
@@ -1173,27 +1200,6 @@ const TABS: RoomTab[] = [
       .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .meetings-panel, .meetings-empty { margin-bottom: 0; border-radius: 14px; }
 
-      /* Floating action dock (mobile) */
-      .mobile-actions {
-        position: fixed; left: 50%; transform: translateX(-50%);
-        bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 1200;
-        display: flex; gap: 10px; align-items: center;
-        max-width: calc(100vw - 24px);
-      }
-      .ma-btn {
-        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-        padding: 12px 18px; border: none; border-radius: 26px;
-        font-size: var(--font-13); font-weight: 700; color: #fff; cursor: pointer;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); white-space: nowrap;
-        -webkit-tap-highlight-color: transparent;
-      }
-      .ma-btn:active { transform: scale(0.96); }
-      .ma-btn .material-icons { font-size: var(--font-20); }
-      .ma-call { background: var(--success); }
-      .ma-call:hover { background: #16a34a; }
-      .ma-broadcast { background: var(--primary); }
-      .ma-broadcast:hover { background: var(--primary-hover); }
-
       /* Bottom tab bar */
       .mobile-tabbar {
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 1150;
@@ -1219,6 +1225,13 @@ const TABS: RoomTab[] = [
 
       .invite-dialog, .schedule-dialog { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 88vh; max-height: 88dvh; padding-bottom: env(safe-area-inset-bottom); }
       .invite-dialog-backdrop, .schedule-dialog-backdrop { align-items: flex-end; }
+
+      /* Video/broadcast dialog — always a centered modal on mobile */
+      .dialog-backdrop { align-items: center; padding: 20px; }
+      .dialog {
+        width: 100%; max-width: 420px;
+        max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px);
+      }
 
       .call-overlay-header { padding: 10px 12px; }
       .end-call-label { display: none; }
