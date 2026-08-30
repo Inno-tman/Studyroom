@@ -436,16 +436,6 @@ const TABS: RoomTab[] = [
       </ng-template>
 
       <ng-template #meetingsBody>
-        <div class="meet-actions">
-          <button class="meet-action meet-primary" type="button" (click)="showLiveChooser = true" aria-label="Start a live session">
-            <span class="material-icons">rocket_launch</span>
-            <span class="meet-action-text">
-              <span class="meet-action-title">Start live session</span>
-              <span class="meet-action-sub">Call, broadcast, or schedule a meeting</span>
-            </span>
-            <span class="material-icons meet-action-chev">chevron_right</span>
-          </button>
-        </div>
         <div class="meetings-panel" *ngIf="upcomingMeetings.length > 0">
           <div class="panel-header">
             <h2><span class="material-icons">event</span> Upcoming Meetings</h2>
@@ -490,10 +480,10 @@ const TABS: RoomTab[] = [
         <div class="meetings-empty" *ngIf="upcomingMeetings.length === 0">
           <span class="material-icons">event_available</span>
           <p class="meetings-empty-title">No upcoming meetings</p>
-          <p class="meetings-empty-sub">Jump into a live session now, or schedule one for later.</p>
+          <p class="meetings-empty-sub">Schedule a meeting or broadcast a video for this room.</p>
           <div class="meetings-empty-actions">
-            <button class="btn-primary" (click)="showLiveChooser = true"><span class="material-icons">rocket_launch</span> Start live session</button>
-            <button class="btn-outline" (click)="openScheduleDialog()"><span class="material-icons">event</span> Schedule</button>
+            <button class="btn-primary" (click)="openScheduleDialog()"><span class="material-icons">event</span> Schedule a meeting</button>
+            <button *ngIf="isHost" class="btn-outline" (click)="openVideoDialog()"><span class="material-icons">smart_display</span> Broadcast a video</button>
           </div>
         </div>
       </ng-template>
@@ -544,14 +534,26 @@ const TABS: RoomTab[] = [
     .btn-outline-danger { padding: 10px 20px; background: transparent; border: 1px solid var(--error); border-radius: 8px; color: var(--error); font-size: var(--font-14); font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
     .btn-outline-danger:hover { background: rgba(239, 68, 68, 0.1); }
 
-    .btn-call {
+    .btn-call-dismiss {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 10px 20px; background: var(--success); border: none; border-radius: 8px;
+      padding: 10px 20px; background: var(--error); border: none; border-radius: 8px;
       color: white; font-size: var(--font-14); font-weight: 600; cursor: pointer; white-space: nowrap;
       transition: background 0.15s;
     }
-    .btn-call:hover { background: #16a34a; }
-    .btn-call .material-icons { font-size: var(--font-18); }
+    .btn-call-dismiss:hover { background: #dc2626; }
+    .btn-call-dismiss .material-icons { font-size: var(--font-18); }
+
+    .studio-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary), #0ea5e9);
+      color: white; font-size: var(--font-14); font-weight: 700; cursor: pointer; white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+      transition: opacity 0.15s, box-shadow 0.15s;
+    }
+    .studio-btn:hover { opacity: 0.95; box-shadow: 0 6px 18px rgba(56, 189, 248, 0.38); }
+    .studio-btn .material-icons { font-size: var(--font-18); }
+
 
     .room-content { margin-top: 16px; }
 
