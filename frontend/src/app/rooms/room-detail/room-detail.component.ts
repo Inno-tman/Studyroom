@@ -69,21 +69,17 @@ const TABS: RoomTab[] = [
           <button *ngIf="!isMember" class="btn-primary" (click)="joinRoom()" [disabled]="joining">
             {{ joining ? 'Joining...' : 'Join Room' }}
           </button>
-          <button *ngIf="isMember" class="btn-call" (click)="toggleCall()">
-            <span class="material-icons">{{ inCall ? 'call_end' : 'videocam' }}</span>
-            {{ inCall ? 'End Call' : 'Start Call' }}
+          <button *ngIf="isMember && inCall" class="btn-call-dismiss" (click)="toggleCall()">
+            <span class="material-icons">call_end</span>
+            <span class="end-call-label-desk">End Call</span>
           </button>
-          <button *ngIf="isMember" class="btn-primary schedule-btn" (click)="openScheduleDialog()">
-            <span class="material-icons">event_available</span>
-            Schedule
+          <button *ngIf="isMember && !inCall" class="btn-primary studio-btn" (click)="showLiveChooser = true">
+            <span class="material-icons">rocket_launch</span>
+            Start live session
           </button>
           <button *ngIf="isMember" class="btn-outline share-btn" (click)="copyRoomLink()" title="Copy invite link">
             <span class="material-icons">link</span>
             Invite link
-          </button>
-          <button *ngIf="isMember && isHost" class="btn-outline share-video-btn" (click)="openVideoDialog()" title="Broadcast a video">
-            <span class="material-icons">smart_display</span>
-            Broadcast
           </button>
           <label *ngIf="isMember && isHost" class="btn-outline bg-upload-btn" title="Change room background">
             <span class="material-icons">image</span>
