@@ -15,6 +15,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { InvitationService } from '../../core/services/invitation.service';
 import { FriendService } from '../../core/services/friend.service';
 import { YouTubeBroadcastService } from '../../core/services/youtube-broadcast.service';
+import { RoomTabBarService } from '../../core/services/room-tab-bar.service';
 import { Room } from '../../shared/models/room.model';
 import { Meeting } from '../../shared/models/meeting.model';
 import { Message } from '../../shared/models/message.model';
@@ -571,21 +572,6 @@ const TABS: RoomTab[] = [
           </div>
         </div>
       </div>
-
-      <!-- ── Tab bar (mobile) ───────────────────────────────── -->
-      <nav class="mobile-tabbar" *ngIf="isMobile && isMember">
-        <button
-          *ngFor="let tab of tabs"
-          class="tab-item"
-          [class.active]="activeTab === tab.id"
-          (click)="selectTab(tab.id)"
-        >
-          <span class="material-icons">{{ tab.icon }}</span>
-          <span class="tab-label">{{ tab.label }}</span>
-          <span *ngIf="tab.id === 'chat' && unreadCount > 0" class="tab-item-badge">{{ unreadCount }}</span>
-          <span *ngIf="tab.id === 'meet' && upcomingMeetings.length > 0" class="tab-item-badge">{{ upcomingMeetings.length }}</span>
-        </button>
-      </nav>
 
       <div class="snack" *ngIf="snack">{{ snack }}</div>
 
@@ -1200,30 +1186,6 @@ const TABS: RoomTab[] = [
       .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
       .meetings-panel, .meetings-empty { margin-bottom: 0; border-radius: 14px; }
 
-      /* Bottom tab bar */
-      .mobile-tabbar {
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1150;
-        display: flex; align-items: stretch; background: var(--surface);
-        border-top: 1px solid var(--border);
-        padding-bottom: env(safe-area-inset-bottom);
-        min-height: 54px;
-      }
-      .tab-item {
-        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-        padding: 6px 0 7px; background: none; border: none; cursor: pointer;
-        color: var(--text-muted); transition: color 0.15s; position: relative;
-      }
-      .tab-item .material-icons { font-size: 18px; margin-bottom: 1px; }
-      .tab-label { font-size: 9px; line-height: 1; font-weight: 600; }
-      .tab-item.active { color: var(--accent); }
-      .tab-item-badge {
-        position: absolute; top: 4px; left: 50%; transform: translateX(6px);
-        min-width: 16px; height: 16px; border-radius: 8px;
-        background: var(--error); color: white;
-        font-size: var(--font-9); font-weight: 700;
-        display: flex; align-items: center; justify-content: center; padding: 0 3px;
-      }
-
       .invite-dialog, .schedule-dialog { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 88vh; max-height: 88dvh; padding-bottom: env(safe-area-inset-bottom); }
       .invite-dialog-backdrop, .schedule-dialog-backdrop { align-items: flex-end; }
 
@@ -1266,6 +1228,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private ytPlayerSvc = inject(YouTubeBroadcastService);
   private statsService = inject(StatisticsService);
   private http = inject(HttpClient);
+  private tabBar = inject(RoomTabBarService);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
 
@@ -1329,6 +1292,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   private nowTicker?: any;
 
   private notesSub?: Subscription;
+  private tabBarSub?: Subscription;
   private focusSub?: Subscription;
 
   @HostListener('window:resize')
@@ -1361,6 +1325,18 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.loadRoomStats();
       this.loadReviewQueue();
     }
+    this.pushTabBarState();
+  }
+
+  private pushTabBarState() {
+    this.tabBar.setState({
+      isMobile: this.isMobile,
+      isMember: this.isMember,
+      tabs: this.tabs,
+      activeTab: this.activeTab,
+      unreadCount: this.unreadCount,
+      upcomingMeetingsCount: this.upcomingMeetings.length
+    });
   }
 
   roomStats: any = null;
@@ -1720,6 +1696,8 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
     if (!this.roomId) return;
 
+    this.tabBarSub = this.tabBar.select$.subscribe(id => this.selectTab(id));
+
     this.nowTicker = setInterval(() => {
       this.now = Date.now();
     }, 30000);
@@ -1732,6 +1710,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       const members = await this.roomService.getMembers(this.roomId).toPromise();
       this.members = members || [];
       this.isMember = members?.some(m => m.id === userId) || false;
+      this.pushTabBarState();
 
       const qp = this.route.snapshot.queryParamMap;
       this.inviteCode = qp.get('code');
@@ -1757,6 +1736,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   async loadMeetings() {
     try {
       this.meetings = await this.meetingService.getForRoom(this.roomId).toPromise() || [];
+      this.pushTabBarState();
     } catch { }
   }
 
@@ -1879,6 +1859,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
             this.scrollToBottom();
           } else {
             this.unreadCount++;
+            this.pushTabBarState();
           }
         }
       });
@@ -1934,6 +1915,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       this.isMember = true;
       await this.loadChat();
       await this.setupSignalR();
+      this.pushTabBarState();
     } catch (err: any) {
       alert(err.error?.error || 'Failed to join room.');
     } finally {
@@ -1950,6 +1932,7 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
       await this.roomService.leave(this.roomId).toPromise();
       this.isMember = false;
       this.messages = [];
+      this.pushTabBarState();
       this.router.navigate(['/rooms']);
     } catch { }
   }
@@ -1983,9 +1966,11 @@ export class RoomDetailComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.notesSub?.unsubscribe();
     this.focusSub?.unsubscribe();
+    this.tabBarSub?.unsubscribe();
     this.videoSubs.forEach(s => s?.unsubscribe());
     if (this.nowTicker) clearInterval(this.nowTicker);
     this.inCall = false;
+    this.tabBar.setState(null);
     try { this.ytPlayer?.destroy?.(); } catch { }
     if (this.isMember) {
       this.signalR.leaveRoom(this.roomId);
