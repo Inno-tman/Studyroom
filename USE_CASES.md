@@ -57,7 +57,7 @@ Understanding of standard notation:
 11. [Educational Games](#11-educational-games)
 12. [Meetings & Video Rooms](#12-meetings--video-rooms)
 13. [Peer Calls](#13-peer-calls)
-14. [Video Broadcast & Room Player](#14-video-broadcast--room-player)
+14. [Video Broadcast & Room Player](#14-video-broadcast--room-player) (incl. scheduled broadcasts)
 15. [Social Feed & Posts](#15-social-feed--posts)
 16. [Friends & People](#16-friends--people)
 17. [Direct Messages](#17-direct-messages)

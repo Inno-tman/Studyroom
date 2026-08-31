@@ -5,7 +5,7 @@
 This document catalogs the product capabilities of ResVibe — a live, multi-purpose community platform where people open **rooms** for any shared activity (focus/study, coworking, social, gaming, watch parties, and more) and gather in real time — as user stories, generated from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend).
 
 Story groups:
-[1. Authentication](#1-authentication--account) · [2. Profile & Onboarding](#2-profile--onboarding) · [3. Dashboard](#3-dashboard) · [4. Rooms](#4-rooms) · [5. Room Chat](#5-room-chat) · [6. Focus Timer](#6-focus-timer) · [7. Shared Notes](#7-shared-notes) · [8. Room Tasks](#8-room-tasks) · [9. AI Assistant & Research](#9-ai-assistant--research) · [10. Flashcards](#10-flashcards) · [11. Educational Games](#11-educational-games) · [12. Meetings](#12-meetings) · [13. Peer Calls](#13-peer-calls) · [14. Video & Room Player](#14-video--room-player) · [15. Social Feed](#15-social-feed) · [16. Friends & People](#16-friends--people) · [17. Direct Messages](#17-direct-messages) · [18. Notifications](#18-notifications) · [19. Room Invitations](#19-room-invitations) · [20. Presence](#20-presence) · [21. Analytics](#21-analytics) · [22. Gamification](#22-gamification) · [23. Leaderboards](#23-leaderboards) · [24. Calendar](#24-calendar) · [25. Nudges & Summaries](#25-nudges--summaries) · [26. Settings](#26-settings) · [27. Global Shell](#27-global-shell)
+[1. Authentication](#1-authentication--account) · [2. Profile & Onboarding](#2-profile--onboarding) · [3. Dashboard](#3-dashboard) · [4. Rooms](#4-rooms) · [5. Room Chat](#5-room-chat) · [6. Focus Timer](#6-focus-timer) · [7. Shared Notes](#7-shared-notes) · [8. Room Tasks](#8-room-tasks) · [9. AI Assistant & Research](#9-ai-assistant--research) · [10. Flashcards](#10-flashcards) · [11. Educational Games](#11-educational-games) · [12. Meetings & Scheduled Broadcasts](#12-meetings--scheduled-broadcasts) · [13. Peer Calls](#13-peer-calls) · [14. Video & Room Player](#14-video--room-player) · [15. Social Feed](#15-social-feed) · [16. Friends & People](#16-friends--people) · [17. Direct Messages](#17-direct-messages) · [18. Notifications](#18-notifications) · [19. Room Invitations](#19-room-invitations) · [20. Presence](#20-presence) · [21. Analytics](#21-analytics) · [22. Gamification](#22-gamification) · [23. Leaderboards](#23-leaderboards) · [24. Calendar](#24-calendar) · [25. Nudges & Summaries](#25-nudges--summaries) · [26. Settings](#26-settings) · [27. Global Shell](#27-global-shell)
 
 ---
 
@@ -126,7 +126,7 @@ Story groups:
 - As a user, I want each game to **track my best score locally** so that I can try to beat myself.
 - As a user, I want an **AI-generated questions mode** (pick a topic + difficulty; fresh questions each play, with built-in fallback) so that gameplay never gets stale.
 
-## 12. Meetings
+## 12. Meetings & Scheduled Broadcasts
 
 - As a room member, I want to **schedule meetings** (title, description, time, duration) so that group sessions are planned.
 - As a room member, I want to **view the room's meeting list** so that I know what's coming up.
