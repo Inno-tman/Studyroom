@@ -350,6 +350,21 @@ public class StudySessionsController : ControllerBase
         }
     }
 
+    [HttpPost("{id}/void")]
+    public async Task<IActionResult> VoidSession(Guid id)
+    {
+        try
+        {
+            var session = await _verificationReview.VoidAsync(id, UserId);
+            if (session == null) return NotFound(new { error = "Session not found" });
+            return Ok(MapSessionDto(session));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
     private static object MapSessionDto(StudySession s)
     {
         var minutes = Math.Round(s.DurationMinutes, 2);

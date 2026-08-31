@@ -275,6 +275,7 @@ Story groups:
 - As a user, I want to **explain a flagged session with a comment and request review** so that my host can confirm the time counts.
 - As a user, I want to **see the status** of my review requests (awaiting review / approved / declined with the reviewer's note) so that I know where each request stands.
 - As a room host or co-host, I want a **review queue** in my room's Stats tab listing all flagged (eligible unverified) sessions — even before owners submit a request — so that I can approve or decline them, including my own.
+- As a user, I want to **void (remove) my own flagged focus time** so that I can discard focus time I don't want to count — it behaves like a decline but is done by me, the session owner, and revokes any XP it earned.
 - As a room host or co-host, I want an approved session to **count retroactively** (XP, milestones, streak, calendar) so that the user gets full credit for confirmed time.
 
 ---

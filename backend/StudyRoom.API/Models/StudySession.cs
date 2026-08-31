@@ -34,7 +34,8 @@ public class StudySession
     /// Optional verification workflow: an unverified session can be explained by
     /// its owner (VerificationComment) and requested for review; the room's
     /// host/co-host approves (→ re-verified + retroactive award) or declines.
-    /// States: null (not reviewed) / "Pending" / "Approved" / "Declined".
+    /// The owner may also "void" their own flagged session (→ excluded, never
+    /// counted). States: null (not reviewed) / "Pending" / "Approved" / "Declined" / "Voided".
     /// Only excessive_duration, too_many_sessions and excessive_tab_switches
     /// are eligible. AwardProcessed stays guarded so a re-award never double-counts.
     /// </summary>

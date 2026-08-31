@@ -19,6 +19,7 @@ public interface IVerificationReviewService
     Task<List<StudySession>> GetMySessionsAsync(Guid userId);
     Task<List<StudySession>> GetRoomReviewQueueAsync(Guid roomId, Guid moderatorId);
     Task<StudySession?> ReviewAsync(Guid sessionId, Guid moderatorId, bool approve, string? note);
+    Task<StudySession?> VoidAsync(Guid sessionId, Guid ownerId);
 }
 
 public class VerificationReviewService : IVerificationReviewService
@@ -81,7 +82,8 @@ public class VerificationReviewService : IVerificationReviewService
 
     public async Task<List<StudySession>> GetMySessionsAsync(Guid userId) =>
         await _context.StudySessions
-            .Where(s => s.UserId == userId && s.Completed && !s.IsVerified)
+            .Where(s => s.UserId == userId && s.Completed && !s.IsVerified
+                && s.VerificationState != "Voided")
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();
 
@@ -91,9 +93,11 @@ public class VerificationReviewService : IVerificationReviewService
 
         // Every eligible unverified session in the room is available for review,
         // whether or not the owner has submitted a request. Requests (with an
-        // owner comment) surface first, then the rest oldest-first.
+        // owner comment) surface first, then the rest oldest-first. Sessions the
+        // owner has voided are excluded from the queue.
         return await _context.StudySessions
             .Where(s => s.RoomId == roomId && s.Completed && !s.IsVerified
+                && s.VerificationState != "Voided"
                 && EligibleReasons.Contains(s.VerifiedReason ?? ""))
             .OrderByDescending(s => s.VerificationState == "Pending")
             .ThenBy(s => s.VerificationRequestedAt ?? s.CreatedAt)
@@ -139,6 +143,85 @@ public class VerificationReviewService : IVerificationReviewService
         }
 
         return session;
+    }
+
+    /// <summary>
+    /// Lets a session's OWNER remove ("void") their own flagged focus time. This
+    /// behaves like a decline but is initiated by the person the focus time
+    /// belongs to rather than by a moderator. A voided session is excluded and
+    /// never counts toward stats/focus minutes again: it stays unverified (so it
+    /// drops out of every derived computation) and leaves the owner's review
+    /// list and the room's verification queue. If the session had somehow been
+    /// awarded XP already (e.g. re-verified), the award is revoked.
+    /// </summary>
+    public async Task<StudySession?> VoidAsync(Guid sessionId, Guid ownerId)
+    {
+        var session = await _context.StudySessions
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.Completed);
+        if (session == null) return null;
+
+        // Only the person the focus time belongs to may void it.
+        if (session.UserId != ownerId)
+            throw new UnauthorizedAccessException("Only the owner of the focus time may void it.");
+
+        // Only flagged/unverified sessions can be voided.
+        if (session.IsVerified) return session; // nothing to void
+        if (session.VerificationState is "Voided" or "Approved" or "Declined") return session; // already decided
+
+        session.VerificationState = "Voided";
+        session.VerificationReviewerUserId = ownerId;
+        session.VerificationReviewNote = "Voided by owner";
+        session.VerifiedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // A voided session must not keep any XP it may have earned. Unverified
+        // sessions are normally never awarded, but if one was (edge case), the
+        // compensation below only fires when a matching focus award actually
+        // exists, so it can never deduct XP the user never received.
+        await RevokeFocusAwardIfAnyAsync(session);
+
+        await _notificationService.CreateAsync(
+            session.UserId, "verification",
+            "Focus session voided",
+            $"You removed {FormatMinutes(session.DurationMinutes)} of flagged focus time. It no longer counts.",
+            icon: "block", link: "/dashboard");
+
+        return session;
+    }
+
+    /// <summary>
+    /// Revokes the focus XP (if any) that a session earned, using a compensating
+    /// negative XP event. Only fires when the session has at least one matching
+    /// positive "focus" award of the same minute value, so it is a no-op for the
+    /// common case of a never-awarded unverified session.
+    /// </summary>
+    private async Task RevokeFocusAwardIfAnyAsync(StudySession session)
+    {
+        var xp = Math.Max(1, (int)Math.Round(session.DurationMinutes));
+
+        var awarded = await _context.XpEvents
+            .AnyAsync(e => e.UserId == session.UserId && e.Type == "focus" && e.Points == xp);
+
+        if (!awarded) return;
+
+        try
+        {
+            _context.XpEvents.Add(new XpEvent
+            {
+                UserId = session.UserId,
+                Type = "focus",
+                Points = -xp,
+                Label = "Focus session voided"
+            });
+            await _context.SaveChangesAsync();
+            await _milestoneService.CheckAndAwardMilestonesAsync(session.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[verification-review] void revoke step failed for session {SessionId} user={UserId}",
+                session.Id, session.UserId);
+        }
     }
 
     /// <summary>

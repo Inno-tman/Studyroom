@@ -251,4 +251,8 @@ export class StatisticsService {
   reviewVerification(sessionId: string, approve: boolean, note?: string): Observable<UnverifiedSession> {
     return this.http.post<UnverifiedSession>(`${environment.apiUrl}/study-sessions/${sessionId}/verify-review`, { approve, note });
   }
+
+  voidSession(sessionId: string): Observable<UnverifiedSession> {
+    return this.http.post<UnverifiedSession>(`${environment.apiUrl}/study-sessions/${sessionId}/void`, {});
+  }
 }

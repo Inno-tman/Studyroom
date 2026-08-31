@@ -941,6 +941,21 @@ Listed as sequence-level guarantees that power the realtime features above.
   * Alt 1 – Ineligible or already decided (Approved/Declined/verified): the service returns the session unchanged; no re-review.
   * Alt 2 – Non-moderator tries to load the queue or review: `UnauthorizedAccessException` → HTTP 403.
 
+### UC-87 · Void a flagged focus session (owner)
+- **Primary actor:** Session owner (the person the focus time belongs to)
+- **Trigger:** The owner decides to remove their own flagged/unverified focus time from their Dashboard.
+- **Preconditions:** Session is the owner's (`UserId`), `Completed = true`, not verified, not already `Approved`/`Declined`/`Voided`.
+- **Success guarantee:** The session is marked `VerificationState = "Voided"`, stays unverified (so it never counts toward focus minutes/stats/leaderboard), is removed from the owner's Dashboard list and the room's verification queue, any earned XP is revoked via a compensating negative `focus` XpEvent (only if a matching award exists), and the owner is notified.
+- **Main flow:**
+  1. Owner sees their flagged session in the Dashboard "Review your focus hours" list and clicks **Void**.
+  2. Owner confirms; `POST /api/study-sessions/{id}/void` is sent.
+  3. Server verifies ownership (`session.UserId == caller`), sets `VerificationState = "Voided"`, records the owner as reviewer, revokes any matchable award, notifies the owner.
+  4. Dashboard reflects the "Voided" status; the session leaves the review list and the room's moderation queue.
+- **Alternate flows:**
+  * Alt 1 – Non-owner attempts to void: `UnauthorizedAccessException` → HTTP 403.
+  * Alt 2 – Session already verified / decided (`Approved`/`Declined`/`Voided`): returned unchanged as a no-op.
+  * Alt 3 – No matching focus award exists (typical for unverified sessions): no XP is deducted.
+
 ---
 
 *Extracted from a full codebase scan of the ResVibe solution. Cross-referenced with `USER_STORIES.md` and `BUSINESS_RULES.md`.*

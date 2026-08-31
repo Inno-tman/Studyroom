@@ -202,6 +202,18 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
                 <span *ngIf="s.verificationState === 'Declined'" class="verification-status declined">
                   <span class="material-icons">cancel</span> Declined<ng-container *ngIf="s.reviewNote"> — {{ s.reviewNote }}</ng-container>
                 </span>
+                <span *ngIf="s.verificationState === 'Voided'" class="verification-status voided">
+                  <span class="material-icons">block</span> Voided — you removed this focus time
+                </span>
+                <button
+                  *ngIf="s.verificationState !== 'Voided' && s.verificationState !== 'Approved' && s.verificationState !== 'Pending'"
+                  class="btn-outline-danger btn-sm"
+                  [disabled]="s.__voiding"
+                  (click)="voidSession(s)"
+                  title="Remove this flagged focus time — it will no longer count"
+                >
+                  <span class="material-icons">block</span> Void
+                </button>
               </div>
             </div>
           </div>
@@ -585,7 +597,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
     .verification-status.pending { color: #f59e0b; }
     .verification-status.approved { color: var(--success); }
     .verification-status.declined { color: var(--error); }
-
+    .verification-status.voided { color: var(--error); }
     /* Recent sessions */
     .recent-sessions {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -694,7 +706,7 @@ export class DashboardComponent implements OnInit {
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
-  unverifiedSessions: (UnverifiedSession & { __comment?: string; __requesting?: boolean })[] = [];
+  unverifiedSessions: (UnverifiedSession & { __comment?: string; __requesting?: boolean; __voiding?: boolean })[] = [];
   recentSessions: any[] = [];
   streakDays: { date: string; minutes: number; isToday: boolean }[] = [];
   activityFeed: any[] = [];
@@ -868,6 +880,24 @@ export class DashboardComponent implements OnInit {
       alert(err.error?.error || 'Failed to submit review request.');
     } finally {
       (s as any).__requesting = false;
+    }
+  }
+
+  async voidSession(s: UnverifiedSession & { __voiding?: boolean }) {
+    if (s.__voiding) return;
+    const ok = confirm('Void this flagged focus time? It will no longer count toward your stats and any earned XP will be revoked.');
+    if (!ok) return;
+    (s as any).__voiding = true;
+    try {
+      const updated = await this.statsService.voidSession(s.id).toPromise();
+      if (updated) {
+        const idx = this.unverifiedSessions.findIndex(x => x.id === s.id);
+        if (idx >= 0) this.unverifiedSessions[idx] = { ...this.unverifiedSessions[idx], verificationState: updated.verificationState, reviewNote: updated.reviewNote };
+      }
+    } catch (err: any) {
+      alert(err.error?.error || 'Failed to void this focus time.');
+    } finally {
+      (s as any).__voiding = false;
     }
   }
 }

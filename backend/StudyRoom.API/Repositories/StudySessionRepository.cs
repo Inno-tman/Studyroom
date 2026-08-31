@@ -80,7 +80,8 @@ public class StudySessionRepository : IStudySessionRepository
 
     public async Task<int> GetUnverifiedCountAsync(Guid userId) =>
         await _context.StudySessions
-            .CountAsync(s => s.UserId == userId && s.Completed && !s.IsVerified);
+            .CountAsync(s => s.UserId == userId && s.Completed && !s.IsVerified
+                && s.VerificationState != "Voided");
 
     public async Task<List<(Guid UserId, string Username, string? AvatarUrl, decimal VerifiedMinutes, int Sessions, int Streak)>> GetRoomLeaderboardAsync(Guid roomId, int take = 10)
     {
