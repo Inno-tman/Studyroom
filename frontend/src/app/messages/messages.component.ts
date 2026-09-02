@@ -8,6 +8,7 @@ import { SignalRService } from '../core/services/signalr.service';
 import { DirectMessageService } from '../core/services/direct-message.service';
 import { NotificationService } from '../core/services/notification.service';
 import { CallService } from '../core/services/call.service';
+import { UiFeedbackService } from '../core/services/ui-feedback.service';
 import { AiChatPanelComponent } from '../ai/ai-chat-panel/ai-chat-panel.component';
 import { Conversation, DirectMessage } from '../shared/models/social.model';
 import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
@@ -301,6 +302,7 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
   private dmService = inject(DirectMessageService);
   private notificationService = inject(NotificationService);
   private callService = inject(CallService);
+  private fb = inject(UiFeedbackService);
   @ViewChild('messageContainer') private messagesEl?: ElementRef;
 
   myId = this.auth.currentUser()?.id ?? '';
@@ -424,7 +426,13 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   async deleteMessage(msg: DirectMessage): Promise<void> {
     if (!msg.id) return;
-    if (!confirm('Delete this message?')) return;
+    const ok = await this.fb.confirm({
+      title: 'Delete message',
+      message: 'Delete this message? This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
     await this.signalR.deleteDirectMessage(msg.id).catch(() => {});
     this.messages = this.messages.filter(m => m.id !== msg.id);
     await this.loadConversations();

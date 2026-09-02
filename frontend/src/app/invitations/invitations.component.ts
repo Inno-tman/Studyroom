@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { InvitationService } from '../core/services/invitation.service';
+import { UiFeedbackService } from '../core/services/ui-feedback.service';
 import { RoomInvitation } from '../shared/models/social.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
 import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
@@ -74,6 +75,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
 export class InvitationsComponent {
   private invitationsService = inject(InvitationService);
   private router = inject(Router);
+  private fb = inject(UiFeedbackService);
 
   invitations: RoomInvitation[] = [];
   loading = true;
@@ -103,7 +105,7 @@ export class InvitationsComponent {
       this.invitations = this.invitations.filter(i => i.id !== inv.id);
       this.router.navigate(['/rooms', inv.roomId]);
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to accept invitation.');
+      this.fb.error(err.error?.error || 'Failed to accept invitation.');
     } finally {
       this.processing = false;
     }
@@ -115,7 +117,7 @@ export class InvitationsComponent {
       await this.invitationsService.decline(inv.id).toPromise();
       this.invitations = this.invitations.filter(i => i.id !== inv.id);
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to decline invitation.');
+      this.fb.error(err.error?.error || 'Failed to decline invitation.');
     } finally {
       this.processing = false;
     }

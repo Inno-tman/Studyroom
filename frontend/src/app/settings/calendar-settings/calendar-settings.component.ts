@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { UiFeedbackService } from '../../core/services/ui-feedback.service';
 
 interface CalendarConnection {
   id: string;
@@ -124,6 +125,7 @@ interface CalendarConnection {
 })
 export class CalendarSettingsComponent implements OnInit {
   private http = inject(HttpClient);
+  private fb = inject(UiFeedbackService);
 
   connections: CalendarConnection[] = [];
   loading = true;
@@ -171,10 +173,19 @@ export class CalendarSettingsComponent implements OnInit {
     });
   }
 
-  disconnect(conn: CalendarConnection) {
-    if (!confirm(`Disconnect ${conn.calendarName || conn.provider}?`)) return;
+  async disconnect(conn: CalendarConnection) {
+    const ok = await this.fb.confirm({
+      title: 'Disconnect calendar',
+      message: `Disconnect ${conn.calendarName || conn.provider}?`,
+      confirmLabel: 'Disconnect',
+      danger: true
+    });
+    if (!ok) return;
     this.http.post(`${environment.apiUrl}/calendar/disconnect/${conn.id}`, {}).subscribe({
-      next: () => this.connections = this.connections.filter(c => c.id !== conn.id)
+      next: () => {
+        this.connections = this.connections.filter(c => c.id !== conn.id);
+        this.fb.success('Calendar disconnected.');
+      }
     });
   }
 
@@ -188,8 +199,8 @@ export class CalendarSettingsComponent implements OnInit {
       end: end.toISOString(),
       description: 'Manual sync from ResVibe'
     }).subscribe({
-      next: () => { this.syncing = false; alert('Synced!'); },
-      error: () => { this.syncing = false; alert('Sync failed'); }
+      next: () => { this.syncing = false; this.fb.success('Calendar synced!'); },
+      error: () => { this.syncing = false; this.fb.error('Calendar sync failed'); }
     });
   }
 }

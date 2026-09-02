@@ -3,6 +3,7 @@ import { NgFor, NgIf, NgClass, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { FlashcardsService, FlashcardDeck, FlashcardDeckDetail } from '../core/services/flashcards.service';
+import { UiFeedbackService } from '../core/services/ui-feedback.service';
 import { AIService, FlashcardGenResult } from '../core/services/ai.service';
 import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
@@ -262,6 +263,7 @@ import { HeroCardComponent } from '../shared/components/hero-card/hero-card.comp
 export class FlashcardsComponent implements OnInit, OnDestroy {
   private flashcardsService = inject(FlashcardsService);
   private aiService = inject(AIService);
+  private fb = inject(UiFeedbackService);
 
   loading = true;
   decks: FlashcardDeck[] = [];
@@ -335,9 +337,16 @@ export class FlashcardsComponent implements OnInit, OnDestroy {
   }
 
   async deleteDeck(deck: FlashcardDeck): Promise<void> {
-    if (!confirm(`Delete "${deck.title}" and all its cards?`)) return;
+    const ok = await this.fb.confirm({
+      title: 'Delete deck',
+      message: `Delete "${deck.title}" and all its cards? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
     await this.flashcardsService.deleteDeck(deck.id).toPromise().catch(() => {});
     await this.loadDecks();
+    this.fb.success('Deck deleted.');
   }
 
   async editDeck(deck: FlashcardDeck): Promise<void> {

@@ -10,6 +10,7 @@ import { MeetingService } from '../../core/services/meeting.service';
 import { ScheduledBroadcastService } from '../../core/services/scheduled-broadcast.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { ChatService } from '../../core/services/chat.service';
+import { UiFeedbackService } from '../../core/services/ui-feedback.service';
 import { NotesService } from '../../core/services/notes.service';
 import { StatisticsService, LeaderboardEntry, RoomCollectiveStats, UnverifiedSession } from '../../core/services/statistics.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -1250,6 +1251,7 @@ private broadcastService = inject(ScheduledBroadcastService);
   private statsService = inject(StatisticsService);
   private http = inject(HttpClient);
   private tabBar = inject(RoomTabBarService);
+  private fb = inject(UiFeedbackService);
 
   @ViewChild('messageContainer', { static: false }) messageContainer?: ElementRef;
 
@@ -1470,7 +1472,7 @@ private broadcastService = inject(ScheduledBroadcastService);
       await this.statsService.reviewVerification(r.id, approve).toPromise();
       this.reviewQueue = this.reviewQueue.filter(x => x.id !== r.id);
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to submit the review.');
+      this.fb.error(err.error?.error || 'Failed to submit the review.');
     } finally {
       (r as any).__busy = false;
     }
@@ -1483,7 +1485,7 @@ private broadcastService = inject(ScheduledBroadcastService);
       await this.roomService.setMemberRole(this.roomId, member.id, next).toPromise();
       member.role = next;
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to update role.');
+      this.fb.error(err.error?.error || 'Failed to update role.');
     } finally {
       this.roleChangingId = '';
     }
@@ -1873,12 +1875,19 @@ private broadcastService = inject(ScheduledBroadcastService);
   }
 
   async deleteMeeting(meeting: Meeting) {
-    if (!confirm(`Delete meeting "${meeting.title}"?`)) return;
+    const ok = await this.fb.confirm({
+      title: 'Delete meeting',
+      message: `Delete meeting "${meeting.title}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
     try {
       await this.meetingService.delete(this.roomId, meeting.id).toPromise();
       this.meetings = this.meetings.filter(m => m.id !== meeting.id);
+      this.fb.success('Meeting deleted.');
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to delete meeting.');
+      this.fb.error(err.error?.error || 'Failed to delete meeting.');
     }
   }
 
@@ -1940,12 +1949,19 @@ private broadcastService = inject(ScheduledBroadcastService);
   }
 
   async deleteBroadcast(broadcast: ScheduledBroadcast) {
-    if (!confirm(`Delete scheduled broadcast "${broadcast.title}"?`)) return;
+    const ok = await this.fb.confirm({
+      title: 'Delete scheduled broadcast',
+      message: `Delete scheduled broadcast "${broadcast.title}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true
+    });
+    if (!ok) return;
     try {
       await this.broadcastService.delete(this.roomId, broadcast.id).toPromise();
       this.broadcasts = this.broadcasts.filter(b => b.id !== broadcast.id);
+      this.fb.success('Scheduled broadcast deleted.');
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to delete scheduled broadcast.');
+      this.fb.error(err.error?.error || 'Failed to delete scheduled broadcast.');
     }
   }
 
@@ -2044,7 +2060,12 @@ private broadcastService = inject(ScheduledBroadcastService);
     this.joining = true;
     try {
       if (this.room?.isPrivate) {
-        const code = this.inviteCode ?? prompt('Enter join code:');
+        const code = this.inviteCode ?? await this.fb.prompt({
+          title: 'Join this room',
+          message: 'This room is private. Enter the join code to enter.',
+          placeholder: 'Join code',
+          confirmLabel: 'Join'
+        });
         if (!code) { this.joining = false; return; }
         await this.roomService.join(this.roomId, code).toPromise();
       } else {
@@ -2056,14 +2077,20 @@ private broadcastService = inject(ScheduledBroadcastService);
       await this.setupSignalR();
       this.pushTabBarState();
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to join room.');
+      this.fb.error(err.error?.error || 'Failed to join room.');
     } finally {
       this.joining = false;
     }
   }
 
   async leaveRoom() {
-    if (!confirm('Leave this room?')) return;
+    const ok = await this.fb.confirm({
+      title: 'Leave room',
+      message: 'Leave this room? You can rejoin anytime.',
+      confirmLabel: 'Leave',
+      danger: true
+    });
+    if (!ok) return;
 
     try {
       this.inCall = false;
@@ -2073,7 +2100,9 @@ private broadcastService = inject(ScheduledBroadcastService);
       this.messages = [];
       this.pushTabBarState();
       this.router.navigate(['/rooms']);
-    } catch { }
+    } catch {
+      this.fb.error('Failed to leave the room.');
+    }
   }
 
   get invitableFriends(): Friend[] {
@@ -2095,8 +2124,9 @@ private broadcastService = inject(ScheduledBroadcastService);
     try {
       await this.invitationService.invite(this.roomId, friend.userId).toPromise();
       this.friends = this.friends.filter(f => f.userId !== friend.userId);
+      this.fb.success('Invite sent.');
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to invite friend.');
+      this.fb.error(err.error?.error || 'Failed to invite friend.');
     } finally {
       this.invitingId = '';
     }

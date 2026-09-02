@@ -6,6 +6,7 @@ import {
   createLocalTracks, createAudioAnalyser, ConnectionQuality, TrackPublication
 } from 'livekit-client';
 import { MeetingService } from '../../core/services/meeting.service';
+import { UiFeedbackService } from '../../core/services/ui-feedback.service';
 
 interface ParticipantTile {
   identity: string;
@@ -478,6 +479,7 @@ type ViewMode = 'grid' | 'spotlight';
 })
 export class MeetingRoomComponent implements OnInit, OnDestroy {
   private meetingService = inject(MeetingService);
+  private fb = inject(UiFeedbackService);
 
   roomId = input<string>('');
   roomName = input<string>('');
@@ -1001,7 +1003,13 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   /** Host: broadcast to every participant to hang up and end the meeting. */
   async endMeeting(): Promise<void> {
     if (!this.room) return;
-    if (!confirm('End the meeting for everyone? All participants will be disconnected.')) return;
+    const ok = await this.fb.confirm({
+      title: 'End meeting',
+      message: 'End the meeting for everyone? All participants will be disconnected.',
+      confirmLabel: 'End meeting',
+      danger: true
+    });
+    if (!ok) return;
     try {
       const payload = new TextEncoder().encode(JSON.stringify({ t: 'endmeeting' }));
       void this.room.localParticipant.publishData(payload, { reliable: true });
@@ -1012,7 +1020,7 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
   /** Non-host: a remote host ended the meeting. */
   private endMeetingForced(): void {
     if (this.leaving) return;
-    alert('The host ended this meeting for everyone.');
+    this.fb.info('The host ended this meeting for everyone.');
     this.doLeave(true);
   }
 
@@ -1136,9 +1144,17 @@ export class MeetingRoomComponent implements OnInit, OnDestroy {
     this.noticeTimer = setTimeout(() => this.notice.set(''), 2500);
   }
 
-  leave(): void {
+  async leave(): Promise<void> {
     const others = this.room ? Array.from(this.room.remoteParticipants.keys()).length : 0;
-    if (others > 0 && !this.leaving && !confirm('Other people are still in this call. Leave anyway?')) return;
+    if (others > 0 && !this.leaving) {
+      const ok = await this.fb.confirm({
+        title: 'Leave call',
+        message: 'Other people are still in this call. Leave anyway?',
+        confirmLabel: 'Leave',
+        danger: true
+      });
+      if (!ok) return;
+    }
     this.doLeave(true);
   }
 

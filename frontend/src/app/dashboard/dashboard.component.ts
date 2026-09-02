@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/services/auth.service';
 import { RoomService } from '../core/services/room.service';
 import { StatisticsService, Milestone, TodayProgress, Recommendation, GamificationProfile, UnverifiedSession } from '../core/services/statistics.service';import { SignalRService } from '../core/services/signalr.service';
+import { UiFeedbackService } from '../core/services/ui-feedback.service';
 import { Room } from '../shared/models/room.model';
 import { UserStats } from '../shared/models/stats.model';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
@@ -703,6 +704,7 @@ export class DashboardComponent implements OnInit {
   private statsService = inject(StatisticsService);
   private signalR = inject(SignalRService);
   private router = inject(Router);
+  private fb = inject(UiFeedbackService);
 
   myRooms: Room[] = [];
   allRooms: Room[] = [];
@@ -877,7 +879,7 @@ export class DashboardComponent implements OnInit {
         if (idx >= 0) this.unverifiedSessions[idx] = { ...this.unverifiedSessions[idx], verificationState: updated.verificationState, verificationComment: updated.verificationComment };
       }
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to submit review request.');
+      this.fb.error(err.error?.error || 'Failed to submit review request.');
     } finally {
       (s as any).__requesting = false;
     }
@@ -885,7 +887,12 @@ export class DashboardComponent implements OnInit {
 
   async voidSession(s: UnverifiedSession & { __voiding?: boolean }) {
     if (s.__voiding) return;
-    const ok = confirm('Void this flagged focus time? It will no longer count toward your stats and any earned XP will be revoked.');
+    const ok = await this.fb.confirm({
+      title: 'Void this focus time?',
+      message: 'It will no longer count toward your stats and any earned XP will be revoked.',
+      confirmLabel: 'Void it',
+      danger: true
+    });
     if (!ok) return;
     (s as any).__voiding = true;
     try {
@@ -894,8 +901,9 @@ export class DashboardComponent implements OnInit {
         const idx = this.unverifiedSessions.findIndex(x => x.id === s.id);
         if (idx >= 0) this.unverifiedSessions[idx] = { ...this.unverifiedSessions[idx], verificationState: updated.verificationState, reviewNote: updated.reviewNote };
       }
+      this.fb.success('Focus time voided.');
     } catch (err: any) {
-      alert(err.error?.error || 'Failed to void this focus time.');
+      this.fb.error(err.error?.error || 'Failed to void this focus time.');
     } finally {
       (s as any).__voiding = false;
     }

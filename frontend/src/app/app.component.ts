@@ -9,11 +9,12 @@ import { YoutubePlayerComponent } from './shared/components/youtube-player/youtu
 import { GlobalAssistantComponent } from './shared/components/global-assistant/global-assistant.component';
 import { RoomTabBarComponent } from './shared/components/room-tab-bar/room-tab-bar.component';
 import { RoomOverlaysComponent } from './shared/components/room-overlays/room-overlays.component';
+import { UiFeedbackHostComponent } from './shared/components/ui-feedback-host/ui-feedback-host.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, CallOverlayComponent, YoutubePlayerComponent, GlobalAssistantComponent, RoomTabBarComponent, RoomOverlaysComponent],
+  imports: [RouterOutlet, NavbarComponent, ProfileReminderComponent, CommandPaletteComponent, PresenceDockComponent, CallOverlayComponent, YoutubePlayerComponent, GlobalAssistantComponent, RoomTabBarComponent, RoomOverlaysComponent, UiFeedbackHostComponent],
   template: `
     <div class="app-container">
       <app-navbar />
@@ -30,6 +31,7 @@ import { RoomOverlaysComponent } from './shared/components/room-overlays/room-ov
       <app-call-overlay />
       <app-youtube-player />
       <app-global-assistant />
+      <app-ui-feedback-host />
     </div>
   `,
   styles: [``]

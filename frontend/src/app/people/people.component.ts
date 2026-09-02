@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FriendService } from '../core/services/friend.service';
 import { StatisticsService, FriendLeaderboardRow } from '../core/services/statistics.service';
+import { UiFeedbackService } from '../core/services/ui-feedback.service';
 import { Friend, UserSearchResult, FriendPresence } from '../shared/models/social.model';
 import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 
@@ -474,6 +475,7 @@ export class PeopleComponent implements OnInit, OnDestroy {
   private statsService = inject(StatisticsService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private fb = inject(UiFeedbackService);
 
   query = '';
   results: UserSearchResult[] = [];
@@ -645,21 +647,39 @@ export class PeopleComponent implements OnInit, OnDestroy {
   }
 
   async decline(req: Friend): Promise<void> {
-    if (!confirm(`Decline the friend request from ${req.displayName || '@' + req.username}?`)) return;
+    const ok = await this.fb.confirm({
+      title: 'Decline request',
+      message: `Decline the friend request from ${req.displayName || '@' + req.username}?`,
+      confirmLabel: 'Decline',
+      danger: true
+    });
+    if (!ok) return;
     await this.friendService.deleteRequest(req.id).toPromise();
     await this.loadAll();
     await this.syncPresence();
+    this.fb.success('Friend request declined.');
   }
 
   async cancelRequest(req: Friend): Promise<void> {
-    if (!confirm(`Cancel your friend request to ${req.displayName || '@' + req.username}?`)) return;
+    const ok = await this.fb.confirm({
+      title: 'Cancel request',
+      message: `Cancel your friend request to ${req.displayName || '@' + req.username}?`,
+      confirmLabel: 'Cancel request'
+    });
+    if (!ok) return;
     await this.friendService.deleteRequest(req.id).toPromise();
     await this.loadAll();
     await this.syncPresence();
   }
 
   async unfriend(friend: Friend): Promise<void> {
-    if (!confirm(`Remove ${friend.displayName || '@' + friend.username} from your friends?`)) return;
+    const ok = await this.fb.confirm({
+      title: 'Remove friend',
+      message: `Remove ${friend.displayName || '@' + friend.username} from your friends?`,
+      confirmLabel: 'Remove',
+      danger: true
+    });
+    if (!ok) return;
     await this.friendService.removeFriend(friend.userId).toPromise();
     await this.loadAll();
     await this.syncPresence();
