@@ -62,6 +62,51 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
            TAB: Overview — Daily goal + Stats strip
            ═══════════════════════════════════════════════════════ -->
       <div *ngIf="activeTab === 'overview'" class="tab-pane">
+        <!-- ═══ Onboarding — first-run welcome for new users ═══ -->
+        <div class="onboarding" *ngIf="isNewUser">
+          <div class="onboard-head">
+            <span class="material-icons onboard-icon">rocket_launch</span>
+            <div>
+              <h2>Welcome to Studyroom, {{ auth.currentUser()?.username }}!</h2>
+              <p>Here's how to get started. Pick any step — you're just a few clicks away from your first focus session.</p>
+            </div>
+          </div>
+          <div class="onboard-steps">
+            <div class="onboard-step">
+              <span class="step-num">1</span>
+              <div class="step-body">
+                <span class="step-title">Join a study room</span>
+                <span class="step-desc">Find a room with other students on the same subject.</span>
+              </div>
+              <a routerLink="/rooms" class="step-link">Browse Rooms</a>
+            </div>
+            <div class="onboard-step">
+              <span class="step-num">2</span>
+              <div class="step-body">
+                <span class="step-title">Create your own room</span>
+                <span class="step-desc">Start a focus group — public or private with a join code.</span>
+              </div>
+              <a routerLink="/rooms/create" class="step-link">Create Room</a>
+            </div>
+            <div class="onboard-step">
+              <span class="step-num">3</span>
+              <div class="step-body">
+                <span class="step-title">Complete your profile</span>
+                <span class="step-desc">Add your info so others can recognize you.</span>
+              </div>
+              <a routerLink="/settings/profile" class="step-link">Edit Profile</a>
+            </div>
+            <div class="onboard-step">
+              <span class="step-num">4</span>
+              <div class="step-body">
+                <span class="step-title">Invite friends</span>
+                <span class="step-desc">Study together — add friends to stay accountable.</span>
+              </div>
+              <a routerLink="/people" class="step-link">Find Friends</a>
+            </div>
+          </div>
+        </div>
+        <!-- ───────────────────────────────────────────────────── -->
         <div class="daily-goal" *ngIf="todayProgress">
           <div class="daily-goal-header">
             <span class="material-icons">flag</span>
@@ -689,6 +734,20 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
 
     .room-meta { display: flex; justify-content: space-between; font-size: var(--font-12); color: var(--text-muted); }
 
+    .onboarding { background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(14,165,233,0.10)); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+    .onboard-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+    .onboard-icon { font-size: 32px; color: var(--primary); margin-top: 2px; }
+    .onboard-head h2 { font-size: var(--font-20); font-weight: 700; color: var(--text-primary); margin: 0 0 6px; }
+    .onboard-head p { font-size: var(--font-14); color: var(--text-secondary); margin: 0; }
+    .onboard-steps { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .onboard-step { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    .step-num { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: var(--font-14); font-weight: 700; }
+    .step-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .step-title { font-size: var(--font-14); font-weight: 600; color: var(--text-primary); }
+    .step-desc { font-size: var(--font-12); color: var(--text-muted); }
+    .step-link { font-size: var(--font-13); font-weight: 600; color: var(--primary); text-decoration: none; white-space: nowrap; }
+    .step-link:hover { text-decoration: underline; }
+
     @media (max-width: 768px) {
       .stats-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .hero-top { flex-direction: column; }
@@ -786,7 +845,7 @@ export class DashboardComponent implements OnInit {
       this.buildStreakDays(trendData || []);
       this.activityFeed = activity || [];
       if (gamification) this.gamification = gamification;
-    } catch { } finally {
+    } catch { this.fb.error('Failed to load dashboard data. Please refresh.'); } finally {
       this.loading = false;
     }
 
@@ -808,6 +867,10 @@ export class DashboardComponent implements OnInit {
         if (gami) this.gamification = gami;
       } catch { }
     });
+  }
+
+  get isNewUser(): boolean {
+    return this.stats.sessionsCompleted === 0 && this.myRooms.length === 0;
   }
 
   quickStudy() {

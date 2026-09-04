@@ -4,6 +4,7 @@ import { StatisticsService } from '../core/services/statistics.service';
 import { LoadingComponent } from '../shared/components/loading/loading.component';
 import { HeroCardComponent } from '../shared/components/hero-card/hero-card.component';
 import { environment } from '../../environments/environment';
+import { UiFeedbackService } from '../core/services/ui-feedback.service';
 
 @Component({
   selector: 'app-analytics',
@@ -171,6 +172,7 @@ import { environment } from '../../environments/environment';
 })
 export class AnalyticsComponent implements OnInit {
   private statsService = inject(StatisticsService);
+  private fb = inject(UiFeedbackService);
 
   loading = true;
   overview: any = null;
@@ -222,7 +224,7 @@ export class AnalyticsComponent implements OnInit {
 
       this.maxTrend = Math.max(1, ...this.dailyTrend.map(d => d.minutes));
       this.maxHour = Math.max(1, ...this.hourlyDist.map(h => h.minutes));
-    } catch { } finally {
+    } catch { this.fb.error('Failed to load analytics data. Please try again.'); } finally {
       this.loading = false;
     }
   }

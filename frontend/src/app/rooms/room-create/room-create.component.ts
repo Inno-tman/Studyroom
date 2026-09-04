@@ -59,7 +59,7 @@ import { RoomService } from '../../core/services/room.service';
     </div>
   `,
   styles: [`
-    .create-room { max-width: 640px; }
+    .create-room { max-width: 640px; margin: 0 auto; }
     .btn-outline { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: var(--font-13); font-weight: 500; text-decoration: none; }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
 

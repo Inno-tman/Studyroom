@@ -93,7 +93,7 @@ export class InvitationsComponent {
     this.loading = true;
     try {
       this.invitations = (await this.invitationsService.getIncoming().toPromise()) || [];
-    } catch { } finally {
+    } catch { this.fb.error('Failed to load invitations. Please try again.'); } finally {
       this.loading = false;
     }
   }

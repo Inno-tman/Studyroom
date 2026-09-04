@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NotesService, NoteVersion } from '../../core/services/notes.service';
 import { SignalRService } from '../../core/services/signalr.service';
 import { Subscription } from 'rxjs';
+import { UiFeedbackService } from '../../core/services/ui-feedback.service';
 
 @Component({
   selector: 'app-notes-editor',
@@ -126,7 +127,8 @@ export class NotesEditorComponent implements OnInit, OnDestroy {
 
   constructor(
     private notesService: NotesService,
-    private signalR: SignalRService
+    private signalR: SignalRService,
+    private fb: UiFeedbackService
   ) {}
 
   async ngOnInit() {
@@ -136,7 +138,7 @@ export class NotesEditorComponent implements OnInit, OnDestroy {
         this.content = notes.content;
         this.noteId = notes.id;
       }
-    } catch { }
+    } catch { this.fb.error('Failed to load notes. Please try again.'); }
 
     this.subscription = this.signalR.notesUpdated$.subscribe(data => {
       if (data.roomId === this.roomId) {
@@ -155,7 +157,7 @@ export class NotesEditorComponent implements OnInit, OnDestroy {
       const notes = await this.notesService.updateNotes(this.roomId, this.content).toPromise();
       if (notes) this.noteId = notes.id;
       await this.signalR.updateNotes(this.roomId, this.content);
-    } catch { }
+    } catch { this.fb.error('Failed to save notes. Your changes may not be preserved.'); }
   }
 
   async openHistory() {
@@ -163,7 +165,7 @@ export class NotesEditorComponent implements OnInit, OnDestroy {
       try {
         const notes = await this.notesService.getNotes(this.roomId).toPromise();
         if (notes) this.noteId = notes.id;
-      } catch { }
+      } catch { this.fb.error('Failed to load note history.'); }
     }
     if (!this.noteId) return;
 
@@ -172,6 +174,7 @@ export class NotesEditorComponent implements OnInit, OnDestroy {
     try {
       this.versions = (await this.notesService.getVersions(this.roomId, this.noteId).toPromise()) || [];
     } catch {
+      this.fb.error('Failed to load version history.');
       this.versions = [];
     }
     this.loadingVersions = false;
@@ -192,7 +195,7 @@ export class NotesEditorComponent implements OnInit, OnDestroy {
         await this.signalR.updateNotes(this.roomId, this.content);
       }
       this.showHistory = false;
-    } catch { }
+    } catch { this.fb.error('Failed to restore version.'); }
     this.restoringId = '';
   }
 

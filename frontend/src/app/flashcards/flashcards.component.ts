@@ -301,6 +301,7 @@ export class FlashcardsComponent implements OnInit, OnDestroy {
     try {
       this.decks = (await this.flashcardsService.getDecks().toPromise()) || [];
     } catch {
+      this.fb.error('Failed to load flashcard decks. Please try again.');
       this.decks = [];
     } finally {
       this.loading = false;
@@ -333,7 +334,7 @@ export class FlashcardsComponent implements OnInit, OnDestroy {
         await this.loadDecks();
         await this.openDeck(deck.id);
       }
-    } catch { } finally { this.loading = false; }
+    } catch { this.fb.error('Failed to create deck. Please try again.'); } finally { this.loading = false; }
   }
 
   async deleteDeck(deck: FlashcardDeck): Promise<void> {
@@ -344,9 +345,14 @@ export class FlashcardsComponent implements OnInit, OnDestroy {
       danger: true
     });
     if (!ok) return;
-    await this.flashcardsService.deleteDeck(deck.id).toPromise().catch(() => {});
-    await this.loadDecks();
-    this.fb.success('Deck deleted.');
+    try {
+      await this.flashcardsService.deleteDeck(deck.id).toPromise();
+      await this.loadDecks();
+      this.fb.success('Deck deleted.');
+    } catch {
+      await this.loadDecks();
+      this.fb.error('Failed to delete deck. It may still appear in your list.');
+    }
   }
 
   async editDeck(deck: FlashcardDeck): Promise<void> {
@@ -367,7 +373,7 @@ export class FlashcardsComponent implements OnInit, OnDestroy {
       this.cardIndex = 0;
       this.flipped = false;
       this.editingCards = false;
-    } catch { } finally { this.loading = false; }
+    } catch { this.fb.error('Failed to load deck. Please try again.'); } finally { this.loading = false; }
   }
 
   closeDeck(): void {

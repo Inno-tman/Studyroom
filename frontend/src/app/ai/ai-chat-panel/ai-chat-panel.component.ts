@@ -3,6 +3,7 @@ import { NgFor, NgIf, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AIService, AcademicResponse, PaperReference, ResearchPhase, ConversationSummary } from '../../core/services/ai.service';
 import { DocumentService } from '../../core/services/document.service';
+import { UiFeedbackService } from '../../core/services/ui-feedback.service';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -285,6 +286,7 @@ export class AiChatPanelComponent implements OnInit, AfterViewChecked, OnChanges
 
   private aiService = inject(AIService);
   private docService = inject(DocumentService);
+  private fb = inject(UiFeedbackService);
 
   messages: ChatMessage[] = [];
   question = '';
@@ -362,13 +364,13 @@ export class AiChatPanelComponent implements OnInit, AfterViewChecked, OnChanges
         this.currentConvId = conv.id;
         await this.loadConversations();
       }
-    } catch {}
+    } catch { this.fb.error('Failed to create conversation. Please try again.'); }
   }
 
   async loadConversations() {
     try {
       this.conversations = await this.aiService.getConversations(50, this.roomId || undefined).toPromise() || [];
-    } catch {}
+    } catch { this.fb.error('Failed to load conversations.'); }
   }
 
   async loadConversation(id: string) {
@@ -386,7 +388,7 @@ export class AiChatPanelComponent implements OnInit, AfterViewChecked, OnChanges
         this.showSidebar = false;
         this.requestScroll();
       }
-    } catch {}
+    } catch { this.fb.error('Failed to load conversation.'); }
   }
 
   async sendMessage() {
@@ -539,7 +541,7 @@ export class AiChatPanelComponent implements OnInit, AfterViewChecked, OnChanges
         this.currentPhaseName = '';
         this.currentOutline = [];
       }
-    } catch {}
+    } catch { this.fb.error('Failed to delete conversation.'); }
   }
 
   async askQuick(question: string) {

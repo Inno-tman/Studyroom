@@ -418,6 +418,7 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.newMessage = '';
       await this.loadConversations();
     } catch {
+      this.fb.error('Failed to send message. Your draft is saved.');
     } finally {
       this.sending = false;
     }
@@ -433,7 +434,11 @@ export class MessagesComponent implements OnInit, OnDestroy, AfterViewChecked {
       danger: true
     });
     if (!ok) return;
-    await this.signalR.deleteDirectMessage(msg.id).catch(() => {});
+    try {
+      await this.signalR.deleteDirectMessage(msg.id);
+    } catch {
+      this.fb.error('Failed to delete message. It may still appear after reload.');
+    }
     this.messages = this.messages.filter(m => m.id !== msg.id);
     await this.loadConversations();
   }
