@@ -180,7 +180,8 @@ public class RoomsController : ControllerBase
         if (!new[] { ".jpg", ".jpeg", ".png", ".webp" }.Contains(ext))
             return BadRequest("Only JPG, PNG, WebP allowed");
 
-        var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "rooms");
+        var webRoot = _env.WebRootPath ?? _env.ContentRootPath;
+        var uploadsDir = Path.Combine(webRoot, "uploads", "rooms");
         Directory.CreateDirectory(uploadsDir);
 
         var fileName = $"{id}{ext}";
