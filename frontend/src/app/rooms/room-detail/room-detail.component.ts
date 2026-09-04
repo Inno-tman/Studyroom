@@ -1670,15 +1670,25 @@ private broadcastService = inject(ScheduledBroadcastService);
     const file = input.files[0];
     if (file.size > 5 * 1024 * 1024) { this.showSnack('Max 5MB'); return; }
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file, this.normalizeImageName(file));
     this.http.post<{ url: string }>(`${environment.apiUrl}/rooms/${this.roomId}/background`, formData).subscribe({
       next: res => {
         if (this.room) this.room.backgroundUrl = res.url;
         this.showSnack('Background updated');
       },
-      error: () => this.showSnack('Upload failed')
+      error: (err) => {
+        const msg = err?.error?.message || err?.error?.title || 'Upload failed';
+        this.showSnack(msg);
+      }
     });
     input.value = '';
+  }
+
+  private normalizeImageName(file: File): string {
+    const supported = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = file.name.includes('.') ? '.' + file.name.split('.').pop()!.toLowerCase() : '';
+    if (supported.includes(ext)) return file.name;
+    return (file.name.split('.')[0] || 'background') + (file.type === 'image/webp' ? '.webp' : '.png');
   }
 
   formatDuration(minutes: number): string {
