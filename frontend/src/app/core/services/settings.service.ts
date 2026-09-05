@@ -40,6 +40,7 @@ export interface StudyPrefs {
 }
 
 export const ACCENT_COLORS: { name: string; color: string; hover: string }[] = [
+  { name: 'Sky', color: '#0EA5E9', hover: '#0284c7' },
   { name: 'Blue', color: '#2563EB', hover: '#1d4ed8' },
   { name: 'Indigo', color: '#6366F1', hover: '#4f46e5' },
   { name: 'Violet', color: '#8B5CF6', hover: '#7c3aed' },
@@ -54,7 +55,6 @@ export const ACCENT_COLORS: { name: string; color: string; hover: string }[] = [
   { name: 'Emerald', color: '#10B981', hover: '#059669' },
   { name: 'Teal', color: '#14B8A6', hover: '#0d9488' },
   { name: 'Cyan', color: '#06B6D4', hover: '#0891b2' },
-  { name: 'Sky', color: '#0EA5E9', hover: '#0284c7' },
   { name: 'Slate', color: '#64748B', hover: '#475569' }
 ];
 
@@ -132,7 +132,7 @@ export class SettingsService {
   private loadTheme(): 'dark' | 'light' | 'system' {
     const stored = localStorage.getItem(this.THEME_KEY) as 'dark' | 'light' | 'system' | null;
     if (stored === 'dark' || stored === 'light' || stored === 'system') return stored;
-    return 'dark';
+    return 'system';
   }
 
   private loadAppearance(): Omit<AppearancePrefs, 'theme'> {
