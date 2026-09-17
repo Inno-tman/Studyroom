@@ -1,11 +1,11 @@
-# ResVibe — Business Rules
+# Study Crib — Business Rules
 
 > **Maintenance convention:** every new feature updates **all three** specification artifacts: business rules (this file), user stories (`USER_STORIES.md`), and use cases (`USE_CASES.md`). See the use-case template in `USE_CASES.md`.
 
-This document catalogs the enforceable business rules of ResVibe, a live, multi-purpose community platform where people open **rooms** for any shared activity (focus/study, coworking, social, gaming, watch parties, and more) and gather in real time. Rules are extracted from a full scan of the codebase (ASP.NET Core API, SignalR hub, hosted services, PostgreSQL schema DDL, and the Angular frontend) and grouped by feature area so they can be referenced alongside the user stories.
+This document catalogs the enforceable business rules of Study Crib, a live, multi-purpose community platform where people open **rooms** for any shared activity (focus/study, coworking, social, gaming, watch parties, and more) and gather in real time. Rules are extracted from a full scan of the codebase (ASP.NET Core API, SignalR hub, hosted services, PostgreSQL schema DDL, and the Angular frontend) and grouped by feature area so they can be referenced alongside the user stories.
 
 Rule groups:
-[1. Cross-Cutting](#1-cross-cutting) · [2. Authentication & Users](#2-authentication--users) · [3. Rooms](#3-rooms) · [4. Room Sessions & Focus Timer](#4-room-sessions--focus-timer) · [5. Statistics & Analytics](#5-statistics--analytics) · [6. Chat](#6-chat) · [7. Meetings & Calls](#7-meetings--calls) · [8. Notes](#8-notes) · [9. Posts & Social Feed](#9-posts--social-feed) · [10. Friends & Social Graph](#10-friends--social-graph) · [11. Direct Messages](#11-direct-messages) · [12. Notifications & Push](#12-notifications--push) · [13. Room Invitations](#13-room-invitations) · [14. Gamification (XP/Streaks/Milestones)](#14-gamification-xpstreaksmilestones) · [15. Leaderboards](#15-leaderboards) · [16. Room Tasks](#16-room-tasks) · [17. Flashcards](#17-flashcards) · [18. AI Assistant & Research](#18-ai-assistant--research) · [19. Games](#19-games) · [20. Calendar Sync](#20-calendar-sync) · [21. Presence & Realtime](#21-presence--realtime) · [22. Recommendations, Nudges & Summaries](#22-recommendations-nudges--summaries) · [23. Realtime Hub (SignalR)](#23-realtime-hub-signalr) · [24. Frontend UX Rules](#24-frontend-ux-rules)
+[1. Cross-Cutting](#1-cross-cutting) · [2. Authentication & Users](#2-authentication--users) · [3. Rooms](#3-rooms) · [4. Room Sessions & Focus Timer](#4-room-sessions--focus-timer) · [5. Statistics & Analytics](#5-statistics--analytics) · [6. Chat](#6-chat) · [7. Meetings & Calls](#7-meetings--calls) · [8. Notes](#8-notes) · [9. Posts & Social Feed](#9-posts--social-feed) · [10. Friends & Social Graph](#10-friends--social-graph) · [11. Direct Messages](#11-direct-messages) · [12. Notifications & Push](#12-notifications--push) · [13. Room Invitations](#13-room-invitations) · [14. Gamification (XP/Streaks/Milestones)](#14-gamification-xpstreaksmilestones) · [15. Leaderboards](#15-leaderboards) · [16. Room Tasks](#16-room-tasks) · [17. Flashcards](#17-flashcards) · [18. AI Assistant & Research](#18-ai-assistant--research) · [19. Games](#19-games) · [20. Calendar Sync](#20-calendar-sync) · [21. Presence & Realtime](#21-presence--realtime) · [22. Recommendations, Nudges & Summaries](#22-recommendations-nudges--summaries) · [23. Realtime Hub (SignalR)](#23-realtime-hub-signalr) · [24. Frontend UX Rules](#24-frontend-ux-rules) · [25. Collaborative Board](#25-collaborative-board)
 
 ---
 
@@ -22,7 +22,7 @@ Rule groups:
 - **DB bootstrap:** `EnsureCreatedAsync` (no EF migrations) followed by idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` DDL, so upgrades never destroy existing data.
 - **Seed data** (admin/alice/bob + rooms) is created only when there are no users.
 - **Verification gating:** Only sessions with `Completed = true AND IsVerified = true` count toward XP, milestones, streaks, analytics, weekly summaries, recommendations, calendar sync, and leaderboards.
-- **Profile completeness heuristic:** a profile is "complete" only when it has an avatar, first + last name, and a bio (drives the dashboard/complete-profile reminder).
+- **Profile completeness heuristic:** a profile is "complete" only when it has an avatar, first + last name, and a bio. An incomplete profile shows a **non-blocking suggestion-style banner** ("Tip: add a profile picture whenever you get a chance — it helps others recognize you.") with a "Set up profile" action — it never interrupts flow.
 
 ## 2. Authentication & Users
 
@@ -56,7 +56,7 @@ Rule groups:
 - **Private rooms** get a 6-character join code drawn only from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (omits ambiguous characters 0/O/1/I).
 - The **join code is exposed only to the creator and members** of that room.
 - **Join brute-force protection:** joining with a private-room code is rate-limited (`join` policy: 10 attempts/min per user); joining rejects users who are already members and non-members (`400`).
-- **Background upload:** owner-only; max 5 MB; accepted types `.jpg`, `.jpeg`, `.png`, `.webp` only.
+- **Background upload:** owner-only; max 5 MB; accepted types `.jpg`, `.jpeg`, `.png`, `.webp` only. The **client normalizes the file extension before upload** (headers/extensions outside the whitelist are rewritten to `.png` or `.webp` by MIME type), so the server whitelist always passes. The server writes to `WebRootPath` with a **fallback to `ContentRootPath`** when web root is unset, so the upload never crashes on a null web root.
 - Room name is required (≤100); description ≤500; subject ≤50.
 
 ## 4. Room Sessions & Focus Timer
@@ -75,7 +75,7 @@ Rule groups:
 - **Tab-switch events** are recorded (`left` / `returned`) only while there is an active session, keyed to that session's `sessionId`; an ending `left` (app closed at completion) is benign and not penalized.
 - **XP award** (on verified completion only): `max(1, round(durationMinutes))` points, event type `focus`, label "Focus session completed". XP is never awarded for `points <= 0`.
 - **Milestone checks** run after every verified completion.
-- **Calendar sync** happens for verified completions only; event title = `ResVibe: {roomName} ({minutes} min)`.
+- **Calendar sync** happens for verified completions only; one aggregated event per day per provider, titled `Study: {roomName}` (or `Study Session` when the room has no name) with the description "Aggregated study time on {date} synced from Study Crib" — the brand shown to calendar viewers is **Study Crib**.
 - A `Focus session complete` notification is created on completion.
 - **Collective room goal** = `max(50h, memberCount × 10h)` per week.
 - **Session notes:** editable only by the session owner; ≤ 2,000 chars.
@@ -262,13 +262,30 @@ Rule groups:
 - Routing is auth-guarded for every page except `/login` and `/register`; unknown routes fall back to `/dashboard`.
 - **AI chat guardrails:** a 120-second client timeout safeguard; question editing + retry on failure; long answers downloadable as DOCX/PDF.
 - **Notification settings** (sound, volume, previews, quiet hours, per-event toggles, desktop permission) are respected by the notification service (sound + quiet hours honored in-app and for pushes).
+- **Default appearance:** new/in-memory sessions default to the **system theme** (`system`) and the **Sky** accent (`#0EA5E9`, the first preset) until the user changes them in Appearance settings.
+- **UI feedback is centralized:** no native `alert()` / `confirm()` / `prompt()` dialogs — all app feedback runs through the shared `UiFeedbackService` (toast/confirm/prompt primitives mounted once app-wide), so every message matches the app's theme instead of the browser chrome. Confirming a destructive action (e.g. clearing the shared board) uses its confirm primitive.
+- **Silent failures are surfaced:** background `catch {}` sites that previously swallowed errors now raise user-facing toasts where the failure matters (e.g. upload errors show the server message), so failures are never invisible.
+- **First-run onboarding:** a user with **zero completed sessions and zero rooms** sees a welcome/onboarding card on the dashboard ("Welcome to Study Crib") with step shortcuts (join a room, start a 25-min lock-in, complete profile) instead of an empty overview.
 - **Study player** keeps the device screen awake while video plays and collapses to a floating pill.
 - **Command palette** (Ctrl/Cmd+K) opens pages and rooms directly; global assistant opens from the navbar robot button (closes on Esc / backdrop click).
-- Profile reminder banner shows whenever the profile-completeness heuristic fails.
+- Profile reminder banner: a **non-blocking suggestion-style banner** ("Tip: add a profile picture whenever you get a chance — it helps others recognize you." + "Set up profile" action) shown whenever the profile-completeness heuristic fails (see rule 1).
+- The room-creation page is **centered on desktop** (and stacks vertically on mobile), consistent with the other room/onboarding forms.
 - **Consistent page headers:** every main page (Timeline, People, Analytics, Flashcards, Games, Messages, Invitations, Notifications, Settings, Rooms, Dashboard) renders the shared `app-hero-card` — a gradient card with title, subtitle, an action slot, and stat badges — so headers never drift in style.
 - Best-score persistence for games is browser-local (`localStorage`).
 - Frontend clamps mirror backend where user input is entered (e.g., daily goal), but authoritative validation is server-side.
 
+## 25. Collaborative Board
+
+- The **board** is a room-scoped shared drawing canvas (a whiteboard), opened from its own tab in the room; **every room member can edit** — there is no host-only drawing permission.
+- **Full-state relay, echo-free:** each change debounced (~250 ms) sends the **entire canvas state** (fabric.js JSON) to the hub; the hub stores it in-memory and relays it to **other members only** (`OthersInGroup` — the sender applies its own edit locally and never receives its own echo).
+- **Join/reconnect:** on opening the Board tab the client calls `RequestBoard` and receives the current state via `BoardLoaded`; a member who joins later sees everything drawn so far.
+- **Ephemeral, not persisted:** board state lives only in a server-side in-memory dictionary keyed by room — it is **never written to the database and resets when the server restarts**. (This differs from shared Notes, which are DB-persisted.) Clearing the board deletes the stored state for the room.
+- **Tools:** select/move, freehand pen, text, rectangle, circle, line, arrow; color from a 7-color palette (black, sky, green, orange, red, violet, white) plus a custom color picker; stroke width 1–20.
+- **Undo/redo** is per-client and capped at **30 history entries**; redo stack is cleared on a new edit. An empty undo/redo shows an informational toast ("Nothing to undo/redo").
+- **Clear the board** affects **everyone**: the client confirms via the shared confirm dialog ("This removes every element for everyone in the room"), then clears locally and calls `BoardClear`; the hub removes the stored state and broadcasts `BoardCleared` to other members so their canvases clear too.
+- **Export** produces a PNG client-side (`canvas.toDataURL`, 2× scale) and downloads as `board-{roomId}.png`.
+- Remote state application is suppression-guarded so incoming relays never re-trigger an outbound broadcast (no echo loops).
+
 ---
 
-*Extracted from a full codebase scan of the ResVibe solution. Rules verified against controllers, services, hosted workers, the SignalR hub, schema DDL, and Angular components/services.*
+*Extracted from a full codebase scan of the Study Crib solution. Rules verified against controllers, services, hosted workers, the SignalR hub, schema DDL, and Angular components/services.*

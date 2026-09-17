@@ -1,17 +1,17 @@
-# ResVibe — User Stories
+# Study Crib — User Stories
 
 > **Maintenance convention:** every new feature updates **all three** specification artifacts: user stories (this file), business rules (`BUSINESS_RULES.md`), and use cases (`USE_CASES.md`). See the use-case template in `USE_CASES.md`.
 
-This document catalogs the product capabilities of ResVibe — a live, multi-purpose community platform where people open **rooms** for any shared activity (focus/study, coworking, social, gaming, watch parties, and more) and gather in real time — as user stories, generated from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend).
+This document catalogs the product capabilities of Study Crib — a live, multi-purpose community platform where people open **rooms** for any shared activity (focus/study, coworking, social, gaming, watch parties, and more) and gather in real time — as user stories, generated from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend).
 
 Story groups:
-[1. Authentication](#1-authentication--account) · [2. Profile & Onboarding](#2-profile--onboarding) · [3. Dashboard](#3-dashboard) · [4. Rooms](#4-rooms) · [5. Room Chat](#5-room-chat) · [6. Focus Timer](#6-focus-timer) · [7. Shared Notes](#7-shared-notes) · [8. Room Tasks](#8-room-tasks) · [9. AI Assistant & Research](#9-ai-assistant--research) · [10. Flashcards](#10-flashcards) · [11. Educational Games](#11-educational-games) · [12. Meetings & Scheduled Broadcasts](#12-meetings--scheduled-broadcasts) · [13. Peer Calls](#13-peer-calls) · [14. Video & Room Player](#14-video--room-player) · [15. Social Feed](#15-social-feed) · [16. Friends & People](#16-friends--people) · [17. Direct Messages](#17-direct-messages) · [18. Notifications](#18-notifications) · [19. Room Invitations](#19-room-invitations) · [20. Presence](#20-presence) · [21. Analytics](#21-analytics) · [22. Gamification](#22-gamification) · [23. Leaderboards](#23-leaderboards) · [24. Calendar](#24-calendar) · [25. Nudges & Summaries](#25-nudges--summaries) · [26. Settings](#26-settings) · [27. Global Shell](#27-global-shell)
+[1. Authentication](#1-authentication--account) · [2. Profile & Onboarding](#2-profile--onboarding) · [3. Dashboard](#3-dashboard) · [4. Rooms](#4-rooms) · [5. Room Chat](#5-room-chat) · [6. Focus Timer](#6-focus-timer) · [7. Shared Notes](#7-shared-notes) · [8. Room Tasks](#8-room-tasks) · [9. AI Assistant & Research](#9-ai-assistant--research) · [10. Flashcards](#10-flashcards) · [11. Educational Games](#11-educational-games) · [12. Meetings & Scheduled Broadcasts](#12-meetings--scheduled-broadcasts) · [13. Peer Calls](#13-peer-calls) · [14. Video & Room Player](#14-video--room-player) · [15. Social Feed](#15-social-feed) · [16. Friends & People](#16-friends--people) · [17. Direct Messages](#17-direct-messages) · [18. Notifications](#18-notifications) · [19. Room Invitations](#19-room-invitations) · [20. Presence](#20-presence) · [21. Analytics](#21-analytics) · [22. Gamification](#22-gamification) · [23. Leaderboards](#23-leaderboards) · [24. Calendar](#24-calendar) · [25. Nudges & Summaries](#25-nudges--summaries) · [26. Settings](#26-settings) · [27. Global Shell](#27-global-shell) · [28. Unverified Session-Hours Review](#28-unverified-session-hours-review) · [29. Shared Board](#29-shared-board)
 
 ---
 
 ## 1. Authentication & Account
 
-- As a new student, I want to **register with a username and password** so that I can create an account and start using ResVibe.
+- As a new student, I want to **register with a username and password** so that I can create an account and start using Study Crib.
 - As a returning student, I want to **log in with my username or email and password** so that I can access my rooms and data.
 - As a user, I want to **sign in with my Google account** so that I can skip registration and log in with one click.
 - As a user, I want my session to stay alive via a **refresh token** so that I am not logged out while focusing.
@@ -22,7 +22,7 @@ Story groups:
 ## 2. Profile & Onboarding
 
 - As a user, I want to **set up my public profile** (avatar, first/last name, username, school, location, birth date, major, interests, bio) so that others can learn about me.
-- As a user, I want a **"Complete Profile" reminder banner** when my profile is incomplete so that I know what to fill in.
+- As a user, I want a **suggestion-style profile tip banner** ("Tip: add a profile picture whenever you get a chance — it helps others recognize you." with a "Set up profile" action) when my profile is incomplete so that I can fill it in without being nagged.
 - As a user, I want a **client-side image cropper for my profile picture** so that I can upload a well-framed avatar.
 - As a visitor, I want to **view any user's public profile** (avatar, bio, interests, stats) so that I can decide whether to connect with them.
 
@@ -34,6 +34,7 @@ Story groups:
 - As a user, I want to see my **XP, level ring, and progress toward the next level** so that I feel motivated.
 - As a user, I want **entry cards for Flashcards and Games** so that I can jump straight into focus tools.
 - As a user, I want **personalized recommendations** (e.g., protect your streak, hit your daily goal, join a room, lower/raise your goal, start a Pomodoro lock-in) so that I know what to do next.
+- As a new user, I want a **first-run welcome/onboarding card** (shown when I have no sessions and no rooms yet) with step shortcuts — join a room, start a 25-min lock-in, complete my profile — so that I know how to get started instead of staring at an empty dashboard.
 
 ## 4. Rooms
 
@@ -254,7 +255,7 @@ Story groups:
 
 - As a user, I want to manage my **profile settings** (avatar, name, school, bio, interests, etc.) so that my identity is accurate.
 - As a user, I want to manage my **account settings** (email, role, online status, change password) so that my account is safe.
-- As a user, I want to customize **appearance** (light/system/dark theme, accent color, corner style, text size, font, compact mode, reduce motion, high contrast) so that the app fits my preferences.
+- As a user, I want to customize **appearance** (light/system/dark theme, accent color, corner style, text size, font, compact mode, reduce motion, high contrast) so that the app fits my preferences — with a sensible **default of the system theme and the Sky accent** until I change it.
 - As a user, I want to configure **notifications** (desktop permission, sound type/volume, previews, quiet hours, per-event toggles) so that I control interruptions.
 - As a user, I want to set my **focus preferences** (focus/break duration, daily goal minutes, auto-start next session) so that the timer fits my workflow.
 - As a user, I want my **time zone detected automatically** and stored with my profile so that nudges, reminders, and summaries arrive at sensible local times.
@@ -267,7 +268,7 @@ Story groups:
 - As a user, I want a **global AI assistant button** in the navbar so that help is always one click away.
 - As a user, I want a **consistent hero card** (title, subtitle, quick action, and stat badges) at the top of every main page so that the app feels unified.
 - As a user, I want **desktop notifications handled via a service worker** so that alerts work even in the background.
-- As a user, I want the interface to be **responsive** (mobile tab bars, single-pane messaging, floating docks) so that I can use ResVibe on any device.
+- As a user, I want the interface to be **responsive** (mobile tab bars, single-pane messaging, floating docks) so that I can use Study Crib on any device.
 
 ## 28. Unverified Session-Hours Review
 
@@ -278,6 +279,16 @@ Story groups:
 - As a user, I want to **void (remove) my own flagged focus time** so that I can discard focus time I don't want to count — it behaves like a decline but is done by me, the session owner, and revokes any XP it earned.
 - As a room host or co-host, I want an approved session to **count retroactively** (XP, milestones, streak, calendar) so that the user gets full credit for confirmed time.
 
+## 29. Shared Board
+
+- As a room member, I want a **shared whiteboard tab in the room** so that we can sketch diagrams, work through problems, and brainstorm together in real time.
+- As a room member, I want to **draw, write text, and add shapes** (rectangle, circle, line, arrow, freehand pen) in a choice of colors and stroke widths so that I can express whatever I'm working on.
+- As a room member, I want the board to **stay in sync live for everyone in the room** so that we see each other's edits as they happen without refreshing.
+- As a room member joining later, I want to **see everything already on the board** so that I never miss earlier work.
+- As a room member, I want **undo/redo** (and to know when there's nothing to undo/redo) so that I can fix mistakes.
+- As a room member, I want to **export the board as a PNG image** so that I can save or share what we produced.
+- As a room member, I want to **clear the board** (after confirming, since it erases for everyone) so that we can start a fresh canvas.
+
 ---
 
-*Generated from a full codebase scan of the ResVibe solution. Endpoint, service, and component details were verified against the backend API/controllers/services/hub and the Angular frontend pages/components/services.*
+*Generated from a full codebase scan of the Study Crib solution. Endpoint, service, and component details were verified against the backend API/controllers/services/hub and the Angular frontend pages/components/services.*

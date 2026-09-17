@@ -1,6 +1,6 @@
-# ResVibe — Use Cases
+# Study Crib — Use Cases
 
-This document captures the use cases of ResVibe, written from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend). It is maintained alongside two other artifacts:
+This document captures the use cases of Study Crib, written from a full scan of the codebase (ASP.NET Core API + SignalR + PostgreSQL backend, Angular frontend). It is maintained alongside two other artifacts:
 - **User stories** → `USER_STORIES.md` (why: motivations and benefits)
 - **Business rules** → `BUSINESS_RULES.md` (what: invariants, limits, permissions, formulas)
 - **Use cases** → this file (how: end-to-end flows, actors, pre/post-conditions, alternate paths)
@@ -69,6 +69,7 @@ Understanding of standard notation:
 23. [Calendar Integration](#23-calendar-integration)
 24. [Settings & Personalization](#24-settings--personalization)
 25. [Realtime Sequences (SignalR)](#25-realtime-sequences-signalr)
+26. [Collaborative Board (Whiteboard)](#26-collaborative-board-whiteboard)
 
 ---
 
@@ -174,7 +175,8 @@ Understanding of standard notation:
   1. System returns statistics, gamification profile, and personalized recommendations.
   2. Frontend renders hero, levels ring / XP progress, milestone badges, entry cards (Flashcards, Games), and a recommendation list.
 - **Alternate flows:**
-  * Alt 1 – Incomplete profile: a "Complete Profile" banner is shown linking to settings.
+  * Alt 1 – Incomplete profile: a non-blocking, suggestion-style tip banner ("Tip: add a profile picture whenever you get a chance — it helps others recognize you." + "Set up profile") is shown in the global header, linking to settings.
+  * Alt 2 – First-run (no sessions, no rooms): a welcome/onboarding card ("Welcome to Study Crib") replaces the empty overview with step shortcuts — join a room, start a 25-min lock-in, complete the profile.
 
 ## 4. Rooms
 
@@ -266,6 +268,8 @@ Understanding of standard notation:
 - **Alternate flows:**
   * Alt 1 – Invalid type/size: rejected.
   * Alt 2 – Non-owner: `403`.
+  * Alt 3 – Odd file extension: the client normalizes the filename's extension to `.png`/`.webp` by MIME type before upload, so the server's extension whitelist is never hit by an unexpected extension.
+  * Alt 4 – Web root unset: the server falls back to `ContentRootPath` for the uploads directory instead of crashing.
 
 ### UC-17 · Copy room invite link
 - **Primary actor:** Room member
@@ -865,7 +869,7 @@ Understanding of standard notation:
 ### UC-76 · Customize appearance
 - **Primary actor:** Student
 - **Trigger:** User edits Appearance settings.
-- **Success guarantee:** Theme (light/system/dark), accent color (presets/custom), corner style, text size, font, compact mode, reduce motion, and high contrast apply across the app and persist.
+- **Success guarantee:** Theme (light/system/dark), accent color (presets/custom), corner style, text size, font, compact mode, reduce motion, and high contrast apply across the app and persist. **Default for new users: system theme + the Sky accent** (`#0EA5E9`) until changed.
 
 ### UC-77 · Set focus preferences
 - **Primary actor:** Student
@@ -956,6 +960,46 @@ Listed as sequence-level guarantees that power the realtime features above.
   * Alt 2 – Session already verified / decided (`Approved`/`Declined`/`Voided`): returned unchanged as a no-op.
   * Alt 3 – No matching focus award exists (typical for unverified sessions): no XP is deducted.
 
+## 26. Collaborative Board (Whiteboard)
+
+### UC-88 · Open the shared board and receive current state
+- **Primary actor:** Room member
+- **Trigger:** User opens the room's Board tab.
+- **Preconditions:** Member; connected over SignalR.
+- **Success guarantee:** An empty (or previously drawn) canvas is shown with the room's current board content.
+- **Main flow:**
+  1. User opens the Board tab; the client initializes the fabric.js canvas and starts the SignalR connection.
+  2. The client sends `RequestBoard(roomId)`.
+  3. The hub replies with `BoardLoaded` containing the current in-memory state (or `null` for a fresh board) and the client renders it.
+- **Alternate flows:**
+  * Alt 1 – Board never drawn / server restarted: `json` is null and an empty canvas is shown (board state is ephemeral and not persisted).
+
+### UC-89 · Draw on the board and live-sync with the room
+- **Primary actor:** Room member
+- **Trigger:** User draws, types text, adds/moves/resizes a shape, or picks a color/stroke width.
+- **Preconditions:** Member; Board tab open.
+- **Success guarantee:** Every other online room member's canvas reflects the edit in real time; the sender's canvas never re-applies its own echo.
+- **Main flow:**
+  1. User selects a tool (select/move, pen, text, rect, circle, line, arrow), color (7 presets or a custom picker), and stroke width (1–20), then draws.
+  2. The client debounces (~250 ms) and sends the **entire canvas state** as JSON via `BoardChanged(roomId, json)`.
+  3. The hub stores the state in-memory and broadcasts `BoardChanged` to **other members only** (`OthersInGroup`), tagged with the editor's username.
+  4. Receivers load the incoming JSON (suppressing re-broadcast) — no echo loops.
+- **Alternate flows:**
+  * Alt 1 – Undo/redo: the client rewinds its local 30-entry history and re-broadcasts the resulting full state (redo stack clears on new edits); "Nothing to undo/redo" toast when empty.
+  * Alt 2 – Reconnect/member joins mid-drawing: the client re-requests state (UC-88) to resync.
+
+### UC-90 · Clear the board / export a PNG
+- **Primary actor:** Room member (clear, export)
+- **Trigger:** User clicks the Clear or Export tool.
+- **Preconditions:** Board tab open.
+- **Success guarantee:** Clear removes every element for everyone (after confirmation); Export downloads a 2× PNG of the current canvas.
+- **Main flow:**
+  1. **Clear:** the client shows the shared confirm dialog ("This removes every element for everyone in the room") → on confirm, clears its own canvas, resets undo/redo, and calls `BoardClear(roomId)`.
+  2. The hub removes the stored room state and broadcasts `BoardCleared`; every other member clears their canvas.
+  3. **Export:** the client renders the canvas to a PNG data URL (`2×` multiplier) and downloads it as `board-{roomId}.png`; a success toast confirms.
+- **Alternate flows:**
+  * Alt 1 – Export on an empty board: a PNG of the blank background is still downloaded.
+
 ---
 
-*Extracted from a full codebase scan of the ResVibe solution. Cross-referenced with `USER_STORIES.md` and `BUSINESS_RULES.md`.*
+*Extracted from a full codebase scan of the Study Crib solution. Cross-referenced with `USER_STORIES.md` and `BUSINESS_RULES.md`.*

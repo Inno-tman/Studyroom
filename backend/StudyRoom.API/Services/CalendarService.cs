@@ -121,7 +121,7 @@ public class CalendarService : ICalendarService
         var title = string.IsNullOrEmpty(roomName)
             ? "Study Session"
             : $"Study: {roomName}";
-        var description = $"Aggregated study time on {start.Date:MMM d, yyyy} synced from StudyRoom";
+        var description = $"Aggregated study time on {start.Date:MMM d, yyyy} synced from Study Crib";
         var dayUtc = start.Date;
 
         foreach (var conn in connections)
