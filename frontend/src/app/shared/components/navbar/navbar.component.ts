@@ -12,7 +12,7 @@ import { AssistantService } from '../../../core/services/assistant.service';
   template: `
     <nav class="navbar">
       <div class="navbar-left">
-        <span class="logo-icon material-icons">menu_book</span>
+        <img src="icons/logo.svg" alt="Study Crib" class="logo-icon logo-img" />
         <span class="logo-text">Study Crib</span>
       </div>
 
@@ -86,7 +86,7 @@ import { AssistantService } from '../../../core/services/assistant.service';
       flex-shrink: 0;
     }
 
-    .logo-icon { font-size: var(--font-24); color: var(--accent); }
+    .logo-icon.logo-img { width: 27px; height: 27px; border-radius: 7px; flex-shrink: 0; }
     .logo-text { font-size: var(--font-17); font-weight: 700; color: var(--text-primary); }
 
     .navbar-nav {
