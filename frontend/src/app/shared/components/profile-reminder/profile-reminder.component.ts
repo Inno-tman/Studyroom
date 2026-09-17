@@ -9,9 +9,9 @@ import { AuthService } from '../../../core/services/auth.service';
   imports: [NgIf],
   template: `
     <div *ngIf="showReminder()" class="reminder-banner">
-      <span class="reminder-icon material-icons">warning_amber</span>
-      <span class="reminder-text">Your profile is incomplete — add a profile picture so others can recognize you.</span>
-      <button class="reminder-action" (click)="goToProfile()">Complete Profile</button>
+      <span class="reminder-icon material-icons">lightbulb</span>
+      <span class="reminder-text">Tip: add a profile picture whenever you get a chance — it helps others recognize you.</span>
+      <button class="reminder-action" (click)="goToProfile()">Set up profile</button>
     </div>
   `,
   styles: [`
@@ -20,13 +20,13 @@ import { AuthService } from '../../../core/services/auth.service';
       align-items: center;
       gap: 10px;
       padding: 10px 20px;
-      background: rgba(245, 158, 11, 0.12);
-      border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
       color: var(--text-primary);
       font-size: var(--font-14);
     }
 
-    .reminder-icon { font-size: var(--font-16); color: #f59e0b; }
+    .reminder-icon { font-size: var(--font-16); color: var(--accent); }
 
     .reminder-text { flex: 1; }
 
