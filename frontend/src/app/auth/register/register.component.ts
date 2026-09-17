@@ -18,7 +18,7 @@ declare global {
       <div class="auth-card">
         <div class="auth-header">
           <h1>Create account</h1>
-          <p>Join the ResVibe community</p>
+          <p>Join the Study Crib community</p>
         </div>
 
         <div class="social-login">

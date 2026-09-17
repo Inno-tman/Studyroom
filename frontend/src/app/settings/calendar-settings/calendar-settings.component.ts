@@ -197,7 +197,7 @@ export class CalendarSettingsComponent implements OnInit {
       title: 'Focus Session',
       start: now.toISOString(),
       end: end.toISOString(),
-      description: 'Manual sync from ResVibe'
+      description: 'Manual sync from Study Crib'
     }).subscribe({
       next: () => { this.syncing = false; this.fb.success('Calendar synced!'); },
       error: () => { this.syncing = false; this.fb.error('Calendar sync failed'); }

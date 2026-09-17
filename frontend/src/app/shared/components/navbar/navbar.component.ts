@@ -13,7 +13,7 @@ import { AssistantService } from '../../../core/services/assistant.service';
     <nav class="navbar">
       <div class="navbar-left">
         <span class="logo-icon material-icons">menu_book</span>
-        <span class="logo-text">ResVibe</span>
+        <span class="logo-text">Study Crib</span>
       </div>
 
       <div class="navbar-nav">

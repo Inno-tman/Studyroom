@@ -67,7 +67,7 @@ import { LoadingComponent } from '../shared/components/loading/loading.component
           <div class="onboard-head">
             <span class="material-icons onboard-icon">rocket_launch</span>
             <div>
-              <h2>Welcome to Studyroom, {{ auth.currentUser()?.username }}!</h2>
+              <h2>Welcome to Study Crib, {{ auth.currentUser()?.username }}!</h2>
               <p>Here's how to get started. Pick any step — you're just a few clicks away from your first focus session.</p>
             </div>
           </div>
