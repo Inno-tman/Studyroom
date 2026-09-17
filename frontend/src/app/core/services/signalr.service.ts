@@ -36,6 +36,9 @@ export class SignalRService {
   private videoBroadcastSubject = new Subject<any>();
   private videoControlSubject = new Subject<any>();
   private videoStoppedSubject = new Subject<any>();
+  private boardChangedSubject = new Subject<any>();
+  private boardLoadedSubject = new Subject<any>();
+  private boardClearedSubject = new Subject<any>();
 
   // Phase 2a – focus count
   private focusCountUpdatedSubject = new Subject<any>();
@@ -66,6 +69,9 @@ export class SignalRService {
   videoBroadcast$ = this.videoBroadcastSubject.asObservable();
   videoControl$ = this.videoControlSubject.asObservable();
   videoStopped$ = this.videoStoppedSubject.asObservable();
+  boardChanged$ = this.boardChangedSubject.asObservable();
+  boardLoaded$ = this.boardLoadedSubject.asObservable();
+  boardCleared$ = this.boardClearedSubject.asObservable();
   focusCountUpdated$ = this.focusCountUpdatedSubject.asObservable();
 
   constructor(private authService: AuthService) {}
@@ -122,6 +128,9 @@ export class SignalRService {
     this.hubConnection.on('VideoBroadcast', (data: any) => this.videoBroadcastSubject.next(data));
     this.hubConnection.on('VideoControl', (data: any) => this.videoControlSubject.next(data));
     this.hubConnection.on('VideoStopped', (data: any) => this.videoStoppedSubject.next(data));
+    this.hubConnection.on('BoardChanged', (data: any) => this.boardChangedSubject.next(data));
+    this.hubConnection.on('BoardLoaded', (data: any) => this.boardLoadedSubject.next(data));
+    this.hubConnection.on('BoardCleared', (data: any) => this.boardClearedSubject.next(data));
     this.hubConnection.on('FocusCountUpdated', (data: any) => this.focusCountUpdatedSubject.next(data));
 
     await this.hubConnection.start();
@@ -229,6 +238,18 @@ export class SignalRService {
 
   async stopVideo(roomId: string): Promise<void> {
     await this.hubConnection.invoke('StopVideo', roomId);
+  }
+
+  async boardChanged(roomId: string, json: string): Promise<void> {
+    await this.hubConnection.invoke('BoardChanged', roomId, json);
+  }
+
+  async boardClear(roomId: string): Promise<void> {
+    await this.hubConnection.invoke('BoardClear', roomId);
+  }
+
+  async requestBoard(roomId: string): Promise<void> {
+    await this.hubConnection.invoke('RequestBoard', roomId);
   }
 
   async stopConnection(): Promise<void> {

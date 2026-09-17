@@ -26,6 +26,7 @@ import { UserDto } from '../../shared/models/room.model';
 import { Friend } from '../../shared/models/social.model';
 import { LoadingComponent } from '../../shared/components/loading/loading.component';
 import { NotesEditorComponent } from '../../notes/notes-editor/notes-editor.component';
+import { BoardPanelComponent } from '../board-panel/board-panel.component';
 import { PomodoroTimerComponent } from '../../timer/pomodoro-timer/pomodoro-timer.component';
 import { AiChatPanelComponent } from '../../ai/ai-chat-panel/ai-chat-panel.component';
 import { MeetingRoomComponent } from '../../meeting/meeting-room/meeting-room.component';
@@ -39,6 +40,7 @@ const TABS: RoomTab[] = [
   { id: 'notes', label: 'Notes', icon: 'edit_note' },
   { id: 'ai', label: 'AI', icon: 'auto_awesome' },
   { id: 'tasks', label: 'Tasks', icon: 'checklist' },
+  { id: 'board', label: 'Board', icon: 'palette' },
   { id: 'meet', label: 'Meet', icon: 'videocam' },
   { id: 'stats', label: 'Stats', icon: 'bar_chart' }
 ];
@@ -46,7 +48,7 @@ const TABS: RoomTab[] = [
 @Component({
   selector: 'app-room-detail',
   standalone: true,
-  imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, PomodoroTimerComponent, AiChatPanelComponent, MeetingRoomComponent, RoomTasksPanelComponent],
+  imports: [NgFor, NgIf, NgClass, NgTemplateOutlet, DatePipe, FormsModule, RouterLink, LoadingComponent, NotesEditorComponent, BoardPanelComponent, PomodoroTimerComponent, AiChatPanelComponent, MeetingRoomComponent, RoomTasksPanelComponent],
   template: `
     <div class="room-detail" [style.background-image]="room?.backgroundUrl ? 'url(' + room?.backgroundUrl + ')' : 'none'">
       <!-- ── Header ─────────────────────────────────────────── -->
@@ -281,6 +283,10 @@ const TABS: RoomTab[] = [
 
           <div *ngIf="activeTab === 'notes'" class="tab-pane notes-pane">
             <app-notes-editor [roomId]="roomId" />
+          </div>
+
+          <div *ngIf="activeTab === 'board'" class="tab-pane board-pane">
+            <app-board-panel [roomId]="roomId" />
           </div>
 
           <div *ngIf="activeTab === 'ai'" class="tab-pane ai-pane">
@@ -747,6 +753,8 @@ const TABS: RoomTab[] = [
     .ai-pane ::ng-deep app-ai-chat-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .tasks-pane { height: 600px; overflow-y: auto; padding: 16px; box-sizing: border-box; }
     .tasks-pane ::ng-deep app-room-tasks-panel { flex: 1; }
+    .board-pane { height: 640px; padding: 0; }
+    .board-pane ::ng-deep app-board-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .focus-pane { padding: 16px; }
 
     /* ── Stats Tab ──────────────────────────────────────────── */

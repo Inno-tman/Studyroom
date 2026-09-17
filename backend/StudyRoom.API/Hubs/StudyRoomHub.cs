@@ -40,6 +40,9 @@ public class StudyRoomHub : Hub
     // connectionId -> roomId (which room this connection is focusing in)
     private static readonly Dictionary<string, string> _focusConnections = new();
 
+    // Collaborative board: roomId -> full board JSON (fabric canvas state)
+    private static readonly Dictionary<string, string> _roomBoards = new();
+
     public StudyRoomHub(
         IMessageRepository messageRepo,
         IRoomRepository roomRepo,
@@ -584,6 +587,47 @@ public class StudyRoomHub : Hub
             content,
             updatedBy = Username,
             updatedAt = DateTime.UtcNow
+        });
+    }
+
+    // ── Collaborative board ────────────────────────────────
+    /// <summary>Relays the full board state to other room members.</summary>
+    public async Task BoardChanged(string roomId, string json)
+    {
+        lock (_roomBoards)
+        {
+            _roomBoards[roomId] = json;
+        }
+        await Clients.OthersInGroup(GetGroupName(roomId)).SendAsync("BoardChanged", new
+        {
+            roomId,
+            json,
+            updatedBy = Username
+        });
+    }
+
+    /// <summary>Clears the board for the room.</summary>
+    public async Task BoardClear(string roomId)
+    {
+        lock (_roomBoards)
+        {
+            _roomBoards.Remove(roomId);
+        }
+        await Clients.OthersInGroup(GetGroupName(roomId)).SendAsync("BoardCleared", new { roomId });
+    }
+
+    /// <summary>Sends the current board state to the requesting client.</summary>
+    public async Task RequestBoard(string roomId)
+    {
+        string json;
+        lock (_roomBoards)
+        {
+            json = _roomBoards.TryGetValue(roomId, out var current) ? current : null!;
+        }
+        await Clients.Caller.SendAsync("BoardLoaded", new
+        {
+            roomId,
+            json
         });
     }
 
