@@ -205,7 +205,8 @@ import { AssistantService } from '../../../core/services/assistant.service';
 
     @media (max-width: 768px) {
       .navbar { padding: env(safe-area-inset-top) 10px 0; gap: 8px; }
-      .logo-text { display: none; }
+      .logo-text { font-size: var(--font-16); }
+      .logo-icon.logo-img { width: 24px; height: 24px; }
       .navbar-nav { justify-content: flex-start; }
     }
   `]

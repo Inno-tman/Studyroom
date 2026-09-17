@@ -15,6 +15,10 @@ declare global {
   imports: [FormsModule, RouterLink, NgIf],
   template: `
     <div class="auth-container">
+      <div class="auth-brand">
+        <img src="icons/logo.svg" alt="Study Crib" class="auth-brand-logo" />
+        <span class="auth-brand-name">Study Crib</span>
+      </div>
       <div class="auth-card">
         <div class="auth-header">
           <h1>Welcome back</h1>
@@ -68,11 +72,31 @@ declare global {
   styles: [`
     .auth-container {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      padding: 16px;
-      margin: -24px;
+      min-height: 100dvh;
+      padding: 24px;
+    }
+
+    .auth-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .auth-brand-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+    }
+
+    .auth-brand-name {
+      font-size: var(--font-28);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
     }
 
     .auth-card {

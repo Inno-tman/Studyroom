@@ -15,6 +15,10 @@ declare global {
   imports: [FormsModule, RouterLink, NgIf],
   template: `
     <div class="auth-container">
+      <div class="auth-brand">
+        <img src="icons/logo.svg" alt="Study Crib" class="auth-brand-logo" />
+        <span class="auth-brand-name">Study Crib</span>
+      </div>
       <div class="auth-card">
         <div class="auth-header">
           <h1>Create account</h1>
