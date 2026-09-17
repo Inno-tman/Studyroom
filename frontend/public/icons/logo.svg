@@ -2,11 +2,18 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
  "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
 <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
- width="1408.000000pt" height="768.000000pt" viewBox="0 0 1408.000000 768.000000"
+ width="620pt" height="620pt" viewBox="394 76 620 620"
  preserveAspectRatio="xMidYMid meet">
-
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#7C3AED"/>
+<stop offset="0.5" stop-color="#6366F1"/>
+<stop offset="1" stop-color="#2563EB"/>
+</linearGradient>
+</defs>
+<rect x="394" y="76" width="620" height="620" rx="150" ry="150" fill="url(#bg)"/>
 <g transform="translate(0.000000,768.000000) scale(0.100000,-0.100000)"
-fill="#000000" stroke="none">
+fill="#FFFFFF" stroke="none">
 <path d="M6949 6006 c-59 -16 -101 -41 -284 -171 -82 -58 -172 -122 -200 -141
 -71 -49 -382 -270 -495 -350 -335 -239 -1064 -755 -1190 -842 -96 -67 -267
 -190 -327 -235 -170 -128 -146 -390 45 -484 48 -23 69 -28 132 -27 90 1 142
