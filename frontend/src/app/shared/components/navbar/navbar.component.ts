@@ -87,7 +87,7 @@ import { AssistantService } from '../../../core/services/assistant.service';
     }
 
     .logo-icon.logo-img { width: 27px; height: 27px; border-radius: 7px; flex-shrink: 0; }
-    .logo-text { font-size: var(--font-17); font-weight: 700; color: var(--text-primary); }
+    .logo-text { display: none; }
 
     .navbar-nav {
       flex: 1;
@@ -205,8 +205,8 @@ import { AssistantService } from '../../../core/services/assistant.service';
 
     @media (max-width: 768px) {
       .navbar { padding: env(safe-area-inset-top) 10px 0; gap: 8px; }
-      .logo-text { font-size: var(--font-16); }
-      .logo-icon.logo-img { width: 24px; height: 24px; }
+      .logo-text { display: none; }
+      .logo-icon.logo-img { width: 26px; height: 26px; }
       .navbar-nav { justify-content: flex-start; }
     }
   `]
