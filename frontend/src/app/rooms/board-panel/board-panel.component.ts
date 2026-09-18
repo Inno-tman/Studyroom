@@ -14,7 +14,18 @@ import { SignalRService } from '../../core/services/signalr.service';
 import { UiFeedbackService } from '../../core/services/ui-feedback.service';
 import { Subscription } from 'rxjs';
 
-type BoardTool = 'select' | 'pen' | 'rect' | 'circle' | 'line' | 'arrow' | 'text';
+type BoardTool =
+  | 'select'
+  | 'pen'
+  | 'rect'
+  | 'circle'
+  | 'line'
+  | 'arrow'
+  | 'text'
+  | 'triangle'
+  | 'diamond'
+  | 'hexagon'
+  | 'star';
 
 interface BoardPalette {
   name: string;
@@ -86,6 +97,34 @@ const PALETTE: BoardPalette[] = [
           (click)="setTool('arrow')"
           title="Arrow"
         ><span class="material-icons">arrow_forward</span></button>
+
+        <button
+          class="tool-btn"
+          [class.active]="tool === 'triangle'"
+          (click)="setTool('triangle')"
+          title="Triangle"
+        ><span class="material-icons">change_history</span></button>
+
+        <button
+          class="tool-btn"
+          [class.active]="tool === 'diamond'"
+          (click)="setTool('diamond')"
+          title="Diamond"
+        ><span class="material-icons">diamond</span></button>
+
+        <button
+          class="tool-btn"
+          [class.active]="tool === 'hexagon'"
+          (click)="setTool('hexagon')"
+          title="Hexagon"
+        ><span class="material-icons">hexagon</span></button>
+
+        <button
+          class="tool-btn"
+          [class.active]="tool === 'star'"
+          (click)="setTool('star')"
+          title="Star"
+        ><span class="material-icons">star</span></button>
 
         <span class="board-divider"></span>
 
@@ -400,6 +439,85 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           strokeWidth: this.strokeWidth
         });
         break;
+      case 'triangle':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: -58, y: 50 },
+          { x: 58, y: 50 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'diamond':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 42, y: 0 },
+          { x: 0, y: 50 },
+          { x: -42, y: 0 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'hexagon':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 43, y: -25 },
+          { x: 43, y: 25 },
+          { x: 0, y: 50 },
+          { x: -43, y: 25 },
+          { x: -43, y: -25 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'star':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -52 },
+          { x: 12, y: -18 },
+          { x: 48, y: -18 },
+          { x: 18, y: 4 },
+          { x: 30, y: 38 },
+          { x: 0, y: 18 },
+          { x: -30, y: 38 },
+          { x: -18, y: 4 },
+          { x: -48, y: -18 },
+          { x: -12, y: -18 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
       case 'line':
       case 'arrow':
         this.activeShape = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
@@ -449,6 +567,14 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     } else if (this.activeShape instanceof fabric.Ellipse) {
       const rx = Math.abs(dx) / 2;
       this.activeShape.set({ rx, ry: rx, left: (sx + pointer.x) / 2, top: (sy + pointer.y) / 2 });
+    } else if (this.activeShape instanceof fabric.Polygon) {
+      const size = Math.max(Math.abs(dx), Math.abs(dy)) / 100;
+      this.activeShape.set({
+        scaleX: size,
+        scaleY: size,
+        left: (sx + pointer.x) / 2,
+        top: (sy + pointer.y) / 2
+      });
     } else if (this.activeShape instanceof fabric.Line) {
       this.activeShape.set({ x2: pointer.x, y2: pointer.y });
     }
