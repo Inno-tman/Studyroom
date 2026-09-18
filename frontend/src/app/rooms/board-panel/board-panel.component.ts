@@ -1,4 +1,4 @@
-import {
+﻿import {
   Component,
   ElementRef,
   Input,
@@ -369,7 +369,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── Canva-style actions ────────────────────────────────────────────────
+  // â”€â”€ Canva-style actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   zoom = 1;
   opacity = 1;
   dashed = false;
@@ -475,7 +475,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.fontSize = v;
     const o = this.canvas.getActiveObject();
     if (o && (o as any).isType && (o as any).isType('text')) {
-      o.set('fontSize', v);
+      o.set('fontSize' as any, v);
       this.canvas.requestRenderAll();
       this.scheduleBroadcast();
     }
@@ -485,7 +485,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.bold = !this.bold;
     const o = this.canvas.getActiveObject();
     if (o && (o as any).isType && (o as any).isType('text')) {
-      o.set('fontWeight', this.bold ? 'bold' : 'normal');
+      o.set('fontWeight' as any, this.bold ? 'bold' : 'normal');
       this.canvas.requestRenderAll();
       this.scheduleBroadcast();
     }
