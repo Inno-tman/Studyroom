@@ -1,6 +1,7 @@
 ﻿import {
   Component,
   ElementRef,
+  HostListener,
   Input,
   NgZone,
   OnDestroy,
@@ -189,16 +190,6 @@ const PALETTE: BoardPalette[] = [
         <span class="board-divider"></span>
 
         <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="material-icons">chevron_left</span></button>
-        <span class="slides-pct">{{ activeSlide + 1 }} / {{ slides.length }}</span>
-        <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
-        <span class="board-divider"></span>
-        <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">add</span></button>
-        <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
-        <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
-
-        <span class="board-divider"></span>
-
-        <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="material-icons">chevron_left</span></button>
         <span class="slide-count">{{ activeSlide + 1 }} / {{ slides.length }}</span>
         <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
         <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">note_add</span></button>
@@ -211,9 +202,16 @@ const PALETTE: BoardPalette[] = [
         <button class="tool-btn" (click)="redo()" title="Redo"><span class="material-icons">redo</span></button>
         <button class="tool-btn" (click)="exportPng()" title="Export image"><span class="material-icons">download</span></button>
         <button class="tool-btn danger" (click)="clearBoard()" title="Clear board"><span class="material-icons">delete_sweep</span></button>
+        <span class="sync-indicator" [class.unsynced]="!synced" [title]="synced ? 'Board synced with room' : 'Syncing board...'">
+          <span class="material-icons">{{ synced ? 'cloud_done' : 'sync' }}</span>
+        </span>
       </div>
 
       <div class="board-canvas-wrap" #wrap>
+        <div class="board-empty-hint" *ngIf="isEmpty">
+          <span class="material-icons">draw</span>
+          <p>Pick a tool and start drawing, or add a slide</p>
+        </div>
         <canvas #canvasEl></canvas>
       </div>
     </div>
@@ -235,7 +233,13 @@ const PALETTE: BoardPalette[] = [
       border-bottom: 1px solid var(--border);
       background: var(--surface);
       flex-wrap: wrap;
+      overflow-x: auto;
+      scrollbar-width: thin;
     }
+
+    .board-toolbar::-webkit-scrollbar { height: 6px; }
+    .board-toolbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .board-toolbar::-webkit-scrollbar-track { background: transparent; }
 
     .tool-btn {
       display: flex;
@@ -250,6 +254,7 @@ const PALETTE: BoardPalette[] = [
       cursor: pointer;
       font-size: var(--font-16);
       transition: all 0.15s;
+      flex-shrink: 0;
     }
 
     .tool-btn:hover { color: var(--text-primary); background: var(--surface-hover); }
@@ -263,6 +268,18 @@ const PALETTE: BoardPalette[] = [
     .board-divider { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
 
     .zoom-pct { font-size: var(--font-13); color: var(--text-secondary); min-width: 38px; text-align: center; }
+
+    .slide-count { font-size: var(--font-13); color: var(--text-secondary); min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; }
+
+    .sync-indicator { display: inline-flex; align-items: center; margin-left: auto; color: var(--primary); font-size: var(--font-16); animation: sync-pulse 1.2s ease-in-out infinite; }
+
+    .sync-indicator .material-icons { font-size: var(--font-18); }
+
+    .sync-indicator.unsynced { color: var(--text-secondary); animation: sync-spin 1s linear infinite; }
+
+    @keyframes sync-spin { to { transform: rotate(360deg); } }
+
+    @keyframes sync-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
     .color-row { display: flex; align-items: center; gap: 6px; }
 
@@ -299,6 +316,24 @@ const PALETTE: BoardPalette[] = [
     }
 
     .board-canvas-wrap canvas { position: absolute; inset: 0; }
+
+    .board-empty-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+      pointer-events: none;
+      font-size: var(--font-14);
+      text-align: center;
+      user-select: none;
+    }
+
+    .board-empty-hint .material-icons { font-size: 44px; opacity: 0.4; }
   `]
 })
 export class BoardPanelComponent implements OnInit, OnDestroy {
@@ -331,14 +366,16 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.subs.push(
       this.signalR.boardChanged$.subscribe(d => {
         if (d.roomId !== this.roomId || !d.json) return;
+        this.ngZone.run(() => this.synced = true);
         this.applyRemote(d.json);
       }),
       this.signalR.boardLoaded$.subscribe(d => {
         if (d.roomId !== this.roomId) return;
-        if (d.json) this.applyRemote(d.json);
+        if (d.json) this.applyRemote(d.json, true);
       }),
       this.signalR.boardCleared$.subscribe(d => {
         if (d.roomId !== this.roomId) return;
+        this.ngZone.run(() => this.synced = true);
         this.ngZone.run(() => this.clearRemote());
       })
     );
@@ -354,6 +391,39 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.resizeObs?.disconnect();
     if (this.debounce) clearTimeout(this.debounce);
     this.canvas?.dispose();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(e: KeyboardEvent): void {
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) this.redo(); else this.undo();
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      this.redo();
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      this.duplicateSelected();
+      return;
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      this.deleteSelected();
+      return;
+    }
+    if (e.key === '+' || e.key === '=') { this.zoomIn(); return; }
+    if (e.key === '-' || e.key === '_') { this.zoomOut(); return; }
+    if (e.key === '0') { this.zoomFit(); return; }
+    if (e.key === 'PageDown') { e.preventDefault(); this.nextSlide(); return; }
+    if (e.key === 'PageUp') { e.preventDefault(); this.prevSlide(); return; }
   }
 
   setTool(tool: BoardTool): void {
@@ -378,6 +448,8 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   slides: { id: number; json: string; color: string }[] = [{ id: 1, json: '', color: '#F8FAFC' }];
   activeSlide = 0;
   private sliding = false;
+  synced = true;
+  isEmpty = true;
 
   prevSlide(): void {
     if (this.activeSlide > 0) this.goSlide(this.activeSlide - 1);
@@ -447,8 +519,21 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
 
   zoomFit(): void {
     const c = this.canvas;
-    const z = Math.min(c.getWidth() / 1600, c.getHeight() / 1000, 1.5);
-    this.setZoom(z);
+    const objects = c.getObjects();
+    if (!objects.length) { this.setZoom(1); return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    objects.forEach(o => {
+      const r = o.getBoundingRect();
+      minX = Math.min(minX, r.left);
+      minY = Math.min(minY, r.top);
+      maxX = Math.max(maxX, r.left + r.width);
+      maxY = Math.max(maxY, r.top + r.height);
+    });
+    const pad = 60;
+    const w = Math.max(maxX - minX, 1);
+    const h = Math.max(maxY - minY, 1);
+    const z = Math.min((c.getWidth() - pad) / w, (c.getHeight() - pad) / h);
+    this.setZoom(Math.max(0.25, Math.min(z, 1.5)));
   }
 
   setOpacity(v: number): void {
@@ -606,10 +691,16 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.canvas.on('mouse:down', o => this.onMouseDown(o));
     this.canvas.on('mouse:move', o => this.onMouseMove(o));
     this.canvas.on('mouse:up', () => this.onMouseUp());
+    this.canvas.on('object:added', () => this.refreshEmpty());
+    this.canvas.on('object:removed', () => this.refreshEmpty());
     this.canvas.on('object:modified', () => this.scheduleBroadcast());
     this.canvas.on('object:removed', () => this.scheduleBroadcast());
     this.canvas.on('path:created', () => this.scheduleBroadcast());
     this.canvas.on('text:changed', () => this.scheduleBroadcast());
+  }
+
+  private refreshEmpty(): void {
+    this.ngZone.run(() => this.isEmpty = this.canvas.getObjects().length === 0);
   }
 
   private resizeCanvas(): void {
@@ -859,6 +950,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   private scheduleBroadcast(): void {
     if (this.suppress) return;
     if (this.debounce) clearTimeout(this.debounce);
+    this.ngZone.run(() => this.synced = false);
     this.debounce = setTimeout(() => this.broadcast(), 250);
   }
 
@@ -870,7 +962,9 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
       this.history.push(json);
       this.redoStack = [];
     });
-    void this.signalR.boardChanged(this.roomId, json);
+    void this.signalR.boardChanged(this.roomId, json)
+      .then(() => this.ngZone.run(() => this.synced = true))
+      .catch(() => this.ngZone.run(() => this.synced = true));
   }
 
   private applyAndBroadcast(json: string): void {
@@ -878,12 +972,14 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     void this.signalR.boardChanged(this.roomId, json);
   }
 
-  private applyRemote(json: string): void {
+  private applyRemote(json: string, fit = false): void {
     this.ngZone.runOutsideAngular(() => {
       this.suppress = true;
       this.canvas.loadFromJSON(json, () => {
         this.canvas.requestRenderAll();
+        this.refreshEmpty();
         this.suppress = false;
+        if (fit) this.zoomFit();
       });
     });
   }
