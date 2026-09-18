@@ -159,6 +159,33 @@ const PALETTE: BoardPalette[] = [
 
         <span class="board-divider"></span>
 
+        <button class="tool-btn" (click)="zoomOut()" title="Zoom out"><span class="material-icons">zoom_out</span></button>
+        <button class="tool-btn" (click)="zoomFit()" title="Zoom to fit"><span class="material-icons">fit_screen</span></button>
+        <button class="tool-btn" (click)="zoomIn()" title="Zoom in"><span class="material-icons">zoom_in</span></button>
+        <span class="zoom-pct">{{ zoom | number: '1.0-1' }}%</span>
+
+        <span class="board-divider"></span>
+
+        <label class="size-control" title="Opacity">
+          <span class="material-icons">opacity</span>
+          <input type="range" min="0.1" max="1" step="0.05" [value]="opacity" (input)="setOpacity(+$any($event.target).value)" />
+        </label>
+
+        <button class="tool-btn" [class.active]="dashed" (click)="toggleDash()" title="Dashed outline"><span class="material-icons">border_dashed</span></button>
+
+        <label class="size-control" title="Font size">
+          <span class="material-icons">format_size</span>
+          <input type="range" min="12" max="120" [value]="fontSize" (input)="setFontSize(+$any($event.target).value)" />
+        </label>
+        <button class="tool-btn" [class.active]="bold" (click)="toggleBold()" title="Bold text"><span class="material-icons">format_bold</span></button>
+
+        <span class="board-divider"></span>
+
+        <button class="tool-btn" (click)="duplicateSelected()" title="Duplicate"><span class="material-icons">content_copy</span></button>
+        <button class="tool-btn" (click)="deleteSelected()" title="Delete"><span class="material-icons">delete</span></button>
+        <button class="tool-btn" (click)="bringForward()" title="Bring forward"><span class="material-icons">bring_to_front</span></button>
+        <button class="tool-btn" (click)="sendBackwards()" title="Send backward"><span class="material-icons">send_to_back</span></button>
+
         <button class="tool-btn" (click)="undo()" title="Undo"><span class="material-icons">undo</span></button>
         <button class="tool-btn" (click)="redo()" title="Redo"><span class="material-icons">redo</span></button>
         <button class="tool-btn" (click)="exportPng()" title="Export image"><span class="material-icons">download</span></button>
@@ -213,6 +240,8 @@ const PALETTE: BoardPalette[] = [
     .tool-btn .material-icons { font-size: var(--font-18); }
 
     .board-divider { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+
+    .zoom-pct { font-size: var(--font-13); color: var(--text-secondary); min-width: 38px; text-align: center; }
 
     .color-row { display: flex; align-items: center; gap: 6px; }
 
@@ -317,6 +346,113 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
       this.canvas.discardActiveObject();
       this.canvas.requestRenderAll();
     }
+  }
+
+  // ── Canva-style actions ────────────────────────────────────────────────
+  zoom = 1;
+  opacity = 1;
+  dashed = false;
+  fontSize = 32;
+  bold = false;
+
+  setZoom(z: number): void {
+    this.zoom = z;
+    this.canvas.setZoom(z);
+    this.canvas.requestRenderAll();
+  }
+
+  zoomIn(): void  { this.setZoom(Math.min(4, +(this.zoom * 1.2).toFixed(2))); }
+  zoomOut(): void { this.setZoom(Math.max(0.25, +(this.zoom / 1.2).toFixed(2))); }
+
+  zoomFit(): void {
+    const c = this.canvas;
+    const z = Math.min(c.getWidth() / 1600, c.getHeight() / 1000, 1.5);
+    this.setZoom(z);
+  }
+
+  setOpacity(v: number): void {
+    this.opacity = v;
+    const o = this.canvas.getActiveObject();
+    if (o) {
+      o.set('opacity', v);
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
+  }
+
+  toggleDash(): void {
+    this.dashed = !this.dashed;
+    const o = this.canvas.getActiveObject();
+    if (o) {
+      o.set('strokeDashArray', this.dashed ? [10, 8] : undefined);
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
+  }
+
+  setFontSize(v: number): void {
+    this.fontSize = v;
+    const o = this.canvas.getActiveObject();
+    if (o && (o as any).isType && (o as any).isType('text')) {
+      o.set('fontSize', v);
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
+  }
+
+  toggleBold(): void {
+    this.bold = !this.bold;
+    const o = this.canvas.getActiveObject();
+    if (o && (o as any).isType && (o as any).isType('text')) {
+      o.set('fontWeight', this.bold ? 'bold' : 'normal');
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
+  }
+
+  duplicateSelected(): void {
+    const o = this.canvas.getActiveObject();
+    if (!o) return;
+    o.clone((dup: fabric.Object) => {
+      dup.set({
+        left: (o.left ?? 0) + 24,
+        top: (o.top ?? 0) + 24,
+        evented: true
+      });
+      this.canvas.add(dup);
+      this.canvas.setActiveObject(dup);
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    });
+  }
+
+  deleteSelected(): void {
+    const o = this.canvas.getActiveObject();
+    if (!o) return;
+    if (o instanceof fabric.ActiveSelection) {
+      o.getObjects().forEach(p => this.canvas.remove(p as fabric.Object));
+    } else {
+      this.canvas.remove(o);
+    }
+    this.canvas.discardActiveObject();
+    this.canvas.requestRenderAll();
+    this.scheduleBroadcast();
+  }
+
+  bringForward(): void  {
+    const o = this.canvas.getActiveObject();
+    if (!o) return;
+    this.canvas.bringForward(o);
+    this.canvas.requestRenderAll();
+    this.scheduleBroadcast();
+  }
+
+  sendBackwards(): void {
+    const o = this.canvas.getActiveObject();
+    if (!o) return;
+    this.canvas.sendBackwards(o);
+    this.canvas.requestRenderAll();
+    this.scheduleBroadcast();
   }
 
   onColorInput(event: Event): void {
