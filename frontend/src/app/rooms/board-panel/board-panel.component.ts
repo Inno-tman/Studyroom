@@ -186,6 +186,27 @@ const PALETTE: BoardPalette[] = [
         <button class="tool-btn" (click)="bringForward()" title="Bring forward"><span class="material-icons">bring_to_front</span></button>
         <button class="tool-btn" (click)="sendBackwards()" title="Send backward"><span class="material-icons">send_to_back</span></button>
 
+        <span class="board-divider"></span>
+
+        <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="material-icons">chevron_left</span></button>
+        <span class="slides-pct">{{ activeSlide + 1 }} / {{ slides.length }}</span>
+        <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
+        <span class="board-divider"></span>
+        <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">add</span></button>
+        <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
+        <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
+
+        <span class="board-divider"></span>
+
+        <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="material-icons">chevron_left</span></button>
+        <span class="slide-count">{{ activeSlide + 1 }} / {{ slides.length }}</span>
+        <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
+        <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">note_add</span></button>
+        <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
+        <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
+
+        <span class="board-divider"></span>
+
         <button class="tool-btn" (click)="undo()" title="Undo"><span class="material-icons">undo</span></button>
         <button class="tool-btn" (click)="redo()" title="Redo"><span class="material-icons">redo</span></button>
         <button class="tool-btn" (click)="exportPng()" title="Export image"><span class="material-icons">download</span></button>
@@ -354,6 +375,66 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   dashed = false;
   fontSize = 32;
   bold = false;
+  slides: { id: number; json: string; color: string }[] = [{ id: 1, json: '', color: '#F8FAFC' }];
+  activeSlide = 0;
+  private sliding = false;
+
+  prevSlide(): void {
+    if (this.activeSlide > 0) this.goSlide(this.activeSlide - 1);
+  }
+
+  nextSlide(): void {
+    if (this.activeSlide < this.slides.length - 1) this.goSlide(this.activeSlide + 1);
+  }
+
+  addSlide(): void {
+    const id = Date.now();
+    this.slides.push({ id, json: JSON.stringify(this.canvas.toJSON()), color: this.slides[this.activeSlide].color });
+    this.activeSlide = this.slides.length - 1;
+    this.canvas.clear();
+    this.canvas.backgroundColor = this.slides[this.activeSlide].color;
+    this.canvas.requestRenderAll();
+    this.scheduleBroadcast();
+  }
+
+  duplicateSlide(): void {
+    const cur = this.slides[this.activeSlide];
+    const copy = { id: Date.now(), json: cur.json, color: cur.color };
+    this.slides.splice(this.activeSlide + 1, 0, copy);
+    this.activeSlide += 1;
+    this.applySlideJson(copy.json);
+    this.scheduleBroadcast();
+    void this.signalR.boardChanged(this.roomId, JSON.stringify(this.canvas.toJSON()));
+  }
+
+  deleteSlide(): void {
+    if (this.slides.length <= 1) { this.scheduleBroadcast(); return; }
+    this.slides.splice(this.activeSlide, 1);
+    if (this.activeSlide >= this.slides.length) this.activeSlide = this.slides.length - 1;
+    this.applySlideJson(this.slides[this.activeSlide].json);
+    this.scheduleBroadcast();
+    void this.signalR.boardChanged(this.roomId, JSON.stringify(this.canvas.toJSON()));
+  }
+
+  goSlide(i: number): void {
+    if (i === this.activeSlide || this.sliding) return;
+    this.sliding = true;
+    this.slides[this.activeSlide].json = JSON.stringify(this.canvas.toJSON());
+    this.activeSlide = i;
+    this.applySlideJson(this.slides[i].json);
+    void this.signalR.boardChanged(this.roomId, JSON.stringify(this.canvas.toJSON()));
+    this.sliding = false;
+  }
+
+  private applySlideJson(json: string): void {
+    if (!json) { this.canvas.clear(); return; }
+    this.suppress = true;
+    this.canvas.loadFromJSON(json, () => {
+      this.canvas.backgroundColor = this.slides[this.activeSlide].color;
+      this.canvas.requestRenderAll();
+      this.suppress = false;
+    });
+  }
 
   setZoom(z: number): void {
     this.zoom = z;
