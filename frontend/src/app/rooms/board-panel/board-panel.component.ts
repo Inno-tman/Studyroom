@@ -26,7 +26,27 @@ type BoardTool =
   | 'triangle'
   | 'diamond'
   | 'hexagon'
-  | 'star';
+  | 'star'
+  | 'pentagon'
+  | 'heart'
+  | 'shield'
+  | 'bolt'
+  | 'plus'
+  | 'ring'
+  | 'ellipse'
+  | 'square'
+  | 'semicircle'
+  | 'octagon'
+  | 'trapezoid'
+  | 'crescent'
+  | 'droplet'
+  | 'cloud'
+  | 'cross'
+  | 'chevron'
+  | 'doubleArrow'
+  | 'sparkle'
+  | 'star6'
+  | 'tag';
 
 type BoardGroup = 'tools' | 'shapes' | 'style' | 'slides' | 'board';
 
@@ -127,6 +147,26 @@ const PALETTE: BoardPalette[] = [
             <button class="tool-btn" [class.active]="tool === 'diamond'" (click)="setTool('diamond')" title="Diamond"><span class="material-icons">diamond</span></button>
             <button class="tool-btn" [class.active]="tool === 'hexagon'" (click)="setTool('hexagon')" title="Hexagon"><span class="material-icons">hexagon</span></button>
             <button class="tool-btn" [class.active]="tool === 'star'" (click)="setTool('star')" title="Star"><span class="material-icons">star</span></button>
+            <button class="tool-btn" [class.active]="tool === 'pentagon'" (click)="setTool('pentagon')" title="Pentagon"><span class="material-icons">pentagon</span></button>
+            <button class="tool-btn" [class.active]="tool === 'heart'" (click)="setTool('heart')" title="Heart"><span class="material-icons">favorite</span></button>
+            <button class="tool-btn" [class.active]="tool === 'shield'" (click)="setTool('shield')" title="Shield"><span class="material-icons">shield</span></button>
+            <button class="tool-btn" [class.active]="tool === 'bolt'" (click)="setTool('bolt')" title="Lightning bolt"><span class="material-icons">bolt</span></button>
+            <button class="tool-btn" [class.active]="tool === 'plus'" (click)="setTool('plus')" title="Plus"><span class="material-icons">add</span></button>
+            <button class="tool-btn" [class.active]="tool === 'ring'" (click)="setTool('ring')" title="Ring"><span class="material-icons">radio_button_checked</span></button>
+            <button class="tool-btn" [class.active]="tool === 'ellipse'" (click)="setTool('ellipse')" title="Ellipse"><span class="material-icons">lens</span></button>
+            <button class="tool-btn" [class.active]="tool === 'square'" (click)="setTool('square')" title="Square"><span class="material-icons">crop_square</span></button>
+            <button class="tool-btn" [class.active]="tool === 'semicircle'" (click)="setTool('semicircle')" title="Semicircle"><span class="material-icons">pie_chart</span></button>
+            <button class="tool-btn" [class.active]="tool === 'octagon'" (click)="setTool('octagon')" title="Octagon"><span class="material-icons">workspaces</span></button>
+            <button class="tool-btn" [class.active]="tool === 'trapezoid'" (click)="setTool('trapezoid')" title="Trapezoid"><span class="material-icons">home</span></button>
+            <button class="tool-btn" [class.active]="tool === 'crescent'" (click)="setTool('crescent')" title="Crescent"><span class="material-icons">nightlight</span></button>
+            <button class="tool-btn" [class.active]="tool === 'droplet'" (click)="setTool('droplet')" title="Droplet"><span class="material-icons">water_drop</span></button>
+            <button class="tool-btn" [class.active]="tool === 'cloud'" (click)="setTool('cloud')" title="Cloud"><span class="material-icons">cloud</span></button>
+            <button class="tool-btn" [class.active]="tool === 'cross'" (click)="setTool('cross')" title="Cross"><span class="material-icons">close</span></button>
+            <button class="tool-btn" [class.active]="tool === 'chevron'" (click)="setTool('chevron')" title="Chevron"><span class="material-icons">chevron_right</span></button>
+            <button class="tool-btn" [class.active]="tool === 'doubleArrow'" (click)="setTool('doubleArrow')" title="Double arrow"><span class="material-icons">double_arrow</span></button>
+            <button class="tool-btn" [class.active]="tool === 'sparkle'" (click)="setTool('sparkle')" title="Sparkle star"><span class="material-icons">flare</span></button>
+            <button class="tool-btn" [class.active]="tool === 'star6'" (click)="setTool('star6')" title="6-point star"><span class="material-icons">stars</span></button>
+            <button class="tool-btn" [class.active]="tool === 'tag'" (click)="setTool('tag')" title="Tag"><span class="material-icons">tag</span></button>
           </ng-container>
 
           <ng-container *ngIf="activeGroup === 'style'">
@@ -849,6 +889,420 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           strokeWidth: this.strokeWidth
         });
         break;
+      case 'ellipse':
+        this.activeShape = new fabric.Ellipse({
+          left: pointer.x,
+          top: pointer.y,
+          rx: 0,
+          ry: 0,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth
+        });
+        break;
+      case 'square':
+        this.activeShape = new fabric.Rect({
+          left: pointer.x,
+          top: pointer.y,
+          width: 0,
+          height: 0,
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth
+        });
+        break;
+      case 'semicircle':
+        this.activeShape = new fabric.Polygon([
+          { x: -50, y: 50 },
+          { x: 50, y: 50 },
+          { x: 50, y: 0 },
+          { x: 41, y: -29 },
+          { x: 25, y: -43 },
+          { x: 0, y: -50 },
+          { x: -25, y: -43 },
+          { x: -41, y: -29 },
+          { x: -50, y: 0 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'octagon':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 35, y: -35 },
+          { x: 50, y: 0 },
+          { x: 35, y: 35 },
+          { x: 0, y: 50 },
+          { x: -35, y: 35 },
+          { x: -50, y: 0 },
+          { x: -35, y: -35 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'trapezoid':
+        this.activeShape = new fabric.Polygon([
+          { x: -30, y: -50 },
+          { x: 30, y: -50 },
+          { x: 50, y: 50 },
+          { x: -50, y: 50 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'crescent':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 42, y: -38 },
+          { x: 50, y: 0 },
+          { x: 42, y: 38 },
+          { x: 0, y: 50 },
+          { x: -14, y: 34 },
+          { x: -36, y: 24 },
+          { x: -36, y: -24 },
+          { x: -14, y: -34 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'droplet':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 36, y: 4 },
+          { x: 25, y: 36 },
+          { x: 0, y: 50 },
+          { x: -25, y: 36 },
+          { x: -36, y: 4 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'cloud':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -40 },
+          { x: 18, y: -44 },
+          { x: 36, y: -30 },
+          { x: 50, y: -14 },
+          { x: 44, y: 8 },
+          { x: 34, y: 26 },
+          { x: 14, y: 40 },
+          { x: -14, y: 40 },
+          { x: -38, y: 26 },
+          { x: -50, y: 6 },
+          { x: -42, y: -16 },
+          { x: -26, y: -34 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'cross':
+        this.activeShape = new fabric.Polygon([
+          { x: -14, y: -50 },
+          { x: 14, y: -50 },
+          { x: 14, y: -14 },
+          { x: 50, y: -14 },
+          { x: 50, y: 14 },
+          { x: 14, y: 14 },
+          { x: 14, y: 50 },
+          { x: -14, y: 50 },
+          { x: -14, y: 14 },
+          { x: -50, y: 14 },
+          { x: -50, y: -14 },
+          { x: -14, y: -14 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'chevron':
+        this.activeShape = new fabric.Polygon([
+          { x: -50, y: -50 },
+          { x: 26, y: 0 },
+          { x: -50, y: 50 },
+          { x: -24, y: 50 },
+          { x: 50, y: 0 },
+          { x: -24, y: -50 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'doubleArrow':
+        this.activeShape = new fabric.Polygon([
+          { x: -16, y: -50 },
+          { x: -50, y: 0 },
+          { x: -16, y: 50 },
+          { x: 16, y: 50 },
+          { x: 50, y: 0 },
+          { x: 16, y: -50 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'sparkle':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 12, y: -12 },
+          { x: 50, y: 0 },
+          { x: 12, y: 12 },
+          { x: 0, y: 50 },
+          { x: -12, y: 12 },
+          { x: -50, y: 0 },
+          { x: -12, y: -12 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'star6':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 10, y: -18 },
+          { x: 39, y: -31 },
+          { x: 16, y: 0 },
+          { x: 39, y: 31 },
+          { x: 10, y: 18 },
+          { x: 0, y: 50 },
+          { x: -10, y: 18 },
+          { x: -39, y: 31 },
+          { x: -16, y: 0 },
+          { x: -39, y: -31 },
+          { x: -10, y: -18 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'tag':
+        this.activeShape = new fabric.Polygon([
+          { x: -50, y: -35 },
+          { x: 34, y: -35 },
+          { x: 50, y: -12 },
+          { x: 50, y: 12 },
+          { x: 34, y: 35 },
+          { x: -50, y: 35 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'pentagon':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -50 },
+          { x: 48, y: -15 },
+          { x: 30, y: 40 },
+          { x: -30, y: 40 },
+          { x: -48, y: -15 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'heart':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -38 },
+          { x: 14, y: -52 },
+          { x: 34, y: -52 },
+          { x: 50, y: -34 },
+          { x: 50, y: -12 },
+          { x: 34, y: 10 },
+          { x: 0, y: 48 },
+          { x: -34, y: 10 },
+          { x: -50, y: -12 },
+          { x: -50, y: -34 },
+          { x: -34, y: -52 },
+          { x: -14, y: -52 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'shield':
+        this.activeShape = new fabric.Polygon([
+          { x: 0, y: -52 },
+          { x: 42, y: -44 },
+          { x: 42, y: 4 },
+          { x: 0, y: 50 },
+          { x: -42, y: 4 },
+          { x: -42, y: -44 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'bolt':
+        this.activeShape = new fabric.Polygon([
+          { x: 10, y: -50 },
+          { x: -36, y: 4 },
+          { x: -6, y: 4 },
+          { x: -10, y: 50 },
+          { x: 36, y: -8 },
+          { x: 8, y: -8 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'plus':
+        this.activeShape = new fabric.Polygon([
+          { x: -16, y: -50 },
+          { x: 16, y: -50 },
+          { x: 16, y: -16 },
+          { x: 50, y: -16 },
+          { x: 50, y: 16 },
+          { x: 16, y: 16 },
+          { x: 16, y: 50 },
+          { x: -16, y: 50 },
+          { x: -16, y: 16 },
+          { x: -50, y: 16 },
+          { x: -50, y: -16 },
+          { x: -16, y: -16 }
+        ], {
+          left: pointer.x,
+          top: pointer.y,
+          originX: 'center',
+          originY: 'center',
+          fill: this.rgbaFill(c, 0.18),
+          stroke: c,
+          strokeWidth: this.strokeWidth,
+          scaleX: 0.1,
+          scaleY: 0.1
+        });
+        break;
+      case 'ring':
+        this.activeShape = new fabric.Ellipse({
+          left: pointer.x,
+          top: pointer.y,
+          rx: 0,
+          ry: 0,
+          originX: 'center',
+          originY: 'center',
+          fill: 'rgba(0,0,0,0)',
+          stroke: c,
+          strokeWidth: this.strokeWidth + 6
+        });
+        break;
       case 'text': {
         const text = new fabric.IText('Type something', {
           left: pointer.x,
@@ -882,15 +1336,22 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     const dy = pointer.y - sy;
 
     if (this.activeShape instanceof fabric.Rect) {
+      const w = Math.abs(dx);
+      const h = Math.abs(dy);
+      const sz = this.tool === 'square' ? Math.max(w, h) : 0;
       this.activeShape.set({
         left: Math.min(sx, pointer.x),
         top: Math.min(sy, pointer.y),
-        width: Math.abs(dx),
-        height: Math.abs(dy)
+        width: this.tool === 'square' ? sz : w,
+        height: this.tool === 'square' ? sz : h
       });
     } else if (this.activeShape instanceof fabric.Ellipse) {
-      const rx = Math.abs(dx) / 2;
-      this.activeShape.set({ rx, ry: rx, left: (sx + pointer.x) / 2, top: (sy + pointer.y) / 2 });
+      if (this.tool === 'ellipse') {
+        this.activeShape.set({ rx: Math.abs(dx) / 2, ry: Math.abs(dy) / 2, left: (sx + pointer.x) / 2, top: (sy + pointer.y) / 2 });
+      } else {
+        const rx = Math.abs(dx) / 2;
+        this.activeShape.set({ rx, ry: rx, left: (sx + pointer.x) / 2, top: (sy + pointer.y) / 2 });
+      }
     } else if (this.activeShape instanceof fabric.Polygon) {
       const size = Math.max(Math.abs(dx), Math.abs(dy)) / 100;
       this.activeShape.set({
