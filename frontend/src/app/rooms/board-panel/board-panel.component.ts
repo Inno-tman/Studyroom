@@ -28,6 +28,8 @@ type BoardTool =
   | 'hexagon'
   | 'star';
 
+type BoardGroup = 'tools' | 'shapes' | 'style' | 'slides' | 'board';
+
 interface BoardPalette {
   name: string;
   color: string;
@@ -50,161 +52,130 @@ const PALETTE: BoardPalette[] = [
   template: `
     <div class="board-panel">
       <div class="board-toolbar">
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'select'"
-          (click)="setTool('select')"
-          title="Select / move"
-        ><span class="material-icons">pan_tool</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'pen'"
-          (click)="setTool('pen')"
-          title="Draw"
-        ><span class="material-icons">edit</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'text'"
-          (click)="setTool('text')"
-          title="Add text"
-        ><span class="material-icons">text_fields</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'rect'"
-          (click)="setTool('rect')"
-          title="Rectangle"
-        ><span class="material-icons">rectangle_outlined</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'circle'"
-          (click)="setTool('circle')"
-          title="Circle"
-        ><span class="material-icons">circle_outlined</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'line'"
-          (click)="setTool('line')"
-          title="Line"
-        ><span class="material-icons">straighten</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'arrow'"
-          (click)="setTool('arrow')"
-          title="Arrow"
-        ><span class="material-icons">arrow_forward</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'triangle'"
-          (click)="setTool('triangle')"
-          title="Triangle"
-        ><span class="material-icons">change_history</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'diamond'"
-          (click)="setTool('diamond')"
-          title="Diamond"
-        ><span class="material-icons">diamond</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'hexagon'"
-          (click)="setTool('hexagon')"
-          title="Hexagon"
-        ><span class="material-icons">hexagon</span></button>
-
-        <button
-          class="tool-btn"
-          [class.active]="tool === 'star'"
-          (click)="setTool('star')"
-          title="Star"
-        ><span class="material-icons">star</span></button>
-
-        <span class="board-divider"></span>
-
-        <div class="color-row">
-          <button
-            *ngFor="let p of palette"
-            class="swatch"
-            [class.active]="color === p.color"
-            [class.dark]="p.color === '#FFFFFF'"
-            [style.background]="p.color"
-            (click)="color = p.color"
-            [title]="p.name"
-            [attr.aria-label]="'Color ' + p.name"
-          ></button>
-          <label class="custom-color" title="Custom color">
-            <input type="color" [value]="color" (input)="onColorInput($event)" />
-          </label>
+        <div class="toolbar-tabs">
+          <button class="tool-tab" [class.active]="activeGroup === 'tools'" (click)="setGroup('tools')" title="Draw tools">Draw</button>
+          <button class="tool-tab" [class.active]="activeGroup === 'shapes'" (click)="setGroup('shapes')" title="Shapes">Shapes</button>
+          <button class="tool-tab" [class.active]="activeGroup === 'style'" (click)="setGroup('style')" title="Format selected">Style</button>
+          <button class="tool-tab" [class.active]="activeGroup === 'slides'" (click)="setGroup('slides')" title="Slides">Slides</button>
+          <button class="tool-tab" [class.active]="activeGroup === 'board'" (click)="setGroup('board')" title="Board actions">Board</button>
+          <span class="sync-indicator" [class.unsynced]="!synced" [title]="synced ? 'Board synced with room' : 'Syncing board...'">
+            <span class="material-icons">{{ synced ? 'cloud_done' : 'sync' }}</span>
+          </span>
         </div>
 
-        <span class="board-divider"></span>
+        <div class="toolbar-content" [class.scrolled]="true">
+          <ng-container *ngIf="activeGroup === 'tools'">
+            <button
+              class="tool-btn"
+              [class.active]="tool === 'select'"
+              (click)="setTool('select')"
+              title="Select / move"
+            ><span class="material-icons">pan_tool</span></button>
 
-        <label class="size-control">
-          <span class="material-icons">line_weight</span>
-          <input
-            type="range"
-            min="1"
-            max="20"
-            [value]="strokeWidth"
-            (input)="strokeWidth = +($any($event.target).value)"
-          />
-        </label>
+            <button
+              class="tool-btn"
+              [class.active]="tool === 'pen'"
+              (click)="setTool('pen')"
+              title="Draw"
+            ><span class="material-icons">edit</span></button>
 
-        <span class="board-divider"></span>
+            <button
+              class="tool-btn"
+              [class.active]="tool === 'text'"
+              (click)="setTool('text')"
+              title="Add text"
+            ><span class="material-icons">text_fields</span></button>
 
-        <button class="tool-btn" (click)="zoomOut()" title="Zoom out"><span class="material-icons">zoom_out</span></button>
-        <button class="tool-btn" (click)="zoomFit()" title="Zoom to fit"><span class="material-icons">fit_screen</span></button>
-        <button class="tool-btn" (click)="zoomIn()" title="Zoom in"><span class="material-icons">zoom_in</span></button>
-        <span class="zoom-pct">{{ zoom | number: '1.0-1' }}%</span>
+            <span class="board-divider"></span>
 
-        <span class="board-divider"></span>
+            <div class="color-row">
+              <button
+                *ngFor="let p of palette"
+                class="swatch"
+                [class.active]="color === p.color"
+                [class.dark]="p.color === '#FFFFFF'"
+                [style.background]="p.color"
+                (click)="color = p.color"
+                [title]="p.name"
+                [attr.aria-label]="'Color ' + p.name"
+              ></button>
+              <label class="custom-color" title="Custom color">
+                <input type="color" [value]="color" (input)="onColorInput($event)" />
+              </label>
+            </div>
 
-        <label class="size-control" title="Opacity">
-          <span class="material-icons">opacity</span>
-          <input type="range" min="0.1" max="1" step="0.05" [value]="opacity" (input)="setOpacity(+$any($event.target).value)" />
-        </label>
+            <span class="board-divider"></span>
 
-        <button class="tool-btn" [class.active]="dashed" (click)="toggleDash()" title="Dashed outline"><span class="material-icons">border_dashed</span></button>
+            <label class="size-control">
+              <span class="material-icons">line_weight</span>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                [value]="strokeWidth"
+                (input)="strokeWidth = +($any($event.target).value)"
+              />
+            </label>
+          </ng-container>
 
-        <label class="size-control" title="Font size">
-          <span class="material-icons">format_size</span>
-          <input type="range" min="12" max="120" [value]="fontSize" (input)="setFontSize(+$any($event.target).value)" />
-        </label>
-        <button class="tool-btn" [class.active]="bold" (click)="toggleBold()" title="Bold text"><span class="material-icons">format_bold</span></button>
+          <ng-container *ngIf="activeGroup === 'shapes'">
+            <button class="tool-btn" [class.active]="tool === 'rect'" (click)="setTool('rect')" title="Rectangle"><span class="material-icons">rectangle</span></button>
+            <button class="tool-btn" [class.active]="tool === 'circle'" (click)="setTool('circle')" title="Circle"><span class="material-icons">circle</span></button>
+            <button class="tool-btn" [class.active]="tool === 'line'" (click)="setTool('line')" title="Line"><span class="material-icons">straighten</span></button>
+            <button class="tool-btn" [class.active]="tool === 'arrow'" (click)="setTool('arrow')" title="Arrow"><span class="material-icons">arrow_forward</span></button>
+            <button class="tool-btn" [class.active]="tool === 'triangle'" (click)="setTool('triangle')" title="Triangle"><span class="material-icons">change_history</span></button>
+            <button class="tool-btn" [class.active]="tool === 'diamond'" (click)="setTool('diamond')" title="Diamond"><span class="material-icons">diamond</span></button>
+            <button class="tool-btn" [class.active]="tool === 'hexagon'" (click)="setTool('hexagon')" title="Hexagon"><span class="material-icons">hexagon</span></button>
+            <button class="tool-btn" [class.active]="tool === 'star'" (click)="setTool('star')" title="Star"><span class="material-icons">star</span></button>
+          </ng-container>
 
-        <span class="board-divider"></span>
+          <ng-container *ngIf="activeGroup === 'style'">
+            <label class="size-control" title="Opacity">
+              <span class="material-icons">opacity</span>
+              <input type="range" min="0.1" max="1" step="0.05" [value]="opacity" (input)="setOpacity(+$any($event.target).value)" />
+            </label>
 
-        <button class="tool-btn" (click)="duplicateSelected()" title="Duplicate"><span class="material-icons">content_copy</span></button>
-        <button class="tool-btn" (click)="deleteSelected()" title="Delete"><span class="material-icons">delete</span></button>
-        <button class="tool-btn" (click)="bringForward()" title="Bring forward"><span class="material-icons">bring_to_front</span></button>
-        <button class="tool-btn" (click)="sendBackwards()" title="Send backward"><span class="material-icons">send_to_back</span></button>
+            <button class="tool-btn" [class.active]="dashed" (click)="toggleDash()" title="Dashed outline"><span class="material-icons">border_style</span></button>
 
-        <span class="board-divider"></span>
+            <span class="board-divider"></span>
 
-        <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="material-icons">chevron_left</span></button>
-        <span class="slide-count">{{ activeSlide + 1 }} / {{ slides.length }}</span>
-        <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
-        <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">note_add</span></button>
-        <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
-        <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
+            <label class="size-control" title="Font size">
+              <span class="material-icons">format_size</span>
+              <input type="range" min="12" max="120" [value]="fontSize" (input)="setFontSize(+$any($event.target).value)" />
+            </label>
+            <button class="tool-btn" [class.active]="bold" (click)="toggleBold()" title="Bold text"><span class="material-icons">format_bold</span></button>
 
-        <span class="board-divider"></span>
+            <span class="board-divider"></span>
 
-        <button class="tool-btn" (click)="undo()" title="Undo"><span class="material-icons">undo</span></button>
-        <button class="tool-btn" (click)="redo()" title="Redo"><span class="material-icons">redo</span></button>
-        <button class="tool-btn" (click)="exportPng()" title="Export image"><span class="material-icons">download</span></button>
-        <button class="tool-btn danger" (click)="clearBoard()" title="Clear board"><span class="material-icons">delete_sweep</span></button>
-        <span class="sync-indicator" [class.unsynced]="!synced" [title]="synced ? 'Board synced with room' : 'Syncing board...'">
-          <span class="material-icons">{{ synced ? 'cloud_done' : 'sync' }}</span>
-        </span>
+            <button class="tool-btn" (click)="duplicateSelected()" title="Duplicate"><span class="material-icons">content_copy</span></button>
+            <button class="tool-btn" (click)="deleteSelected()" title="Delete"><span class="material-icons">delete</span></button>
+            <button class="tool-btn" (click)="bringForward()" title="Bring forward"><span class="material-icons">layers</span></button>
+            <button class="tool-btn" (click)="sendBackwards()" title="Send backward"><span class="material-icons">layers_clear</span></button>
+          </ng-container>
+
+          <ng-container *ngIf="activeGroup === 'slides'">
+            <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="material-icons">chevron_left</span></button>
+            <span class="slide-count">{{ activeSlide + 1 }} / {{ slides.length }}</span>
+            <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
+            <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">note_add</span></button>
+            <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
+            <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
+          </ng-container>
+
+          <ng-container *ngIf="activeGroup === 'board'">
+            <button class="tool-btn" (click)="zoomOut()" title="Zoom out"><span class="material-icons">zoom_out</span></button>
+            <button class="tool-btn" (click)="zoomFit()" title="Zoom to fit"><span class="material-icons">fit_screen</span></button>
+            <button class="tool-btn" (click)="zoomIn()" title="Zoom in"><span class="material-icons">zoom_in</span></button>
+            <span class="zoom-pct">{{ zoom | number: '1.0-1' }}%</span>
+
+            <span class="board-divider"></span>
+
+            <button class="tool-btn" (click)="undo()" title="Undo"><span class="material-icons">undo</span></button>
+            <button class="tool-btn" (click)="redo()" title="Redo"><span class="material-icons">redo</span></button>
+            <button class="tool-btn" (click)="exportPng()" title="Export image"><span class="material-icons">download</span></button>
+            <button class="tool-btn danger" (click)="clearBoard()" title="Clear board"><span class="material-icons">delete_sweep</span></button>
+          </ng-container>
+        </div>
       </div>
 
       <div class="board-canvas-wrap" #wrap>
@@ -227,19 +198,59 @@ const PALETTE: BoardPalette[] = [
 
     .board-toolbar {
       display: flex;
+      flex-direction: column;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .toolbar-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px 0;
+    }
+
+    .tool-tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 30px;
+      padding: 0 14px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      font-size: var(--font-13);
+      font-weight: 600;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .tool-tab:hover { color: var(--text-primary); background: var(--surface-hover); }
+
+    .tool-tab.active {
+      color: var(--primary);
+      background: var(--background);
+      border-color: var(--border);
+      border-bottom-color: var(--background);
+    }
+
+    .toolbar-content {
+      display: flex;
       align-items: center;
       gap: 6px;
       padding: 8px 10px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      flex-wrap: wrap;
       overflow-x: auto;
       scrollbar-width: thin;
+      min-height: 50px;
     }
 
-    .board-toolbar::-webkit-scrollbar { height: 6px; }
-    .board-toolbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .board-toolbar::-webkit-scrollbar-track { background: transparent; }
+    .toolbar-content::-webkit-scrollbar { height: 6px; }
+    .toolbar-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .toolbar-content::-webkit-scrollbar-track { background: transparent; }
 
     .tool-btn {
       display: flex;
@@ -351,6 +362,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   private subs: Subscription[] = [];
 
   tool: BoardTool = 'select';
+  activeGroup: BoardGroup = 'tools';
   color = PALETTE[1].color;
   strokeWidth = 3;
   palette = PALETTE;
@@ -424,6 +436,10 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     if (e.key === '0') { this.zoomFit(); return; }
     if (e.key === 'PageDown') { e.preventDefault(); this.nextSlide(); return; }
     if (e.key === 'PageUp') { e.preventDefault(); this.prevSlide(); return; }
+  }
+
+  setGroup(group: BoardGroup): void {
+    this.activeGroup = group;
   }
 
   setTool(tool: BoardTool): void {
