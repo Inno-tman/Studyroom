@@ -95,19 +95,26 @@ const PALETTE: BoardPalette[] = [
               title="Select / move"
             ><span class="material-icons">pan_tool</span></button>
 
-            <button
-              class="tool-btn"
-              [class.active]="tool === 'pen'"
-              (click)="setTool('pen')"
-              title="Draw"
-            ><span class="material-icons">edit</span></button>
+             <button
+               class="tool-btn"
+               [class.active]="tool === 'pen'"
+               (click)="setTool('pen')"
+               title="Draw"
+             ><span class="material-icons">edit</span></button>
 
-            <button
-              class="tool-btn"
-              [class.active]="tool === 'eraser'"
-              (click)="setTool('eraser')"
-              title="Eraser"
-            ><span class="material-icons">auto_fix_high</span></button>
+             <button
+               class="tool-btn"
+               [class.active]="shapeDetect"
+               (click)="shapeDetect = !shapeDetect"
+               title="Snap drawn shapes to perfect shapes"
+             ><span class="material-icons">tune</span></button>
+
+             <button
+               class="tool-btn"
+               [class.active]="tool === 'eraser'"
+               (click)="setTool('eraser')"
+               title="Eraser"
+             ><span class="material-icons">auto_fix_high</span></button>
 
             <button
               class="tool-btn"
@@ -458,6 +465,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
 
   tool: BoardTool = 'select';
   activeGroup: BoardGroup = 'tools';
+  shapeDetect = true;
   color = PALETTE[1].color;
   strokeWidth = 3;
   palette = PALETTE;
@@ -1424,7 +1432,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   private onPathCreated(e: fabric.IEvent): void {
     const path = (e as { path?: fabric.Object }).path;
     if (!path) { this.scheduleBroadcast(); return; }
-    if (this.tool !== 'pen') { this.scheduleBroadcast(); return; }
+    if (this.tool !== 'pen' || !this.shapeDetect) { this.scheduleBroadcast(); return; }
     const commands = (path as any).path as Array<Array<string | number>> | undefined;
     if (!commands) { this.scheduleBroadcast(); return; }
     const detected = detectShape(commands);
