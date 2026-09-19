@@ -1471,7 +1471,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
 
   private carveObject(o: fabric.Object, pts: { x: number; y: number }[]): fabric.Image | null {
     try {
-      const box = o.getBoundingRect();
+      const box = o.getBoundingRect(true, true);
       if (box.width < 1 && box.height < 1) return null;
       const m = 2;
       const el = o.toCanvasElement({
@@ -1524,7 +1524,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
 
   private objectHits(o: fabric.Object, p: { x: number; y: number }, radius: number): boolean {
     if (o instanceof fabric.ActiveSelection) return false;
-    const r = o.getBoundingRect();
+    const r = o.getBoundingRect(true, true);
     if (p.x < r.left - radius || p.x > r.left + r.width + radius) return false;
     if (p.y < r.top - radius || p.y > r.top + r.height + radius) return false;
     try {
