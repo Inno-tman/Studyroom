@@ -18,6 +18,7 @@ import { Subscription } from 'rxjs';
 type BoardTool =
   | 'select'
   | 'pen'
+  | 'eraser'
   | 'rect'
   | 'circle'
   | 'line'
@@ -98,6 +99,13 @@ const PALETTE: BoardPalette[] = [
               (click)="setTool('pen')"
               title="Draw"
             ><span class="material-icons">edit</span></button>
+
+            <button
+              class="tool-btn"
+              [class.active]="tool === 'eraser'"
+              (click)="setTool('eraser')"
+              title="Eraser"
+            ><span class="material-icons">auto_fix_high</span></button>
 
             <button
               class="tool-btn"
@@ -413,6 +421,10 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   private debounce: any;
   private startPoint: { x: number; y: number } | null = null;
   private activeShape: fabric.Object | null = null;
+  private erasing = false;
+  private erasePreview: fabric.Object | null = null;
+  private eraserPts: { x: number; y: number }[] = [];
+  private eraseSize = 24;
 
   ngOnInit(): void {
     this.subs.push(
@@ -773,6 +785,13 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   }
 
   private onMouseDown(opt: fabric.IEvent): void {
+    if (this.tool === 'eraser') {
+      const pointer = this.canvas.getPointer(opt.e);
+      this.erasing = true;
+      this.eraserPts = [pointer];
+      this.showErasePreview(pointer);
+      return;
+    }
     if (this.tool === 'select' || this.tool === 'pen') return;
     const pointer = this.canvas.getPointer(opt.e);
     this.startPoint = { x: pointer.x, y: pointer.y };
@@ -1327,7 +1346,154 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.canvas.add(this.activeShape!);
   }
 
+  private showErasePreview(p: { x: number; y: number }): void {
+    this.suppress = true;
+    this.erasePreview = new fabric.Polyline(
+      [new fabric.Point(p.x, p.y)],
+      {
+        fill: 'rgba(148, 163, 184, 0.25)',
+        stroke: 'rgba(148, 163, 184, 0.6)',
+        strokeWidth: this.eraseSize,
+        strokeLineCap: 'round',
+        strokeLineJoin: 'round',
+        selectable: false,
+        evented: false,
+        hoverCursor: 'default',
+        excludeFromExport: true,
+        objectCaching: false
+      }
+    );
+    this.canvas.add(this.erasePreview);
+    this.canvas.requestRenderAll();
+    this.suppress = false;
+  }
+
+  private updateErasePreview(): void {
+    const preview = this.erasePreview as fabric.Polyline | null;
+    if (!preview) return;
+    this.suppress = true;
+    preview.set({ points: this.eraserPts.map(q => new fabric.Point(q.x, q.y)) });
+    preview.setCoords();
+    this.canvas.requestRenderAll();
+    this.suppress = false;
+  }
+
+  private hideErasePreview(): void {
+    if (!this.erasePreview) return;
+    this.suppress = true;
+    this.canvas.remove(this.erasePreview);
+    this.erasePreview = null;
+    this.canvas.requestRenderAll();
+    this.suppress = false;
+  }
+
+  private applyEraseStroke(): void {
+    const pts = this.eraserPts;
+    this.eraserPts = [];
+    if (!pts.length) return;
+    const radius = this.eraseSize / 2;
+    const touched = new Set<fabric.Object>();
+    const objs = this.canvas.getObjects().slice().reverse();
+    for (const o of objs) {
+      if (o === this.erasePreview || !o.visible) continue;
+      for (const p of pts) {
+        if (this.objectHits(o, p, radius)) {
+          touched.add(o);
+          break;
+        }
+      }
+    }
+    if (!touched.size) return;
+    this.suppress = true;
+    for (const o of touched) {
+      const img = this.carveObject(o, pts);
+      if (!img) continue;
+      this.canvas.remove(o);
+      this.canvas.add(img);
+    }
+    this.suppress = false;
+    this.canvas.discardActiveObject();
+    this.canvas.requestRenderAll();
+    this.scheduleBroadcast();
+  }
+
+  private carveObject(o: fabric.Object, pts: { x: number; y: number }[]): fabric.Image | null {
+    try {
+      const box = o.getBoundingRect();
+      if (box.width < 1 && box.height < 1) return null;
+      const m = 2;
+      const el = o.toCanvasElement({
+        multiplier: m,
+        withoutShadow: true,
+        enableRetinaScaling: false
+      } as any) as HTMLCanvasElement;
+      if (!el || !el.width || !el.height) return null;
+      const ctx = el.getContext('2d');
+      if (!ctx) return null;
+      const sx = el.width / box.width;
+      const sy = el.height / box.height;
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = this.eraseSize * ((sx + sy) / 2);
+      if (pts.length === 1) {
+        const px = (pts[0].x - box.left) * sx;
+        const py = (pts[0].y - box.top) * sy;
+        ctx.beginPath();
+        ctx.arc(px, py, this.eraseSize * sx / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo((pts[0].x - box.left) * sx, (pts[0].y - box.top) * sy);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo((pts[i].x - box.left) * sx, (pts[i].y - box.top) * sy);
+        ctx.stroke();
+      }
+      ctx.restore();
+      const img = new fabric.Image(el);
+      img.set({
+        left: box.left,
+        top: box.top,
+        width: el.width,
+        height: el.height,
+        scaleX: 1 / m,
+        scaleY: 1 / m,
+        angle: 0,
+        originX: 'left',
+        originY: 'top'
+      });
+      img.setCoords();
+      return img;
+    } catch {
+      return null;
+    }
+  }
+
+  private objectHits(o: fabric.Object, p: { x: number; y: number }, radius: number): boolean {
+    if (o instanceof fabric.ActiveSelection) return false;
+    const r = o.getBoundingRect();
+    if (p.x < r.left - radius || p.x > r.left + r.width + radius) return false;
+    if (p.y < r.top - radius || p.y > r.top + r.height + radius) return false;
+    try {
+      if (o.isContainedWithinObject?.(p as any)) return true;
+      if (o.containsPoint(p as any)) return true;
+    } catch {
+      return false;
+    }
+    return true;
+  }
+
   private onMouseMove(opt: fabric.IEvent): void {
+    if (this.tool === 'eraser') {
+      if (!this.erasing) return;
+      const pointer = this.canvas.getPointer(opt.e);
+      const last = this.eraserPts[this.eraserPts.length - 1];
+      if (last && Math.hypot(pointer.x - last.x, pointer.y - last.y) < 1) return;
+      this.eraserPts.push(pointer);
+      this.updateErasePreview();
+      return;
+    }
     if (!this.startPoint || !this.activeShape) return;
     const pointer = this.canvas.getPointer(opt.e);
     const sx = this.startPoint.x;
@@ -1368,6 +1534,12 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   }
 
   private onMouseUp(): void {
+    if (this.tool === 'eraser') {
+      this.erasing = false;
+      this.hideErasePreview();
+      this.applyEraseStroke();
+      return;
+    }
     if (!this.startPoint || !this.activeShape) return;
     const start = this.startPoint;
     const shape = this.activeShape;
