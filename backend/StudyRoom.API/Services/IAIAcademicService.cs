@@ -10,4 +10,6 @@ public interface IAIAcademicService
     Task<GameContentDto> GenerateGameContentAsync(GameContentRequestDto request);
 
     Task<GenerateFlashcardsResultDto> GenerateFlashcardsAsync(GenerateFlashcardsRequestDto request);
+
+    Task<GeneratePresentationDto> GeneratePresentationAsync(GeneratePresentationRequestDto request);
 }

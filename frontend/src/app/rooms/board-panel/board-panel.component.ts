@@ -10,9 +10,12 @@
   inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { fabric } from 'fabric';
 import { SignalRService } from '../../core/services/signalr.service';
 import { UiFeedbackService } from '../../core/services/ui-feedback.service';
+import { AIService } from '../../core/services/ai.service';
 import { Subscription } from 'rxjs';
 import { detectShape, SHAPE_PATH, SHAPE_POLY } from './shape-detector';
 import type { DetectionResult, DetectedTool, Pt } from './shape-detector';
@@ -68,10 +71,17 @@ const PALETTE: BoardPalette[] = [
   { name: 'White', color: '#FFFFFF' }
 ];
 
+interface SlideTemplate {
+  id: string;
+  name: string;
+  icon: string;
+  build(canvas: fabric.Canvas, w: number, h: number): void;
+}
+
 @Component({
   selector: 'app-board-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="board-panel">
       <div class="board-toolbar">
@@ -256,6 +266,16 @@ const PALETTE: BoardPalette[] = [
             <span class="slide-count">{{ activeSlide + 1 }} / {{ slides.length }}</span>
             <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
             <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">note_add</span></button>
+            <button class="tool-btn ai-btn" (click)="openAiModal()" title="AI generate slides"><span class="material-icons">auto_awesome</span></button>
+            <div class="template-picker">
+              <button class="tool-btn" (click)="showTemplates = !showTemplates" title="Slide templates"><span class="material-icons">category</span></button>
+              <div class="template-grid" *ngIf="showTemplates">
+                <div class="template-card" *ngFor="let tmpl of slideTemplates" (click)="insertTemplate(tmpl.id)">
+                  <span class="material-icons">{{ tmpl.icon }}</span>
+                  <span>{{ tmpl.name }}</span>
+                </div>
+              </div>
+            </div>
             <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
             <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
           </ng-container>
@@ -276,14 +296,47 @@ const PALETTE: BoardPalette[] = [
         </div>
       </div>
 
-      <div class="board-canvas-wrap" #wrap>
-        <div class="board-empty-hint" *ngIf="isEmpty">
-          <span class="material-icons">draw</span>
-          <p>Pick a tool and start drawing, or add a slide</p>
-        </div>
-        <canvas #canvasEl></canvas>
-      </div>
-    </div>
+       <div class="board-canvas-wrap" #wrap>
+         <div class="board-empty-hint" *ngIf="isEmpty">
+           <span class="material-icons">draw</span>
+           <p>Pick a tool and start drawing, or add a slide</p>
+         </div>
+         <canvas #canvasEl></canvas>
+       </div>
+
+       <div class="ai-modal-overlay" *ngIf="showAiModal" (click)="closeAiModal()">
+         <div class="ai-modal" (click)="$event.stopPropagation()">
+           <div class="ai-modal-header">
+             <h3><span class="material-icons">auto_awesome</span> AI Presentation Generator</h3>
+             <button class="ai-modal-close" (click)="closeAiModal()"><span class="material-icons">close</span></button>
+           </div>
+           <div class="ai-modal-body">
+             <textarea class="ai-textarea" rows="8" placeholder="Paste your presentation notes or text here..." [(ngModel)]="aiText"></textarea>
+             <button class="tool-btn primary" (click)="generatePresentation()" [disabled]="aiGenerating || !aiText.trim()">
+               <span class="material-icons">{{ aiGenerating ? 'schedule' : 'generate' }}</span>
+               {{ aiGenerating ? 'Generating...' : 'Generate Presentation' }}
+             </button>
+             <div class="ai-progress" *ngIf="aiGenerating">Summarizing your content into slides...</div>
+           </div>
+           <div class="ai-results" *ngIf="aiResult">
+             <div class="ai-result-title" *ngIf="aiResult.title">{{ aiResult.title }}</div>
+             <div class="ai-slide-list">
+               <div class="ai-slide-card" *ngFor="let s of aiResult.slides; let i = index">
+                 <span class="ai-slide-num">{{ i + 1 }}</span>
+                 <div class="ai-slide-info">
+                   <div class="ai-slide-name">{{ s.title || 'Slide ' + (i + 1) }}</div>
+                   <div class="ai-slide-bullets">{{ s.content.length }} bullet(s)</div>
+                 </div>
+               </div>
+             </div>
+             <div class="ai-modal-actions">
+               <button class="tool-btn" (click)="closeAiModal()">Cancel</button>
+               <button class="tool-btn primary" (click)="applyPresentation()">Apply to board</button>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
   `,
   styles: [`
     .board-panel {
@@ -447,6 +500,73 @@ const PALETTE: BoardPalette[] = [
     }
 
     .board-empty-hint .material-icons { font-size: 44px; opacity: 0.4; }
+
+    .ai-modal-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,0.55);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ai-modal {
+      width: 520px; max-width: 94vw; max-height: 88vh; overflow-y: auto;
+      background: var(--background); border: 1px solid var(--border);
+      border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+    .ai-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .ai-modal-header h3 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+    .ai-modal-header h3 .material-icons { font-size: 22px; color: var(--primary); }
+    .ai-modal-close { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px; }
+    .ai-modal-close .material-icons { font-size: 22px; }
+    .ai-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .ai-textarea {
+      width: 100%; resize: vertical; font-family: inherit; font-size: 14px;
+      padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text-primary);
+    }
+    .ai-progress { color: var(--text-secondary); font-size: 13px; }
+    .ai-results { padding: 0 20px 16px; }
+    .ai-result-title { font-size: 16px; font-weight: 600; color: var(--primary); margin: 12px 0 8px; }
+    .ai-slide-list { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+    .ai-slide-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+    }
+    .ai-slide-num {
+      width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: 0 0 auto;
+    }
+    .ai-slide-info { flex: 1; min-width: 0; }
+    .ai-slide-name { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ai-slide-bullets { font-size: 12px; color: var(--text-secondary); }
+    .ai-modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; }
+
+    .tool-btn.primary {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+    }
+    .tool-btn.primary:hover { opacity: 0.9; }
+    .tool-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .tool-btn.ai-btn .material-icons { color: var(--primary); }
+
+    .ai-modal-overlay .material-icons { vertical-align: middle; }
+
+    .template-picker { position: relative; }
+    .template-grid {
+      position: absolute; top: 100%; left: 0; z-index: 100;
+      display: grid; grid-template-columns: repeat(2, 130px);
+      gap: 6px; padding: 8px; margin-top: 4px;
+      background: var(--background); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    }
+    .template-card {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px 6px; border: 1px solid transparent; border-radius: 8px;
+      cursor: pointer; font-size: 12px; color: var(--text-primary);
+      background: var(--surface); transition: all 0.12s;
+    }
+    .template-card:hover { border-color: var(--primary); background: var(--surface-hover); }
+    .template-card .material-icons { font-size: 26px; color: var(--primary); }
   `]
 })
 export class BoardPanelComponent implements OnInit, OnDestroy {
@@ -455,9 +575,18 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   @ViewChild('wrap') wrapEl!: ElementRef<HTMLDivElement>;
   @ViewChild('canvasEl') canvasEl!: ElementRef<HTMLCanvasElement>;
 
+  @HostListener('document:click', ['$event'])
+  onDocClick(e: MouseEvent): void {
+    if (this.showTemplates && !(e.target as HTMLElement).closest('.template-picker')) {
+      this.showTemplates = false;
+    }
+  }
+
   private signalR = inject(SignalRService);
   private fb = inject(UiFeedbackService);
   private ngZone = inject(NgZone);
+  private ai = inject(AIService);
+  private http = inject(HttpClient);
 
   private canvas!: fabric.Canvas;
   private resizeObs?: ResizeObserver;
@@ -469,6 +598,11 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   color = PALETTE[1].color;
   strokeWidth = 3;
   palette = PALETTE;
+
+  showAiModal = false;
+  aiText = '';
+  aiGenerating = false;
+  aiResult: { title: string; slides: { title: string; content: string[] }[] } | null = null;
 
   private history: string[] = [];
   private redoStack: string[] = [];
@@ -603,6 +737,78 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.scheduleBroadcast();
   }
 
+  openAiModal(): void {
+    this.showAiModal = true;
+    this.aiResult = null;
+    this.aiText = '';
+  }
+
+  closeAiModal(): void {
+    this.showAiModal = false;
+    this.aiGenerating = false;
+  }
+
+  async generatePresentation(): Promise<void> {
+    if (!this.aiText.trim()) return;
+    this.aiGenerating = true;
+    this.aiResult = null;
+    try {
+      const dto = await this.ai.generatePresentation(this.aiText, 12).toPromise();
+      if (dto?.ok && dto.slides.length > 0) {
+        this.aiResult = { title: dto.title ?? '', slides: dto.slides };
+      } else {
+        this.fb.info(dto?.error ?? 'Could not generate slides.');
+      }
+    } catch {
+      this.fb.error('AI service is unavailable right now.');
+    } finally {
+      this.aiGenerating = false;
+    }
+  }
+
+  applyPresentation(): void {
+    if (!this.aiResult) return;
+    this.suppress = true;
+    this.slides = [];
+    this.canvas.clear();
+    this.canvas.backgroundColor = '#F8FAFC';
+    const color = '#F8FAFC';
+    for (const slide of this.aiResult.slides) {
+      this.addSlideObjects(slide);
+      this.slides.push({ id: Date.now(), json: JSON.stringify(this.canvas.toJSON()), color });
+      this.canvas.clear();
+      this.canvas.backgroundColor = color;
+    }
+    if (this.slides.length === 0) {
+      this.slides.push({ id: Date.now(), json: JSON.stringify(this.canvas.toJSON()), color });
+    }
+    this.activeSlide = this.slides.length - 1;
+    this.applySlideJson(this.slides[this.activeSlide].json);
+    this.suppress = false;
+    this.scheduleBroadcast();
+    this.closeAiModal();
+    this.fb.info(`Applied ${this.aiResult.slides.length} slides.`);
+  }
+
+  private addSlideObjects(slide: { title: string; content: string[] }): void {
+    const cx = 640;
+    let y = 50;
+    if (slide.title) {
+      const t = new fabric.Text(slide.title, {
+        left: 80, top: y, fontSize: 38, fontWeight: 'bold', fill: '#1e293b', originX: 'left'
+      });
+      this.canvas.add(t);
+      y += 50;
+    }
+    for (const bullet of slide.content) {
+      const text = new fabric.Text('•  ' + bullet, {
+        left: 100, top: y, fontSize: 22, fill: '#334155', originX: 'left'
+      });
+      this.canvas.add(text);
+      y += 34;
+    }
+  }
+
   duplicateSlide(): void {
     const cur = this.slides[this.activeSlide];
     const copy = { id: Date.now(), json: cur.json, color: cur.color };
@@ -640,6 +846,106 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
       this.canvas.requestRenderAll();
       this.suppress = false;
     });
+  }
+
+  slideTemplates: SlideTemplate[] = [
+    {
+      id: 'title', name: 'Title Slide', icon: 'title',
+      build(canvas, w, h) {
+        const t = new fabric.Text('Slide Title', { left: w / 2 - 180, top: h * 0.34, fontSize: 46, fontWeight: 'bold', fill: '#1e293b', originX: 'left' });
+        const s = new fabric.Text('Subtitle or date', { left: w / 2 - 120, top: h * 0.34 + 55, fontSize: 24, fill: '#64748b', originX: 'left' });
+        canvas.add(t, s);
+      }
+    },
+    {
+      id: 'section', name: 'Section Header', icon: 'menu_book',
+      build(canvas, w, h) {
+        const t = new fabric.Text('Section Name', { left: w / 2 - 120, top: h * 0.42, fontSize: 42, fontWeight: 'bold', fill: '#0f172a', originX: 'left' });
+        const line = new fabric.Line([w / 2 - 150, h * 0.42 + 45, w / 2 + 150, h * 0.42 + 45], { stroke: '#0f172a', strokeWidth: 2, selectable: false, evented: false });
+        canvas.add(t, line);
+      }
+    },
+    {
+      id: 'bullets', name: 'Bullets', icon: 'list',
+      build(canvas, w, h) {
+        const t = new fabric.Text('Title', { left: 80, top: 50, fontSize: 34, fontWeight: 'bold', fill: '#1e293b', originX: 'left' });
+        const items = ['Bullet one', 'Bullet two', 'Bullet three', 'Bullet four'];
+        items.forEach((item, i) => {
+          const b = new fabric.Text('•  ' + item, { left: 100, top: 120 + i * 38, fontSize: 22, fill: '#334155', originX: 'left' });
+          canvas.add(b);
+        });
+      }
+    },
+    {
+      id: 'two-col', name: 'Two Columns', icon: 'view_column',
+      build(canvas, w, h) {
+        const t = new fabric.Text('Title', { left: 80, top: 50, fontSize: 32, fontWeight: 'bold', fill: '#1e293b', originX: 'left' });
+        const colW = (w - 240) / 2;
+        const items1 = ['Item A1', 'Item A2', 'Item A3'];
+        const items2 = ['Item B1', 'Item B2', 'Item B3'];
+        items1.forEach((item, i) => {
+          const b = new fabric.Text('•  ' + item, { left: 100, top: 120 + i * 38, fontSize: 20, fill: '#334155', originX: 'left' });
+          canvas.add(b);
+        });
+        items2.forEach((item, i) => {
+          const b = new fabric.Text('•  ' + item, { left: 100 + colW + 60, top: 120 + i * 38, fontSize: 20, fill: '#334155', originX: 'left' });
+          canvas.add(b);
+        });
+      }
+    },
+    {
+      id: 'quote', name: 'Quote', icon: 'format_quote',
+      build(canvas, w, h) {
+        const q = new fabric.Text('“ Quote text here ”', { left: w / 2 - 220, top: h * 0.38, fontSize: 30, fontWeight: 'bold', fill: '#3b82f6', originX: 'left', fontStyle: 'italic' });
+        const attr = new fabric.Text('— Author', { left: w / 2 - 180, top: h * 0.38 + 50, fontSize: 20, fill: '#64748b', originX: 'left', fontStyle: 'italic' });
+        canvas.add(q, attr);
+      }
+    },
+    {
+      id: 'comparison', name: 'Comparison', icon: 'compare',
+      build(canvas, w, h) {
+        const t = new fabric.Text('Compare', { left: 80, top: 50, fontSize: 32, fontWeight: 'bold', fill: '#1e293b', originX: 'left' });
+        const colW = (w - 280) / 2;
+        const col1 = new fabric.Text('PROS', { left: 100, top: 110, fontSize: 18, fontWeight: 'bold', fill: '#16a34a', originX: 'left' });
+        const col2 = new fabric.Text('CONS', { left: 100 + colW + 40, top: 110, fontSize: 18, fontWeight: 'bold', fill: '#dc2626', originX: 'left' });
+        canvas.add(col1, col2);
+      }
+    },
+    {
+      id: 'image', name: 'Image + Caption', icon: 'image',
+      build(canvas, w, h) {
+        const t = new fabric.Text('Image Title', { left: 80, top: 40, fontSize: 30, fontWeight: 'bold', fill: '#1e293b', originX: 'left' });
+        const rect = new fabric.Rect({ left: 80, top: 90, width: 240, height: 140, fill: '#e2e8f0', stroke: '#94a3b8', strokeWidth: 1, rx: 8 });
+        const cap = new fabric.Text('Caption text goes here', { left: 80, top: 245, fontSize: 18, fill: '#64748b', originX: 'left' });
+        canvas.add(rect, cap);
+      }
+    },
+    {
+      id: 'blank', name: 'Blank', icon: 'drafts',
+      build() {}
+    }
+  ];
+
+  showTemplates = false;
+  insertTemplate(tmplId: string): void {
+    const tmpl = this.slideTemplates.find(t => t.id === tmplId);
+    if (!tmpl) return;
+    const id = Date.now();
+    const cur = this.slides[this.activeSlide];
+    const color = cur?.color ?? '#F8FAFC';
+    const blank = JSON.stringify(this.canvas.toJSON());
+    this.suppress = true;
+    this.canvas.clear();
+    this.canvas.backgroundColor = color;
+    tmpl.build(this.canvas, this.canvas.getWidth(), this.canvas.getHeight());
+    this.slides.push({ id, json: JSON.stringify(this.canvas.toJSON()), color });
+    this.canvas.clear();
+    this.canvas.backgroundColor = color;
+    this.activeSlide = this.slides.length - 1;
+    this.applySlideJson(this.slides[this.activeSlide].json);
+    this.suppress = false;
+    this.scheduleBroadcast();
+    this.showTemplates = false;
   }
 
   setZoom(z: number): void {

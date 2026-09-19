@@ -211,6 +211,107 @@ Generate {count} flashcards now.
         return line.Length > 60 ? line.Substring(0, 60).TrimEnd() : line;
     }
 
+    public async Task<GeneratePresentationDto> GeneratePresentationAsync(GeneratePresentationRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Text))
+            return new GeneratePresentationDto { Ok = false, Error = "No text provided." };
+
+        var content = request.Text.Trim();
+        if (content.Length > 12000) content = content.Substring(0, 12000);
+        var maxSlides = Math.Clamp(request.MaxSlides, 1, 30);
+
+        try
+        {
+            var (system, user) = BuildPresentationPrompt(content, maxSlides);
+            var raw = await CallGeminiRawAsync(system, user);
+            var result = ParsePresentation(raw, maxSlides);
+
+            if (result == null)
+                return new GeneratePresentationDto { Ok = false, Error = "The AI returned an unreadable response." };
+
+            result.Ok = true;
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            return new GeneratePresentationDto { Ok = false, Error = "AI took too long to respond." };
+        }
+        catch (Exception ex)
+        {
+            return new GeneratePresentationDto
+            {
+                Ok = false,
+                Error = ex.Message.Contains("not configured")
+                    ? "AI is not configured yet."
+                    : "AI is unavailable right now."
+            };
+        }
+    }
+
+    private static (string System, string User) BuildPresentationPrompt(string content, int maxSlides)
+    {
+        var brief = content.Length > 4000 ? content.Substring(0, 4000) + "…" : content;
+        var schema = "{\"title\":\"Topic\",\"slides\":[{\"title\":\"...\",\"content\":[\"...\",\"...\"]}]}";
+        return (
+            $"""
+            You are a presentation generator for Study Crib. Turn the provided notes/text into a structured slide deck.
+            Rules:
+            - Create at most {maxSlides} slides.
+            - Every slide MUST have a "title" (short headline) and a "content" array of bullet strings.
+            - Each bullet must be a concise phrase or sentence (under 120 characters).
+            - The first slide is the title slide: title = topic, content may be ["Subtitle or date"] or empty.
+            - Cover the most important ideas; omit minor details.
+            - Respond with ONLY valid JSON, no markdown fences. Expected shape: {schema}
+            """,
+            $"""
+            Source notes (may be truncated):
+            ---
+            {content}
+            ---
+            Source preview:
+            {brief}
+            Generate the presentation now.
+            """
+        );
+    }
+
+    private static GeneratePresentationDto? ParsePresentation(string raw, int maxSlides)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var start = raw.IndexOf('{');
+        var end = raw.LastIndexOf('}');
+        if (start < 0 || end <= start) return null;
+        raw = raw.Substring(start, end - start + 1);
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            var result = new GeneratePresentationDto();
+            if (root.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String)
+                result.Title = title.GetString()?.Trim() ?? "";
+            if (root.TryGetProperty("slides", out var slides) && slides.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var s in slides.EnumerateArray().Take(maxSlides))
+                {
+                    var slide = new PresentationSlideDto();
+                    if (s.TryGetProperty("title", out var st) && st.ValueKind == JsonValueKind.String)
+                        slide.Title = st.GetString()?.Trim() ?? "";
+                    if (s.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.Array)
+                        foreach (var item in c.EnumerateArray())
+                            if (item.ValueKind == JsonValueKind.String)
+                                slide.Content.Add(item.GetString()?.Trim() ?? "");
+                    if (!string.IsNullOrWhiteSpace(slide.Title) || slide.Content.Count > 0)
+                        result.Slides.Add(slide);
+                }
+            }
+            return result.Slides.Count > 0 ? result : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static (string System, string User) BuildGamePrompt(GameContentRequestDto request, string game)
     {
         var topic = string.IsNullOrWhiteSpace(request.Topic) ? null : request.Topic.Trim();

@@ -127,12 +127,31 @@ export interface FlashcardGenResult {
   suggestedTitle: string;
 }
 
+export interface PresentationSlideDto {
+  title: string;
+  content: string[];
+}
+
+export interface GeneratePresentationDto {
+  ok: boolean;
+  error?: string;
+  title?: string;
+  slides: PresentationSlideDto[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AIService {
   constructor(private http: HttpClient) {}
 
   ask(query: AcademicQuery): Observable<AcademicResponse> {
     return this.http.post<AcademicResponse>(`${environment.apiUrl}/ai/ask`, query);
+  }
+
+  generatePresentation(content: string, maxSlides?: number): Observable<GeneratePresentationDto> {
+    return this.http.post<GeneratePresentationDto>(`${environment.apiUrl}/ai/presentation`, {
+      text: content,
+      maxSlides: maxSlides ?? 10
+    });
   }
 
   generateGameContent(request: GameContentRequest): Observable<GameContent> {
