@@ -10,9 +10,12 @@
   inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { fabric } from 'fabric';
 import { SignalRService } from '../../core/services/signalr.service';
 import { UiFeedbackService } from '../../core/services/ui-feedback.service';
+import { AIService } from '../../core/services/ai.service';
 import { Subscription } from 'rxjs';
 import { detectShape, SHAPE_PATH, SHAPE_POLY } from './shape-detector';
 import type { DetectionResult, DetectedTool, Pt } from './shape-detector';
@@ -71,7 +74,7 @@ const PALETTE: BoardPalette[] = [
 @Component({
   selector: 'app-board-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="board-panel">
       <div class="board-toolbar">
@@ -256,6 +259,7 @@ const PALETTE: BoardPalette[] = [
             <span class="slide-count">{{ activeSlide + 1 }} / {{ slides.length }}</span>
             <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
             <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">note_add</span></button>
+            <button class="tool-btn ai-btn" (click)="openAiModal()" title="AI generate slides"><span class="material-icons">auto_awesome</span></button>
             <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
             <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
           </ng-container>
@@ -276,14 +280,47 @@ const PALETTE: BoardPalette[] = [
         </div>
       </div>
 
-      <div class="board-canvas-wrap" #wrap>
-        <div class="board-empty-hint" *ngIf="isEmpty">
-          <span class="material-icons">draw</span>
-          <p>Pick a tool and start drawing, or add a slide</p>
-        </div>
-        <canvas #canvasEl></canvas>
-      </div>
-    </div>
+       <div class="board-canvas-wrap" #wrap>
+         <div class="board-empty-hint" *ngIf="isEmpty">
+           <span class="material-icons">draw</span>
+           <p>Pick a tool and start drawing, or add a slide</p>
+         </div>
+         <canvas #canvasEl></canvas>
+       </div>
+
+       <div class="ai-modal-overlay" *ngIf="showAiModal" (click)="closeAiModal()">
+         <div class="ai-modal" (click)="$event.stopPropagation()">
+           <div class="ai-modal-header">
+             <h3><span class="material-icons">auto_awesome</span> AI Presentation Generator</h3>
+             <button class="ai-modal-close" (click)="closeAiModal()"><span class="material-icons">close</span></button>
+           </div>
+           <div class="ai-modal-body">
+             <textarea class="ai-textarea" rows="8" placeholder="Paste your presentation notes or text here..." [(ngModel)]="aiText"></textarea>
+             <button class="tool-btn primary" (click)="generatePresentation()" [disabled]="aiGenerating || !aiText.trim()">
+               <span class="material-icons">{{ aiGenerating ? 'schedule' : 'generate' }}</span>
+               {{ aiGenerating ? 'Generating...' : 'Generate Presentation' }}
+             </button>
+             <div class="ai-progress" *ngIf="aiGenerating">Summarizing your content into slides...</div>
+           </div>
+           <div class="ai-results" *ngIf="aiResult">
+             <div class="ai-result-title" *ngIf="aiResult.title">{{ aiResult.title }}</div>
+             <div class="ai-slide-list">
+               <div class="ai-slide-card" *ngFor="let s of aiResult.slides; let i = index">
+                 <span class="ai-slide-num">{{ i + 1 }}</span>
+                 <div class="ai-slide-info">
+                   <div class="ai-slide-name">{{ s.title || 'Slide ' + (i + 1) }}</div>
+                   <div class="ai-slide-bullets">{{ s.content.length }} bullet(s)</div>
+                 </div>
+               </div>
+             </div>
+             <div class="ai-modal-actions">
+               <button class="tool-btn" (click)="closeAiModal()">Cancel</button>
+               <button class="tool-btn primary" (click)="applyPresentation()">Apply to board</button>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
   `,
   styles: [`
     .board-panel {
@@ -447,6 +484,56 @@ const PALETTE: BoardPalette[] = [
     }
 
     .board-empty-hint .material-icons { font-size: 44px; opacity: 0.4; }
+
+    .ai-modal-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,0.55);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ai-modal {
+      width: 520px; max-width: 94vw; max-height: 88vh; overflow-y: auto;
+      background: var(--background); border: 1px solid var(--border);
+      border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+    .ai-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .ai-modal-header h3 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+    .ai-modal-header h3 .material-icons { font-size: 22px; color: var(--primary); }
+    .ai-modal-close { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px; }
+    .ai-modal-close .material-icons { font-size: 22px; }
+    .ai-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .ai-textarea {
+      width: 100%; resize: vertical; font-family: inherit; font-size: 14px;
+      padding: 10px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text-primary);
+    }
+    .ai-progress { color: var(--text-secondary); font-size: 13px; }
+    .ai-results { padding: 0 20px 16px; }
+    .ai-result-title { font-size: 16px; font-weight: 600; color: var(--primary); margin: 12px 0 8px; }
+    .ai-slide-list { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+    .ai-slide-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+    }
+    .ai-slide-num {
+      width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: 0 0 auto;
+    }
+    .ai-slide-info { flex: 1; min-width: 0; }
+    .ai-slide-name { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ai-slide-bullets { font-size: 12px; color: var(--text-secondary); }
+    .ai-modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; }
+
+    .tool-btn.primary {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+    }
+    .tool-btn.primary:hover { opacity: 0.9; }
+    .tool-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .tool-btn.ai-btn .material-icons { color: var(--primary); }
+
+    .ai-modal-overlay .material-icons { vertical-align: middle; }
   `]
 })
 export class BoardPanelComponent implements OnInit, OnDestroy {
@@ -458,6 +545,8 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   private signalR = inject(SignalRService);
   private fb = inject(UiFeedbackService);
   private ngZone = inject(NgZone);
+  private ai = inject(AIService);
+  private http = inject(HttpClient);
 
   private canvas!: fabric.Canvas;
   private resizeObs?: ResizeObserver;
@@ -469,6 +558,11 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   color = PALETTE[1].color;
   strokeWidth = 3;
   palette = PALETTE;
+
+  showAiModal = false;
+  aiText = '';
+  aiGenerating = false;
+  aiResult: { title: string; slides: { title: string; content: string[] }[] } | null = null;
 
   private history: string[] = [];
   private redoStack: string[] = [];
@@ -601,6 +695,78 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.canvas.backgroundColor = this.slides[this.activeSlide].color;
     this.canvas.requestRenderAll();
     this.scheduleBroadcast();
+  }
+
+  openAiModal(): void {
+    this.showAiModal = true;
+    this.aiResult = null;
+    this.aiText = '';
+  }
+
+  closeAiModal(): void {
+    this.showAiModal = false;
+    this.aiGenerating = false;
+  }
+
+  async generatePresentation(): Promise<void> {
+    if (!this.aiText.trim()) return;
+    this.aiGenerating = true;
+    this.aiResult = null;
+    try {
+      const dto = await this.ai.generatePresentation(this.aiText, 12).toPromise();
+      if (dto?.ok && dto.slides.length > 0) {
+        this.aiResult = { title: dto.title ?? '', slides: dto.slides };
+      } else {
+        this.fb.info(dto?.error ?? 'Could not generate slides.');
+      }
+    } catch {
+      this.fb.error('AI service is unavailable right now.');
+    } finally {
+      this.aiGenerating = false;
+    }
+  }
+
+  applyPresentation(): void {
+    if (!this.aiResult) return;
+    this.suppress = true;
+    this.slides = [];
+    this.canvas.clear();
+    this.canvas.backgroundColor = '#F8FAFC';
+    const color = '#F8FAFC';
+    for (const slide of this.aiResult.slides) {
+      this.addSlideObjects(slide);
+      this.slides.push({ id: Date.now(), json: JSON.stringify(this.canvas.toJSON()), color });
+      this.canvas.clear();
+      this.canvas.backgroundColor = color;
+    }
+    if (this.slides.length === 0) {
+      this.slides.push({ id: Date.now(), json: JSON.stringify(this.canvas.toJSON()), color });
+    }
+    this.activeSlide = this.slides.length - 1;
+    this.applySlideJson(this.slides[this.activeSlide].json);
+    this.suppress = false;
+    this.scheduleBroadcast();
+    this.closeAiModal();
+    this.fb.info(`Applied ${this.aiResult.slides.length} slides.`);
+  }
+
+  private addSlideObjects(slide: { title: string; content: string[] }): void {
+    const cx = 640;
+    let y = 50;
+    if (slide.title) {
+      const t = new fabric.Text(slide.title, {
+        left: 80, top: y, fontSize: 38, fontWeight: 'bold', fill: '#1e293b', originX: 'left'
+      });
+      this.canvas.add(t);
+      y += 50;
+    }
+    for (const bullet of slide.content) {
+      const text = new fabric.Text('•  ' + bullet, {
+        left: 100, top: y, fontSize: 22, fill: '#334155', originX: 'left'
+      });
+      this.canvas.add(text);
+      y += 34;
+    }
   }
 
   duplicateSlide(): void {

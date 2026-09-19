@@ -56,6 +56,13 @@ public class AIAcademicController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("presentation")]
+    public async Task<IActionResult> GeneratePresentation([FromBody] GeneratePresentationRequestDto dto)
+    {
+        var result = await _aiService.GeneratePresentationAsync(dto);
+        return Ok(result);
+    }
+
     [HttpPost("conversations")]
     public async Task<IActionResult> CreateConversation([FromBody] CreateConversationDto dto)
     {
