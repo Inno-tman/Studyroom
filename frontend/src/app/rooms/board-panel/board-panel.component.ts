@@ -150,6 +150,11 @@ const PALETTE: BoardPalette[] = [
             <button class="tool-btn" [class.active]="filled" (click)="filled = !filled" title="Filled / outline shapes"><span class="material-icons">format_color_fill</span></button>
             <button class="tool-btn" [class.active]="borderOn" (click)="toggleBorder()" title="Show / hide border"><span class="material-icons">border_clear</span></button>
 
+            <label class="size-control" title="Fill opacity">
+              <span class="material-icons">opacity</span>
+              <input type="range" min="0.05" max="1" step="0.05" [value]="fillOpacity" (input)="setFillOpacity(+$any($event.target).value)" />
+            </label>
+
             <div class="color-row border-row">
               <button
                 *ngFor="let p of palette"
@@ -536,6 +541,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   opacity = 1;
   dashed = false;
   filled = true;
+  fillOpacity = 0.18;
   borderOn = true;
   borderColor = PALETTE[1].color;
   fontSize = 32;
@@ -742,6 +748,19 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     const o = this.canvas.getActiveObject();
     if (o) {
       o.set('stroke', this.strokeColor());
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
+  }
+
+  setFillOpacity(v: number): void {
+    this.fillOpacity = v;
+    const o = this.canvas.getActiveObject();
+    if (o) {
+      const f = o.get('fill');
+      const col = new fabric.Color(typeof f === 'string' ? f : this.color);
+      col.setAlpha(v);
+      o.set('fill', col.toRgba());
       this.canvas.requestRenderAll();
       this.scheduleBroadcast();
     }
@@ -1578,7 +1597,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   }
 
   private shapeFill(color: string): string {
-    return this.filled ? this.rgbaFill(color, 0.18) : 'rgba(0,0,0,0)';
+    return this.filled ? this.rgbaFill(color, this.fillOpacity) : 'rgba(0,0,0,0)';
   }
 
   private strokeColor(): string {
