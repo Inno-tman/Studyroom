@@ -123,7 +123,7 @@ const PALETTE: BoardPalette[] = [
                 [class.active]="color === p.color"
                 [class.dark]="p.color === '#FFFFFF'"
                 [style.background]="p.color"
-                (click)="color = p.color"
+                (click)="setMainColor(p.color)"
                 [title]="p.name"
                 [attr.aria-label]="'Color ' + p.name"
               ></button>
@@ -747,7 +747,22 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
 
   onColorInput(event: Event): void {
     const el = event.target as HTMLInputElement;
-    if (/^#[0-9A-Fa-f]{6}$/.test(el.value)) this.color = el.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(el.value)) this.setMainColor(el.value);
+  }
+
+  setMainColor(v: string): void {
+    this.color = v;
+    this.fillColor = v;
+    this.borderColor = v;
+    this.filled = true;
+    this.borderOn = true;
+    const o = this.canvas.getActiveObject();
+    if (o) {
+      o.set('fill', this.shapeFill());
+      o.set('stroke', this.strokeColor());
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
   }
 
   onBorderColorInput(event: Event): void {
@@ -1534,8 +1549,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     if (p.x < r.left - radius || p.x > r.left + r.width + radius) return false;
     if (p.y < r.top - radius || p.y > r.top + r.height + radius) return false;
     try {
-      if (o.isContainedWithinObject?.(p as any)) return true;
-      if (o.containsPoint(p as any)) return true;
+      if (o.containsPoint(p as any, undefined, true)) return true;
     } catch {
       return false;
     }
