@@ -14,6 +14,8 @@ import { fabric } from 'fabric';
 import { SignalRService } from '../../core/services/signalr.service';
 import { UiFeedbackService } from '../../core/services/ui-feedback.service';
 import { Subscription } from 'rxjs';
+import { detectShape, SHAPE_PATH, SHAPE_POLY } from './shape-detector';
+import type { DetectionResult, DetectedTool, Pt } from './shape-detector';
 
 type BoardTool =
   | 'select'
@@ -889,7 +891,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     this.canvas.on('object:removed', () => this.refreshEmpty());
     this.canvas.on('object:modified', () => this.scheduleBroadcast());
     this.canvas.on('object:removed', () => this.scheduleBroadcast());
-    this.canvas.on('path:created', () => this.scheduleBroadcast());
+    this.canvas.on('path:created', e => this.onPathCreated(e));
     this.canvas.on('text:changed', () => this.scheduleBroadcast());
   }
 
@@ -1417,6 +1419,157 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     }
 
     this.canvas.add(this.activeShape!);
+  }
+
+  private onPathCreated(e: fabric.IEvent): void {
+    const path = (e as { path?: fabric.Object }).path;
+    if (!path) { this.scheduleBroadcast(); return; }
+    if (this.tool !== 'pen') { this.scheduleBroadcast(); return; }
+    const commands = (path as any).path as Array<Array<string | number>> | undefined;
+    if (!commands) { this.scheduleBroadcast(); return; }
+    const detected = detectShape(commands);
+    if (!detected) { this.scheduleBroadcast(); return; }
+
+    const rect = path.getBoundingRect(true, true);
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const shift = this.pointsShift(detected.points, cx, cy);
+
+    this.suppress = true;
+    this.canvas.remove(path);
+
+    const shape = detected.tool === 'line'
+      ? this.buildDetectedLine(detected, shift)
+      : this.buildDetectedShape(detected.tool, detected.angle, rect.width, rect.height, cx, cy);
+
+    if (shape) {
+      this.canvas.add(shape);
+      shape.setCoords();
+      this.canvas.discardActiveObject();
+    }
+    this.suppress = false;
+    this.canvas.requestRenderAll();
+    this.scheduleBroadcast();
+  }
+
+  private pointsShift(pts: Pt[], cx: number, cy: number): { x: number; y: number } {
+    const b = this.ptsBounds(pts);
+    return { x: cx - (b.x + b.w / 2), y: cy - (b.y + b.h / 2) };
+  }
+
+  private ptsBounds(pts: { x: number; y: number }[]): { x: number; y: number; w: number; h: number } {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  private unwrapSize(w: number, h: number, angle: number): { w: number; h: number } {
+    const rad = (angle * Math.PI) / 180;
+    const c = Math.abs(Math.cos(rad));
+    const s = Math.abs(Math.sin(rad));
+    const denom = c * c - s * s;
+    if (Math.abs(denom) < 0.1) {
+      const k = w / 1.4142;
+      return { w: Math.max(k, 1), h: Math.max(k, 1) };
+    }
+    const ww = (w * c - h * s) / denom;
+    const hh = (h * c - w * s) / denom;
+    if (!isFinite(ww) || !isFinite(hh) || ww <= 0 || hh <= 0) return { w, h };
+    return { w: Math.max(ww, 1), h: Math.max(hh, 1) };
+  }
+
+  private buildDetectedLine(detected: DetectionResult, shift: { x: number; y: number }): fabric.Object | null {
+    if (detected.points.length < 2) return null;
+    const p0 = detected.points[0];
+    const p1 = detected.points[detected.points.length - 1];
+    return new fabric.Line(
+      [p0.x + shift.x, p0.y + shift.y, p1.x + shift.x, p1.y + shift.y],
+      {
+        stroke: this.strokeColor(),
+        strokeWidth: this.strokeWidth,
+        strokeLineCap: 'round'
+      }
+    );
+  }
+
+  private buildDetectedShape(
+    tool: DetectedTool,
+    angle: number,
+    w: number,
+    h: number,
+    cx: number,
+    cy: number
+  ): fabric.Object | null {
+    const dims = this.unwrapSize(w, h, angle);
+    const fill = this.shapeFill();
+    const stroke = this.strokeColor();
+    const sw = this.strokeWidth;
+    const center = { left: cx, top: cy, originX: 'center' as const, originY: 'center' as const };
+
+    if (tool === 'circle') {
+      const r = Math.max((dims.w + dims.h) / 4, 1);
+      return new fabric.Ellipse({ ...center, rx: r, ry: r, fill, stroke, strokeWidth: sw });
+    }
+    if (tool === 'ellipse') {
+      return new fabric.Ellipse({
+        ...center,
+        rx: Math.max(dims.w / 2, 1),
+        ry: Math.max(dims.h / 2, 1),
+        angle,
+        fill,
+        stroke,
+        strokeWidth: sw
+      });
+    }
+    if (tool === 'rect') {
+      return new fabric.Rect({
+        ...center,
+        width: Math.max(dims.w, 1),
+        height: Math.max(dims.h, 1),
+        angle,
+        fill,
+        stroke,
+        strokeWidth: sw
+      });
+    }
+    if (tool === 'square') {
+      const size = Math.max((dims.w + dims.h) / 2, 1);
+      return new fabric.Rect({ ...center, width: size, height: size, fill, stroke, strokeWidth: sw });
+    }
+    if (SHAPE_POLY[tool]) {
+      const base = SHAPE_POLY[tool].map(p => ({ x: p[0], y: p[1] }));
+      const bb = this.ptsBounds(base);
+      return new fabric.Polygon(base, {
+        ...center,
+        scaleX: bb.w ? dims.w / bb.w : 1,
+        scaleY: bb.h ? dims.h / bb.h : 1,
+        angle,
+        fill,
+        stroke,
+        strokeWidth: sw
+      });
+    }
+    if (SHAPE_PATH[tool]) {
+      const path = new fabric.Path(SHAPE_PATH[tool], {
+        ...center,
+        fill,
+        stroke,
+        strokeWidth: sw,
+        angle
+      });
+      const bb = path.getBoundingRect();
+      path.set({
+        scaleX: bb.width ? dims.w / bb.width : 1,
+        scaleY: bb.height ? dims.h / bb.height : 1
+      });
+      return path;
+    }
+    return null;
   }
 
   private showErasePreview(p: { x: number; y: number }): void {
