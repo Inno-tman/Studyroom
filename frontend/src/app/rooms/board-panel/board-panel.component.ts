@@ -9,6 +9,7 @@
   ViewChild,
   inject
 } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { fabric } from 'fabric';
 import { SignalRService } from '../../core/services/signalr.service';
@@ -66,6 +67,132 @@ const PALETTE: BoardPalette[] = [
   { name: 'White', color: '#FFFFFF' }
 ];
 
+const BOARD_ICONS: Record<string, string> = {
+  'select': `<path d="M12.586 12.586 19 19" />
+  <path d="M3.688 3.037a.497.497 0 0 0-.651.651l6.5 15.999a.501.501 0 0 0 .947-.062l1.569-6.083a2 2 0 0 1 1.448-1.479l6.124-1.579a.5.5 0 0 0 .063-.947z" />`,
+  'pen': `<path d="m11 10 3 3" />
+  <path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z" />
+  <path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031" />`,
+  'eraser': `<path d="M21 21H8a2 2 0 0 1-1.42-.587l-3.994-3.999a2 2 0 0 1 0-2.828l10-10a2 2 0 0 1 2.829 0l5.999 6a2 2 0 0 1 0 2.828L12.834 21" />
+  <path d="m5.082 11.09 8.828 8.828" />`,
+  'text': `<path d="M12 4v16" />
+  <path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2" />
+  <path d="M9 20h6" />`,
+  'line_weight': `<path d="M3 5h18" /><path d="M3 10.5h18" /><path d="M3 16h18" /><path d="M3 21.5h18" />`,
+  'rect': `<rect width="20" height="12" x="2" y="6" rx="2" />`,
+  'circle': `<circle cx="12" cy="12" r="10" />`,
+  'ellipse': `<ellipse cx="12" cy="12" rx="10" ry="6" />`,
+  'line': `<path d="M11 19H5v-6" />
+  <path d="M13 5h6v6" />
+  <path d="M19 5 5 19" />`,
+  'arrow': `<path d="M5 12h14" />
+  <path d="m12 5 7 7-7 7" />`,
+  'triangle': `<path d="M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />`,
+  'diamond': `<path d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z" />
+  <path d="M2 9h20" />`,
+  'hexagon': `<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />`,
+  'star': `<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" />`,
+  'pentagon': `<path d="M10.83 2.38a2 2 0 0 1 2.34 0l8 5.74a2 2 0 0 1 .73 2.25l-3.04 9.26a2 2 0 0 1-1.9 1.37H7.04a2 2 0 0 1-1.9-1.37L2.1 10.37a2 2 0 0 1 .73-2.25z" />`,
+  'heart': `<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" />`,
+  'shield': `<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />`,
+  'bolt': `<path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" />`,
+  'plus': `<path d="M5 12h14" />
+  <path d="M12 5v14" />`,
+  'ring': `<path d="M16.247 7.761a6 6 0 0 1 0 8.478" />
+  <path d="M19.075 4.933a10 10 0 0 1 0 14.134" />
+  <path d="M4.925 19.067a10 10 0 0 1 0-14.134" />
+  <path d="M7.753 16.239a6 6 0 0 1 0-8.478" />
+  <circle cx="12" cy="12" r="2" />`,
+  'square': `<rect width="18" height="18" x="3" y="3" rx="2" />`,
+  'semicircle': `<path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z" />
+  <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />`,
+  'octagon': `<path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z" />`,
+  'trapezoid': `<path d="M4 18 7 6h10l3 12z" />`,
+  'crescent': `<path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" />`,
+  'droplet': `<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />`,
+  'cloud': `<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />`,
+  'cross': `<path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />`,
+  'chevron': `<path d="m9 18 6-6-6-6" />`,
+  'doubleArrow': `<path d="m6 17 5-5-5-5" />
+  <path d="m13 17 5-5-5-5" />`,
+  'sparkle': `<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />`,
+  'star6': `<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+  <path d="M20 2v4" />
+  <path d="M22 4h-4" />
+  <circle cx="4" cy="20" r="2" />`,
+  'tag': `<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+  <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />`,
+  'opacity': `<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
+  <path d="M9 8.5a6.5 6.5 0 0 0-4 6" opacity="0.4" />`,
+  'format_size': `<path d="m15 16 2.536-7.328a1.02 1.02 1 0 1 1.928 0L22 16" />
+  <path d="M15.697 14h5.606" />
+  <path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16" />
+  <path d="M3.304 13h6.392" />`,
+  'bold': `<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" />`,
+  'dash': `<path d="M5 3a2 2 0 0 0-2 2" />
+  <path d="M19 3a2 2 0 0 1 2 2" />
+  <path d="M21 19a2 2 0 0 1-2 2" />
+  <path d="M5 21a2 2 0 0 1-2-2" />
+  <path d="M9 3h1" />
+  <path d="M9 21h1" />
+  <path d="M14 3h1" />
+  <path d="M14 21h1" />
+  <path d="M3 9v1" />
+  <path d="M21 9v1" />
+  <path d="M3 14v1" />
+  <path d="M21 14v1" />`,
+  'copy': `<rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />`,
+  'delete': `<path d="M10 11v6" />
+  <path d="M14 11v6" />
+  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+  <path d="M3 6h18" />
+  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />`,
+  'delete_sweep': `<path d="M10 11v6" />
+  <path d="M14 11v6" />
+  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+  <path d="M3 6h18" />
+  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />`,
+  'bring_front': `<rect x="8" y="8" width="8" height="8" rx="2" />
+  <path d="M4 10a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2" />
+  <path d="M14 20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2" />`,
+  'send_back': `<rect x="14" y="14" width="8" height="8" rx="2" />
+  <rect x="2" y="2" width="8" height="8" rx="2" />
+  <path d="M7 14v1a2 2 0 0 0 2 2h1" />
+  <path d="M14 7h1a2 2 0 0 1 2 2v1" />`,
+  'chevron_left': `<path d="m15 18-6-6 6-6" />`,
+  'note_add': `<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+  <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+  <path d="M9 15h6" />
+  <path d="M12 18v-6" />`,
+  'zoom_out': `<circle cx="11" cy="11" r="8" />
+  <line x1="21" x2="16.65" y1="21" y2="16.65" />
+  <line x1="8" x2="14" y1="11" y2="11" />`,
+  'zoom_in': `<circle cx="11" cy="11" r="8" />
+  <line x1="21" x2="16.65" y1="21" y2="16.65" />
+  <line x1="11" x2="11" y1="8" y2="14" />
+  <line x1="8" x2="14" y1="11" y2="11" />`,
+  'fit_screen': `<path d="M8 3H5a2 2 0 0 0-2 2v3" />
+  <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+  <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />`,
+  'download': `<path d="M12 15V3" />
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+  <path d="m7 10 5 5 5-5" />`,
+  'undo': `<path d="M9 14 4 9l5-5" />
+  <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />`,
+  'redo': `<path d="m15 14 5-5-5-5" />
+  <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />`,
+  'sync': `<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+  <path d="M21 3v5h-5" />
+  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+  <path d="M8 16H3v5" />`,
+  'cloud_done': `<path d="m17 15-5.5 5.5L9 18" />
+  <path d="M5.516 16.07A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 3.501 7.327" />`,
+  'draw': `<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />`
+};
+
 @Component({
   selector: 'app-board-panel',
   standalone: true,
@@ -80,7 +207,7 @@ const PALETTE: BoardPalette[] = [
           <button class="tool-tab" [class.active]="activeGroup === 'slides'" (click)="setGroup('slides')" title="Slides">Slides</button>
           <button class="tool-tab" [class.active]="activeGroup === 'board'" (click)="setGroup('board')" title="Board actions">Board</button>
           <span class="sync-indicator" [class.unsynced]="!synced" [title]="synced ? 'Board synced with room' : 'Syncing board...'">
-            <span class="material-icons">{{ synced ? 'cloud_done' : 'sync' }}</span>
+            <span class="icon" [innerHTML]="icon(synced ? 'cloud_done' : 'sync')"></span>
           </span>
         </div>
 
@@ -91,28 +218,28 @@ const PALETTE: BoardPalette[] = [
               [class.active]="tool === 'select'"
               (click)="setTool('select')"
               title="Select / move"
-            ><span class="material-icons">pan_tool</span></button>
+            ><span class="icon" [innerHTML]="icon('select')"></span></button>
 
             <button
               class="tool-btn"
               [class.active]="tool === 'pen'"
               (click)="setTool('pen')"
               title="Draw"
-            ><span class="material-icons">edit</span></button>
+            ><span class="icon" [innerHTML]="icon('pen')"></span></button>
 
             <button
               class="tool-btn"
               [class.active]="tool === 'eraser'"
               (click)="setTool('eraser')"
               title="Eraser"
-            ><span class="material-icons">auto_fix_high</span></button>
+            ><span class="icon" [innerHTML]="icon('eraser')"></span></button>
 
             <button
               class="tool-btn"
               [class.active]="tool === 'text'"
               (click)="setTool('text')"
               title="Add text"
-            ><span class="material-icons">text_fields</span></button>
+            ><span class="icon" [innerHTML]="icon('text')"></span></button>
 
             <span class="board-divider"></span>
 
@@ -135,7 +262,7 @@ const PALETTE: BoardPalette[] = [
             <span class="board-divider"></span>
 
             <label class="size-control">
-              <span class="material-icons">line_weight</span>
+              <span class="icon" [innerHTML]="icon('line_weight')"></span>
               <input
                 type="range"
                 min="1"
@@ -147,88 +274,88 @@ const PALETTE: BoardPalette[] = [
           </ng-container>
 
           <ng-container *ngIf="activeGroup === 'shapes'">
-            <button class="tool-btn" [class.active]="tool === 'rect'" (click)="setTool('rect')" title="Rectangle"><span class="material-icons">rectangle</span></button>
-            <button class="tool-btn" [class.active]="tool === 'circle'" (click)="setTool('circle')" title="Circle"><span class="material-icons">circle</span></button>
-            <button class="tool-btn" [class.active]="tool === 'line'" (click)="setTool('line')" title="Line"><span class="material-icons">straighten</span></button>
-            <button class="tool-btn" [class.active]="tool === 'arrow'" (click)="setTool('arrow')" title="Arrow"><span class="material-icons">arrow_forward</span></button>
-            <button class="tool-btn" [class.active]="tool === 'triangle'" (click)="setTool('triangle')" title="Triangle"><span class="material-icons">change_history</span></button>
-            <button class="tool-btn" [class.active]="tool === 'diamond'" (click)="setTool('diamond')" title="Diamond"><span class="material-icons">diamond</span></button>
-            <button class="tool-btn" [class.active]="tool === 'hexagon'" (click)="setTool('hexagon')" title="Hexagon"><span class="material-icons">hexagon</span></button>
-            <button class="tool-btn" [class.active]="tool === 'star'" (click)="setTool('star')" title="Star"><span class="material-icons">star</span></button>
-            <button class="tool-btn" [class.active]="tool === 'pentagon'" (click)="setTool('pentagon')" title="Pentagon"><span class="material-icons">pentagon</span></button>
-            <button class="tool-btn" [class.active]="tool === 'heart'" (click)="setTool('heart')" title="Heart"><span class="material-icons">favorite</span></button>
-            <button class="tool-btn" [class.active]="tool === 'shield'" (click)="setTool('shield')" title="Shield"><span class="material-icons">shield</span></button>
-            <button class="tool-btn" [class.active]="tool === 'bolt'" (click)="setTool('bolt')" title="Lightning bolt"><span class="material-icons">bolt</span></button>
-            <button class="tool-btn" [class.active]="tool === 'plus'" (click)="setTool('plus')" title="Plus"><span class="material-icons">add</span></button>
-            <button class="tool-btn" [class.active]="tool === 'ring'" (click)="setTool('ring')" title="Ring"><span class="material-icons">radio_button_checked</span></button>
-            <button class="tool-btn" [class.active]="tool === 'ellipse'" (click)="setTool('ellipse')" title="Ellipse"><span class="material-icons">lens</span></button>
-            <button class="tool-btn" [class.active]="tool === 'square'" (click)="setTool('square')" title="Square"><span class="material-icons">crop_square</span></button>
-            <button class="tool-btn" [class.active]="tool === 'semicircle'" (click)="setTool('semicircle')" title="Semicircle"><span class="material-icons">pie_chart</span></button>
-            <button class="tool-btn" [class.active]="tool === 'octagon'" (click)="setTool('octagon')" title="Octagon"><span class="material-icons">workspaces</span></button>
-            <button class="tool-btn" [class.active]="tool === 'trapezoid'" (click)="setTool('trapezoid')" title="Trapezoid"><span class="material-icons">home</span></button>
-            <button class="tool-btn" [class.active]="tool === 'crescent'" (click)="setTool('crescent')" title="Crescent"><span class="material-icons">nightlight</span></button>
-            <button class="tool-btn" [class.active]="tool === 'droplet'" (click)="setTool('droplet')" title="Droplet"><span class="material-icons">water_drop</span></button>
-            <button class="tool-btn" [class.active]="tool === 'cloud'" (click)="setTool('cloud')" title="Cloud"><span class="material-icons">cloud</span></button>
-            <button class="tool-btn" [class.active]="tool === 'cross'" (click)="setTool('cross')" title="Cross"><span class="material-icons">close</span></button>
-            <button class="tool-btn" [class.active]="tool === 'chevron'" (click)="setTool('chevron')" title="Chevron"><span class="material-icons">chevron_right</span></button>
-            <button class="tool-btn" [class.active]="tool === 'doubleArrow'" (click)="setTool('doubleArrow')" title="Double arrow"><span class="material-icons">double_arrow</span></button>
-            <button class="tool-btn" [class.active]="tool === 'sparkle'" (click)="setTool('sparkle')" title="Sparkle star"><span class="material-icons">flare</span></button>
-            <button class="tool-btn" [class.active]="tool === 'star6'" (click)="setTool('star6')" title="6-point star"><span class="material-icons">stars</span></button>
-            <button class="tool-btn" [class.active]="tool === 'tag'" (click)="setTool('tag')" title="Tag"><span class="material-icons">tag</span></button>
+            <button class="tool-btn" [class.active]="tool === 'rect'" (click)="setTool('rect')" title="Rectangle"><span class="icon" [innerHTML]="icon('rect')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'circle'" (click)="setTool('circle')" title="Circle"><span class="icon" [innerHTML]="icon('circle')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'line'" (click)="setTool('line')" title="Line"><span class="icon" [innerHTML]="icon('line')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'arrow'" (click)="setTool('arrow')" title="Arrow"><span class="icon" [innerHTML]="icon('arrow')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'triangle'" (click)="setTool('triangle')" title="Triangle"><span class="icon" [innerHTML]="icon('triangle')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'diamond'" (click)="setTool('diamond')" title="Diamond"><span class="icon" [innerHTML]="icon('diamond')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'hexagon'" (click)="setTool('hexagon')" title="Hexagon"><span class="icon" [innerHTML]="icon('hexagon')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'star'" (click)="setTool('star')" title="Star"><span class="icon" [innerHTML]="icon('star')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'pentagon'" (click)="setTool('pentagon')" title="Pentagon"><span class="icon" [innerHTML]="icon('pentagon')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'heart'" (click)="setTool('heart')" title="Heart"><span class="icon" [innerHTML]="icon('heart')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'shield'" (click)="setTool('shield')" title="Shield"><span class="icon" [innerHTML]="icon('shield')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'bolt'" (click)="setTool('bolt')" title="Lightning bolt"><span class="icon" [innerHTML]="icon('bolt')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'plus'" (click)="setTool('plus')" title="Plus"><span class="icon" [innerHTML]="icon('plus')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'ring'" (click)="setTool('ring')" title="Ring"><span class="icon" [innerHTML]="icon('ring')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'ellipse'" (click)="setTool('ellipse')" title="Ellipse"><span class="icon" [innerHTML]="icon('ellipse')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'square'" (click)="setTool('square')" title="Square"><span class="icon" [innerHTML]="icon('square')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'semicircle'" (click)="setTool('semicircle')" title="Semicircle"><span class="icon" [innerHTML]="icon('semicircle')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'octagon'" (click)="setTool('octagon')" title="Octagon"><span class="icon" [innerHTML]="icon('octagon')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'trapezoid'" (click)="setTool('trapezoid')" title="Trapezoid"><span class="icon" [innerHTML]="icon('trapezoid')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'crescent'" (click)="setTool('crescent')" title="Crescent"><span class="icon" [innerHTML]="icon('crescent')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'droplet'" (click)="setTool('droplet')" title="Droplet"><span class="icon" [innerHTML]="icon('droplet')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'cloud'" (click)="setTool('cloud')" title="Cloud"><span class="icon" [innerHTML]="icon('cloud')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'cross'" (click)="setTool('cross')" title="Cross"><span class="icon" [innerHTML]="icon('cross')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'chevron'" (click)="setTool('chevron')" title="Chevron"><span class="icon" [innerHTML]="icon('chevron')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'doubleArrow'" (click)="setTool('doubleArrow')" title="Double arrow"><span class="icon" [innerHTML]="icon('doubleArrow')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'sparkle'" (click)="setTool('sparkle')" title="Sparkle star"><span class="icon" [innerHTML]="icon('sparkle')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'star6'" (click)="setTool('star6')" title="6-point star"><span class="icon" [innerHTML]="icon('star6')"></span></button>
+            <button class="tool-btn" [class.active]="tool === 'tag'" (click)="setTool('tag')" title="Tag"><span class="icon" [innerHTML]="icon('tag')"></span></button>
           </ng-container>
 
           <ng-container *ngIf="activeGroup === 'style'">
             <label class="size-control" title="Opacity">
-              <span class="material-icons">opacity</span>
+              <span class="icon" [innerHTML]="icon('opacity')"></span>
               <input type="range" min="0.1" max="1" step="0.05" [value]="opacity" (input)="setOpacity(+$any($event.target).value)" />
             </label>
 
-            <button class="tool-btn" [class.active]="dashed" (click)="toggleDash()" title="Dashed outline"><span class="material-icons">border_style</span></button>
+            <button class="tool-btn" [class.active]="dashed" (click)="toggleDash()" title="Dashed outline"><span class="icon" [innerHTML]="icon('dash')"></span></button>
 
             <span class="board-divider"></span>
 
             <label class="size-control" title="Font size">
-              <span class="material-icons">format_size</span>
+              <span class="icon" [innerHTML]="icon('format_size')"></span>
               <input type="range" min="12" max="120" [value]="fontSize" (input)="setFontSize(+$any($event.target).value)" />
             </label>
-            <button class="tool-btn" [class.active]="bold" (click)="toggleBold()" title="Bold text"><span class="material-icons">format_bold</span></button>
+            <button class="tool-btn" [class.active]="bold" (click)="toggleBold()" title="Bold text"><span class="icon" [innerHTML]="icon('bold')"></span></button>
 
             <span class="board-divider"></span>
 
-            <button class="tool-btn" (click)="duplicateSelected()" title="Duplicate"><span class="material-icons">content_copy</span></button>
-            <button class="tool-btn" (click)="deleteSelected()" title="Delete"><span class="material-icons">delete</span></button>
-            <button class="tool-btn" (click)="bringForward()" title="Bring forward"><span class="material-icons">layers</span></button>
-            <button class="tool-btn" (click)="sendBackwards()" title="Send backward"><span class="material-icons">layers_clear</span></button>
+            <button class="tool-btn" (click)="duplicateSelected()" title="Duplicate"><span class="icon" [innerHTML]="icon('copy')"></span></button>
+            <button class="tool-btn" (click)="deleteSelected()" title="Delete"><span class="icon" [innerHTML]="icon('delete')"></span></button>
+            <button class="tool-btn" (click)="bringForward()" title="Bring forward"><span class="icon" [innerHTML]="icon('bring_front')"></span></button>
+            <button class="tool-btn" (click)="sendBackwards()" title="Send backward"><span class="icon" [innerHTML]="icon('send_back')"></span></button>
           </ng-container>
 
           <ng-container *ngIf="activeGroup === 'slides'">
-            <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="material-icons">chevron_left</span></button>
+            <button class="tool-btn" (click)="prevSlide()" title="Previous slide"><span class="icon" [innerHTML]="icon('chevron_left')"></span></button>
             <span class="slide-count">{{ activeSlide + 1 }} / {{ slides.length }}</span>
-            <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="material-icons">chevron_right</span></button>
-            <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="material-icons">note_add</span></button>
-            <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="material-icons">content_copy</span></button>
-            <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="material-icons">delete</span></button>
+            <button class="tool-btn" (click)="nextSlide()" title="Next slide"><span class="icon" [innerHTML]="icon('chevron')"></span></button>
+            <button class="tool-btn" (click)="addSlide()" title="New slide"><span class="icon" [innerHTML]="icon('note_add')"></span></button>
+            <button class="tool-btn" (click)="duplicateSlide()" title="Duplicate slide"><span class="icon" [innerHTML]="icon('copy')"></span></button>
+            <button class="tool-btn danger" (click)="deleteSlide()" title="Delete slide"><span class="icon" [innerHTML]="icon('delete')"></span></button>
           </ng-container>
 
           <ng-container *ngIf="activeGroup === 'board'">
-            <button class="tool-btn" (click)="zoomOut()" title="Zoom out"><span class="material-icons">zoom_out</span></button>
-            <button class="tool-btn" (click)="zoomFit()" title="Zoom to fit"><span class="material-icons">fit_screen</span></button>
-            <button class="tool-btn" (click)="zoomIn()" title="Zoom in"><span class="material-icons">zoom_in</span></button>
+            <button class="tool-btn" (click)="zoomOut()" title="Zoom out"><span class="icon" [innerHTML]="icon('zoom_out')"></span></button>
+            <button class="tool-btn" (click)="zoomFit()" title="Zoom to fit"><span class="icon" [innerHTML]="icon('fit_screen')"></span></button>
+            <button class="tool-btn" (click)="zoomIn()" title="Zoom in"><span class="icon" [innerHTML]="icon('zoom_in')"></span></button>
             <span class="zoom-pct">{{ zoom | number: '1.0-1' }}%</span>
 
             <span class="board-divider"></span>
 
-            <button class="tool-btn" (click)="undo()" title="Undo"><span class="material-icons">undo</span></button>
-            <button class="tool-btn" (click)="redo()" title="Redo"><span class="material-icons">redo</span></button>
-            <button class="tool-btn" (click)="exportPng()" title="Export image"><span class="material-icons">download</span></button>
-            <button class="tool-btn danger" (click)="clearBoard()" title="Clear board"><span class="material-icons">delete_sweep</span></button>
+            <button class="tool-btn" (click)="undo()" title="Undo"><span class="icon" [innerHTML]="icon('undo')"></span></button>
+            <button class="tool-btn" (click)="redo()" title="Redo"><span class="icon" [innerHTML]="icon('redo')"></span></button>
+            <button class="tool-btn" (click)="exportPng()" title="Export image"><span class="icon" [innerHTML]="icon('download')"></span></button>
+            <button class="tool-btn danger" (click)="clearBoard()" title="Clear board"><span class="icon" [innerHTML]="icon('delete_sweep')"></span></button>
           </ng-container>
         </div>
       </div>
 
       <div class="board-canvas-wrap" #wrap>
         <div class="board-empty-hint" *ngIf="isEmpty">
-          <span class="material-icons">draw</span>
+          <span class="icon" [innerHTML]="icon('draw')"></span>
           <p>Pick a tool and start drawing, or add a slide</p>
         </div>
         <canvas #canvasEl></canvas>
@@ -322,7 +449,8 @@ const PALETTE: BoardPalette[] = [
 
     .tool-btn.danger:hover { color: var(--error); border-color: var(--error); }
 
-    .tool-btn .material-icons { font-size: var(--font-18); }
+    .tool-btn .icon { display: inline-flex; }
+    .tool-btn .icon svg { width: 18px; height: 18px; display: block; }
 
     .board-divider { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
 
@@ -332,7 +460,8 @@ const PALETTE: BoardPalette[] = [
 
     .sync-indicator { display: inline-flex; align-items: center; margin-left: auto; color: var(--primary); font-size: var(--font-16); animation: sync-pulse 1.2s ease-in-out infinite; }
 
-    .sync-indicator .material-icons { font-size: var(--font-18); }
+    .sync-indicator .icon { display: inline-flex; }
+    .sync-indicator .icon svg { width: 18px; height: 18px; display: block; }
 
     .sync-indicator.unsynced { color: var(--text-secondary); animation: sync-spin 1s linear infinite; }
 
@@ -362,7 +491,8 @@ const PALETTE: BoardPalette[] = [
 
     .size-control { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); }
 
-    .size-control .material-icons { font-size: var(--font-16); }
+    .size-control .icon { display: inline-flex; }
+    .size-control .icon svg { width: 16px; height: 16px; display: block; }
 
     .size-control input { width: 70px; accent-color: var(--primary); cursor: pointer; }
 
@@ -392,7 +522,8 @@ const PALETTE: BoardPalette[] = [
       user-select: none;
     }
 
-    .board-empty-hint .material-icons { font-size: 44px; opacity: 0.4; }
+    .board-empty-hint .icon { display: inline-flex; opacity: 0.4; }
+    .board-empty-hint .icon svg { width: 44px; height: 44px; display: block; }
   `]
 })
 export class BoardPanelComponent implements OnInit, OnDestroy {
@@ -404,6 +535,13 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   private signalR = inject(SignalRService);
   private fb = inject(UiFeedbackService);
   private ngZone = inject(NgZone);
+  private sanitizer = inject(DomSanitizer);
+
+  icon(name: string): SafeHtml {
+    const body = BOARD_ICONS[name] ?? '';
+    const svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+    return this.sanitizer.bypassSecurityTrustHtml(svg);
+  }
 
   private canvas!: fabric.Canvas;
   private resizeObs?: ResizeObserver;
