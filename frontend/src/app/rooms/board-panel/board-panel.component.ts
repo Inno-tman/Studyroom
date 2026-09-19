@@ -148,6 +148,25 @@ const PALETTE: BoardPalette[] = [
 
           <ng-container *ngIf="activeGroup === 'shapes'">
             <button class="tool-btn" [class.active]="filled" (click)="filled = !filled" title="Filled / outline shapes"><span class="material-icons">format_color_fill</span></button>
+            <button class="tool-btn" [class.active]="borderOn" (click)="toggleBorder()" title="Show / hide border"><span class="material-icons">border_clear</span></button>
+
+            <div class="color-row border-row">
+              <button
+                *ngFor="let p of palette"
+                class="swatch sm"
+                [class.active]="borderColor === p.color"
+                [class.dark]="p.color === '#FFFFFF'"
+                [style.background]="p.color"
+                (click)="setBorderColor(p.color)"
+                [title]="'Border ' + p.name"
+                [attr.aria-label]="'Border color ' + p.name"
+              ></button>
+              <label class="custom-color" title="Custom border color">
+                <input type="color" [value]="borderColor" (input)="onBorderColorInput($event)" />
+              </label>
+            </div>
+
+            <span class="board-divider"></span>
             <button class="tool-btn" [class.active]="tool === 'rect'" (click)="setTool('rect')" title="Rectangle"><span class="material-icons">rectangle</span></button>
             <button class="tool-btn" [class.active]="tool === 'circle'" (click)="setTool('circle')" title="Circle"><span class="material-icons">circle</span></button>
             <button class="tool-btn" [class.active]="tool === 'line'" (click)="setTool('line')" title="Line"><span class="material-icons">straighten</span></button>
@@ -361,6 +380,10 @@ const PALETTE: BoardPalette[] = [
 
     .custom-color input { position: absolute; inset: -6px; width: 32px; height: 32px; border: none; cursor: pointer; }
 
+    .border-row { overflow-x: auto; max-width: 260px; padding-bottom: 2px; }
+
+    .border-row .swatch, .border-row .custom-color { width: 16px; height: 16px; flex: 0 0 auto; }
+
     .size-control { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); }
 
     .size-control .material-icons { font-size: var(--font-16); }
@@ -513,6 +536,8 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
   opacity = 1;
   dashed = false;
   filled = true;
+  borderOn = true;
+  borderColor = PALETTE[1].color;
   fontSize = 32;
   bold = false;
   slides: { id: number; json: string; color: string }[] = [{ id: 1, json: '', color: '#F8FAFC' }];
@@ -696,6 +721,32 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     if (/^#[0-9A-Fa-f]{6}$/.test(el.value)) this.color = el.value;
   }
 
+  onBorderColorInput(event: Event): void {
+    const el = event.target as HTMLInputElement;
+    if (/^#[0-9A-Fa-f]{6}$/.test(el.value)) this.setBorderColor(el.value);
+  }
+
+  setBorderColor(v: string): void {
+    this.borderColor = v;
+    this.borderOn = true;
+    const o = this.canvas.getActiveObject();
+    if (o) {
+      o.set('stroke', this.strokeColor());
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
+  }
+
+  toggleBorder(): void {
+    this.borderOn = !this.borderOn;
+    const o = this.canvas.getActiveObject();
+    if (o) {
+      o.set('stroke', this.strokeColor());
+      this.canvas.requestRenderAll();
+      this.scheduleBroadcast();
+    }
+  }
+
   undo(): void {
     if (!this.history.length) { this.fb.info('Nothing to undo'); return; }
     const prev = this.history.pop();
@@ -807,7 +858,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           width: 0,
           height: 0,
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth
         });
         break;
@@ -820,7 +871,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth
         });
         break;
@@ -835,7 +886,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -853,7 +904,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -873,7 +924,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -897,7 +948,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -906,7 +957,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
       case 'line':
       case 'arrow':
         this.activeShape = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth
         });
         break;
@@ -919,7 +970,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth
         });
         break;
@@ -930,7 +981,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           width: 0,
           height: 0,
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth
         });
         break;
@@ -941,7 +992,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -963,7 +1014,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -981,7 +1032,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -994,7 +1045,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1007,7 +1058,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1020,7 +1071,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1046,7 +1097,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1066,7 +1117,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1086,7 +1137,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1108,7 +1159,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1134,7 +1185,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1154,7 +1205,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1173,7 +1224,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1186,7 +1237,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1206,7 +1257,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1226,7 +1277,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1252,7 +1303,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: this.shapeFill(c),
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth,
           scaleX: 0.1,
           scaleY: 0.1
@@ -1267,7 +1318,7 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
           originX: 'center',
           originY: 'center',
           fill: 'rgba(0,0,0,0)',
-          stroke: c,
+          stroke: this.strokeColor(),
           strokeWidth: this.strokeWidth + 6
         });
         break;
@@ -1528,6 +1579,10 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
 
   private shapeFill(color: string): string {
     return this.filled ? this.rgbaFill(color, 0.18) : 'rgba(0,0,0,0)';
+  }
+
+  private strokeColor(): string {
+    return this.borderOn ? this.borderColor : 'rgba(0,0,0,0)';
   }
 
   private makeArrow(x1: number, y1: number, x2: number, y2: number): fabric.Group {
