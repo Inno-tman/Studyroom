@@ -545,8 +545,14 @@ export class BoardPanelComponent implements OnInit, OnDestroy {
     if (tool === 'pen') {
       this.canvas.freeDrawingBrush.width = this.strokeWidth;
       this.canvas.freeDrawingBrush.color = this.color;
+    } else if (tool === 'eraser') {
+      this.canvas.selection = false;
+      this.canvas.skipTargetFind = true;
+      this.canvas.discardActiveObject();
+      this.canvas.requestRenderAll();
     } else {
       this.canvas.selection = true;
+      this.canvas.skipTargetFind = false;
       this.canvas.discardActiveObject();
       this.canvas.requestRenderAll();
     }
